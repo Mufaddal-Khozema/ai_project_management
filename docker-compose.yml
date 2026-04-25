@@ -1,0 +1,52 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.1.2
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+  console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    depends_on:
+      - redpanda
+  topic-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.1.2
+    depends_on:
+      - redpanda
+    entrypoint: |
+      /bin/sh -c '
+      set -e
+
+      echo "waiting for cluster..."
+      until rpk cluster info --brokers redpanda:9092 >/dev/null 2>&1; do
+        sleep 2
+      done
+
+      echo "creating topics..."
+      rpk topic create orders --brokers redpanda:9092 --partitions 3
+      rpk topic create payments --brokers redpanda:9092 --partitions 3
+      rpk topic create notifications --brokers redpanda:9092 --partitions 1
+
+      echo "verifying..."
+      rpk topic list --brokers redpanda:9092
+      '
+
+volumes:
+  redpanda-data:
