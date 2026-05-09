@@ -70,9 +70,10 @@ docker-compose up --build
 
 This starts:
 - PostgreSQL on `:5432`
-- Kafka + Zookeeper on `:9092`
-- Kafka UI on `:8080`
-- Auth Service on `:8000`
+- Redpanda (Kafka API) on `:9092`
+- Redpanda Console on `:8081`
+- API Gateway on `:8000`
+- Auth Service on `:8001`
 
 ### 3. Seed the database
 
@@ -94,7 +95,7 @@ http://localhost:8000/docs
 
 - Python 3.12+
 - PostgreSQL running locally
-- (Optional) Kafka running locally
+- (Optional) Redpanda/Kafka API running locally
 
 ### 1. Create virtual environment
 
@@ -138,23 +139,23 @@ alembic revision --autogenerate -m "initial"
 alembic upgrade head
 ```
 
-### 6. (Optional) Set up Kafka
+### 6. (Optional) Set up Redpanda
 
 ```bash
-# Using Confluent's local script, or simply start docker-compose for just Kafka:
-docker-compose up -d zookeeper kafka
+# Start only Redpanda + Console locally:
+docker-compose up -d redpanda console
 ```
 
-> **Note:** The service degrades gracefully if Kafka is unavailable — events are logged to stdout instead.
+> **Note:** The service degrades gracefully if Redpanda/Kafka is unavailable — events are logged to stdout instead.
 
 ### 7. Start the server
 
 ```bash
-# Development (wsgiref)
+# Development
 python main.py
 
-# Production (Gunicorn)
-gunicorn main:application --bind 0.0.0.0:8000 --workers 4
+# Production (Gunicorn + Uvicorn worker)
+gunicorn main:application --bind 0.0.0.0:8000 --worker-class uvicorn.workers.UvicornWorker --workers 4
 ```
 
 ---
@@ -278,7 +279,8 @@ Expected output: **9 passed**
 | `JWT_SECRET_KEY`                  | *required*               | HS256 signing key (min 32 chars)   |
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | 15                       | Access token TTL                   |
 | `JWT_REFRESH_TOKEN_EXPIRE_DAYS`   | 30                       | Refresh token TTL                  |
-| `KAFKA_BOOTSTRAP_SERVERS`         | localhost:9092           | Kafka broker address               |
+| `KAFKA_BOOTSTRAP_SERVERS`         | localhost:9092           | Kafka/Redpanda broker address      |
+| `REDPANDA_BROKERS`                | redpanda:9092            | Alternative broker env alias       |
 | `RATE_LIMIT_REQUESTS`             | 10                       | Max requests per window            |
 | `RATE_LIMIT_WINDOW_SECONDS`       | 60                       | Rate limit window                  |
 | `DEFAULT_ROLE`                    | user                     | Role assigned at registration      |

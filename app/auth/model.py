@@ -16,7 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from database import Base
 
 # ── Many-to-many association table ────────────────────────────────────────────
 
@@ -141,3 +141,35 @@ class RefreshToken(Base):
 
     def __repr__(self) -> str:
         return f"<RefreshToken user_id={self.user_id} revoked={self.revoked}>"
+
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+    members = relationship("OrgMember", back_populates="organization")
+
+class OrgMember(Base):
+    __tablename__ = "org_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="member")  # owner, admin, member
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+    organization = relationship("Organization", back_populates="members")
+
+class ProcessedEvent(Base):
+    __tablename__ = "auth_processed_events"
+
+    consumer_group = Column(String(100), primary_key=True)
+    event_id = Column(String(36), primary_key=True)
+    processed_at = Column(DateTime(timezone=True), server_default="now()")
+
+

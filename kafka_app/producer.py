@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from app.core.config import get_settings
+from app.auth.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -137,4 +137,28 @@ class AuthEventProducer:
             event_type=settings.kafka_topic_token_refreshed,
             data={"user_id": user_id},
             key=user_id,
+        )
+
+    def org_created(self, org_id: str, name: str, slug: str, owner_user_id: str) -> None:
+        self._p.publish(
+            topic=settings.kafka_topic_org_created,
+            event_type=settings.kafka_topic_org_created,
+            data={"org_id": org_id, "name": name, "slug": slug, "owner_user_id": owner_user_id},
+            key=org_id,
+        )
+
+    def org_deleted(self, org_id: str) -> None:
+        self._p.publish(
+            topic=settings.kafka_topic_org_deleted,
+            event_type=settings.kafka_topic_org_deleted,
+            data={"org_id": org_id},
+            key=org_id,
+        )
+
+    def member_added(self, org_id: str, user_id: str) -> None:
+        self._p.publish(
+            topic=settings.kafka_topic_member_added,
+            event_type=settings.kafka_topic_member_added,
+            data={"org_id": org_id, "user_id": user_id},
+            key=org_id,
         )

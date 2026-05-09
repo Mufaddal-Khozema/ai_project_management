@@ -1,10 +1,6 @@
-"""
-SQLAlchemy engine, session factory, and declarative base.
-"""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-
-from app.core.config import get_settings
+from config import get_settings
 
 settings = get_settings()
 
@@ -70,6 +66,3 @@ def get_db():
     finally:
         db.close()
 
-
-# Convenience accessor for scripts / migrations
-engine = property(get_engine)  # type: ignore[assignment]

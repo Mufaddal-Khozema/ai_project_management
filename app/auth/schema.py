@@ -92,3 +92,27 @@ class ErrorResponse(BaseModel):
 
     error: str
     detail: str | None = None
+
+
+
+class CreateOrgRequest(BaseModel):
+    """Payload for POST /org."""
+
+    name: str = Field(..., min_length=3, max_length=255, examples=["Acme Corp"])
+    slug: str = Field(..., min_length=3, max_length=100, examples=["acme-corp"])
+    admin_email: str = Field(..., examples=["admin@acme.com"])
+    admin_password: str = Field(..., min_length=8, max_length=128, examples=["Str0ng!Pass"])
+    admin_username: str | None = Field(default=None, min_length=3, max_length=64, examples=["acme-admin"])
+    admin_phone: str | None = Field(default=None, max_length=30, examples=["+15550001234"])
+
+
+class CreateOrgResponse(BaseModel):
+    """Response body for a successful organization creation."""
+
+    org_id: str
+    name: str
+    slug: str
+    owner_user_id: str
+    message: str = "Organization created successfully."
+
+    model_config = {"from_attributes": True}

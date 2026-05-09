@@ -1,10 +1,32 @@
 services:
   api-gateway:
-    build: ./api-gateway
+    build: .
+    command: uvicorn main:application --host 0.0.0.0 --port 8000
     ports:
     - "8000:8000"
     depends_on:
     - redpanda
+
+  
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: auth_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v25.1.2
     container_name: redpanda
@@ -24,6 +46,7 @@ services:
       - "9644:9644"
     volumes:
       - redpanda-data:/var/lib/redpanda/data
+
   console:
     image: docker.redpanda.com/redpandadata/console:latest
     ports:
@@ -54,5 +77,19 @@ services:
       rpk topic list --brokers redpanda:9092
       '
 
+  auth-service:
+    build: .
+    command: uvicorn main:application --host 0.0.0.0 --port 8001
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8001
+      DATABASE_URL: postgresql://postgres:secret@postgres:5432/auth_db
+      REDPANDA_BROKERS: redpanda:9092
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redpanda
+      - postgres
 volumes:
   redpanda-data:
+  postgres_data:
