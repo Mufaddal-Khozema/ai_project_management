@@ -158,6 +158,21 @@ python main.py
 gunicorn main:application --bind 0.0.0.0:8000 --worker-class uvicorn.workers.UvicornWorker --workers 4
 ```
 
+### Run Auth service locally with Uvicorn
+
+If you want to run the auth service directly with `uvicorn` during development, run this from the repository root:
+
+```powershell
+uvicorn app.auth.main:app --reload
+```
+
+If you prefer to run `uvicorn` from the `app/auth` directory, set `PYTHONPATH` to the repo root first (PowerShell):
+
+```powershell
+$env:PYTHONPATH = (Get-Item ..).FullName
+uvicorn main:app --reload
+```
+
 ---
 
 ## 📡 API Endpoints

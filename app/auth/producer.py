@@ -8,7 +8,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from app.auth.config import get_settings
+
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

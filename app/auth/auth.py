@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from producer import AuthEventProducer
-from app.auth.schema import (
+from schema import (
     LoginRequest,
     LoginResponse,
     RefreshRequest,
@@ -21,7 +21,7 @@ from app.auth.schema import (
     CreateOrgRequest,
     CreateOrgResponse,
 )
-from app.auth.service import (
+from service import (
     AuthenticationError,
     AuthService,
     RegistrationError,

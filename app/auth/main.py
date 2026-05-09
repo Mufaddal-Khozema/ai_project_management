@@ -9,12 +9,11 @@ import sys
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-
 from config import get_settings
 from database import SessionLocal
 from producer import AuthEventProducer, KafkaProducer
-from auth.middleware import JWTAuthMiddleware, RateLimitMiddleware
-from auth import router as auth_router
+from middleware import JWTAuthMiddleware, RateLimitMiddleware
+from auth import router as auth_router 
 # from .grpc_server import create_grpc_server
 
 logging.basicConfig(

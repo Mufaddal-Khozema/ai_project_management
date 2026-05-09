@@ -7,9 +7,10 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from kafka_app.producer import AuthEventProducer
+from producer import AuthEventProducer
 from model import RefreshToken, Role, User, Organization, OrgMember
 from schema import LoginResponse, RefreshResponse, RegisterResponse
+from config import get_settings
 import hashlib
 import secrets
 import uuid
@@ -19,7 +20,7 @@ from typing import Any
 import jwt
 from passlib.context import CryptContext
 
-from .config import get_settings
+ 
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
