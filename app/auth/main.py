@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from config import get_settings
 from database import SessionLocal
-from kafka_app.producer import AuthEventProducer, KafkaProducer
+from producer import AuthEventProducer, KafkaProducer
 from auth.middleware import JWTAuthMiddleware, RateLimitMiddleware
 from auth import router as auth_router
 # from .grpc_server import create_grpc_server

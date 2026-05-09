@@ -1,5 +1,6 @@
 from logging.config import fileConfig
 from pathlib import Path
+import os
 import sys
 
 from sqlalchemy import engine_from_config
@@ -11,7 +12,6 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from config import get_settings
 from database import Base
 import model  # noqa: F401  # Ensure all ORM models are registered on Base.metadata
 
@@ -30,8 +30,11 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
-settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+if not database_url or database_url == "driver://user:pass@localhost/dbname":
+    raise RuntimeError("DATABASE_URL must be set before running Alembic migrations")
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

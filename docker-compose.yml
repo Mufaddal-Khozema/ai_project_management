@@ -1,7 +1,7 @@
 services:
   api-gateway:
     build: .
-    command: uvicorn main:application --host 0.0.0.0 --port 8000
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     ports:
     - "8000:8000"
     depends_on:
@@ -79,17 +79,22 @@ services:
 
   auth-service:
     build: .
-    command: uvicorn main:application --host 0.0.0.0 --port 8001
+    working_dir: /app/app/auth
+    command: sh -c "alembic upgrade head && uvicorn main:application --host 0.0.0.0 --port 8001"
     environment:
       APP_HOST: 0.0.0.0
       APP_PORT: 8001
       DATABASE_URL: postgresql://postgres:secret@postgres:5432/auth_db
+      JWT_SECRET_KEY: change-me-in-production
+      JWT_ALGORITHM: HS256
       REDPANDA_BROKERS: redpanda:9092
     ports:
       - "8001:8001"
     depends_on:
-      - redpanda
-      - postgres
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
 volumes:
   redpanda-data:
   postgres_data:

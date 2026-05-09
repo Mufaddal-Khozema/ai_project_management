@@ -10,7 +10,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from kafka_app.producer import AuthEventProducer
+from producer import AuthEventProducer
 from app.auth.schema import (
     LoginRequest,
     LoginResponse,
