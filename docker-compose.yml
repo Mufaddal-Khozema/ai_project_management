@@ -1,13 +1,4 @@
 services:
-  api-gateway:
-    build: .
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
-    ports:
-    - "8000:8000"
-    depends_on:
-    - redpanda
-
-  
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -95,6 +86,65 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_started
+
+    # ── etcd ──────────────────────────────────────────────────────────────
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.12
+    container_name: etcd
+    restart: unless-stopped
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"         # Dev only — enable auth in prod
+      ETCD_ADVERTISE_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/bitnami/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── APISIX - GATEWAY ────────────────────────────────────────────────────────────── 
+  apisix:
+    image: apache/apisix:3.9.0-debian
+    container_name: apisix
+    restart: unless-stopped
+    depends_on:
+      etcd:
+        condition: service_healthy
+    ports:
+      - "9080:9080"     # ← Gateway traffic port (clients call this)
+      - "9180:9180"     # ← Admin API (bootstrap script + dashboard use this)
+      - "9091:9091"     # ← Prometheus metrics
+      - "9090:9090"     # ← Control API
+    volumes:
+      # Mount our config.yaml into the container
+      - ./apisix_config/conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+
+  # ── APISIX DASHBOARD ──────────────────────────────────────────────────────────────
+  apisix-dashboard:
+    image: apache/apisix-dashboard:3.0.0-centos
+    container_name: apisix-dashboard
+    restart: unless-stopped
+    depends_on:
+      - etcd
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./apisix_config/dashboard_conf/conf.yaml:/usr/local/apisix-dashboard/conf/conf.yaml:ro
+ 
+  # ── APISIX bootstrap ──────────────────────────────────────────────────────────────
+  apisix-bootstrap:
+    image: curlimages/curl:8.7.1
+    container_name: apisix-bootstrap
+    volumes:
+      - ./apisix_config/bootstrap_routes.sh:/bootstrap_routes.sh:ro
+    entrypoint: ["sh", "/bootstrap_routes.sh"]
+    restart: "no"    # Run once and exit — do NOT restart after success
 volumes:
+  etcd_data:
   redpanda-data:
   postgres_data:
+

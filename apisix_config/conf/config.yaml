@@ -1,0 +1,62 @@
+apisix:
+  node_listen: 9080
+  enable_ipv6: false
+ 
+  enable_control: true
+  control:
+    ip: "0.0.0.0"
+    port: 9090
+ 
+# ── Deployment / etcd ──────────────────────────────────────────────────────────
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+ 
+  etcd:
+    host:
+      - "http://etcd:2379"
+    prefix: "/apisix"
+    timeout: 30
+ 
+  # Admin API — key must be at least 32 chars
+  admin:
+    allow_admin:
+      - 0.0.0.0/0          # restrict to internal network in production
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+    admin_key:
+      - name: admin
+        key: "edd1c9f034335f136f87ad84b625c8f1"
+        role: admin
+ 
+# ── Plugins whitelist ─────────────────────────────────────────────────────────
+plugins:
+  - proxy-rewrite
+  - jwt-auth
+  - key-auth
+  - cors
+  - limit-req
+  - limit-count
+  - limit-conn
+  - response-rewrite
+  - prometheus
+  - http-logger
+  - request-id
+  - fault-injection
+  - forward-auth
+  - echo
+  - ip-restriction
+  - consumer-restriction
+  - redirect
+  - uri-blocker
+  - traffic-split
+  - real-ip
+ 
+# plugin_attr:
+#   prometheus:
+#     export_uri: /metrics
+#     export_addr:
+#       ip: "0.0.0.0"
+#       port: 9091

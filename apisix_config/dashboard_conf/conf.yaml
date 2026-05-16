@@ -1,0 +1,26 @@
+# Dashboard is a web UI that lets you visually create/edit/delete routes, upstreams, consumers, and plugins — without writing curl command
+
+conf:
+  listen:
+    host: 0.0.0.0
+    port: 9000   # on the port it resides
+
+  # use same as APISIX so the dashboard has same routes
+  etcd:
+      endpoints:
+        - etcd:2379
+  
+  log:
+    error_log:
+      level: warn
+      file_path: /usr/local/apisix-dashboard/logs/error.log
+    access_log:
+      file_path: /usr/local/apisix-dashboard/logs/access.log
+ 
+authentication:
+  # Default login: admin / admin  — CHANGE IN PRODUCTION
+  secret: asdfghjklasdfghjklasdfghjklasdfg
+  expire_time: 3600
+  users:
+    - username: admin
+      password: admin
