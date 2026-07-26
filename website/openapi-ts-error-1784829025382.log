@@ -1,0 +1,18 @@
+[2026-07-23T17:50:25.382Z] Error: Cannot read properties of null (reading '$ref')
+Stack:
+TypeError: Cannot read properties of null (reading '$ref')
+    at schemaToIrSchema (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:7759:13)
+    at parseObject (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:7270:41)
+    at parseOneType (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:7675:25)
+    at parseType (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:7728:39)
+    at schemaToIrSchema (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:7784:47)
+    at parseSchema (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:7805:51)
+    at parseV3_1_X (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:8426:4)
+    at parseOpenApiSpec (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+shared@0.5.0/node_modules/@hey-api/shared/dist/index.mjs:8603:3)
+    at createClient$1 (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+openapi-ts@0.99.0_typescript@5.9.3/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:149:3)
+    at async file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+openapi-ts@0.99.0_typescript@5.9.3/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:213:12
+    at async Promise.all (index 0)
+    at async createClient (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+openapi-ts@0.99.0_typescript@5.9.3/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:211:21)
+    at async Command.<anonymous> (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+openapi-ts@0.99.0_typescript@5.9.3/node_modules/@hey-api/openapi-ts/dist/run.mjs:35:8)
+    at async Command.parseAsync (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/commander@15.0.0/node_modules/commander/lib/command.js:1113:5)
+    at async runCli (file:///D:/mufaddal_khozema/ai_project_management/website/node_modules/.pnpm/@hey-api+openapi-ts@0.99.0_typescript@5.9.3/node_modules/@hey-api/openapi-ts/dist/run.mjs:39:3)

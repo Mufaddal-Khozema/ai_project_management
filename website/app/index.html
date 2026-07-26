@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoordinaAI — The AI Project Operations Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.0.3/dist/fonts/geist-sans/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://assets.codepen.io/16327/SplitText3.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Geist Sans"', 'sans-serif'],
+                        mono: ['"Geist Mono"', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style>
+    </style>
+</head>
+<body class="antialiased selection:bg-zinc-200 selection:text-zinc-950">
+
+    <!-- Hero Background Layer -->
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger, SplitText);
+
+        const heroCard = document.querySelector('.three-d-card');
+        if (heroCard) {
+            document.addEventListener('mousemove', (e) => {
+                const xAxis = (window.innerWidth / 2 - e.pageX) / 45;
+                const yAxis = (window.innerHeight / 2 - e.pageY) / 45;
+                heroCard.style.transform = `rotateY(${xAxis}deg) rotateX(${-yAxis}deg)`;
+            });
+            document.addEventListener('mouseleave', () => {
+                heroCard.style.transform = `rotateX(5deg) rotateY(-5deg)`;
+            });
+        }
+
+        gsap.from(".hero-text-trigger", { duration: 1.2, x: -60, opacity: 0, ease: "power4.out" });
+        gsap.from(".hero-3d-trigger", { duration: 1.5, z: -150, rotationX: 25, opacity: 0, ease: "power3.out" });
+
+        gsap.from(".problem-card", {
+            scrollTrigger: { trigger: ".problem-card", start: "top 85%" },
+            duration: 1, y: 80, rotationX: -15, opacity: 0, stagger: 0.15, ease: "power2.out"
+        });
+
+        gsap.from(".solution-trigger", {
+            scrollTrigger: { trigger: ".solution-trigger", start: "top 80%" },
+            duration: 1.2, scale: 0.95, opacity: 0, ease: "power3.out"
+        });
+
+        gsap.from(".feature-card", {
+            scrollTrigger: { trigger: ".features-trigger", start: "top 85%" },
+            duration: 0.8, y: 50, opacity: 0, stagger: 0.1, ease: "power2.out"
+        });
+
+        gsap.from(".pricing-trigger", {
+            scrollTrigger: { trigger: ".pricing-trigger", start: "top 85%" },
+            duration: 1, y: 40, opacity: 0, ease: "power3.out"
+        });
+
+        class CustomScroller {
+            constructor() {
+                this.block = document.querySelector('.scroller-block');
+                this.elements = {
+                    scroller: document.querySelector('.scroller-section'),
+                    background: document.querySelector('.bg-container')
+                };
+                
+                this.timelines = {};
+                this.splitTexts = [];
+                this.debug = false; // Set to false to hide markers in production
+
+                this.options = {
+                    transitionGap: 0.15,
+                    charFadeValue: 0.15,
+                    lineStagger: 0.06,
+                    transitionDuration: 0.6,
+                    scrollAmount: 1.0,
+                    scrollDistancePerItem: 1200
+                };
+
+                this.initScroller();
+            }
+
+            log(message, type = "log", data = null) {
+                if (this.debug) {
+                    console[type](`[Scroller System] ${message}`, data || '');
+                }
+            }
+
+            animateBackgroundChild(progress) {
+                gsap.set(this.elements.background, {
+                    filter: `hue-rotate(${progress * 90}deg)`
+                });
+            }
+
+            initScroller() {
+                if (typeof gsap !== "undefined" && typeof ScrollTrigger !== "undefined" && typeof SplitText !== "undefined" && this.elements.scroller) {
+                    this.log("Initialising scroller section");
+                    
+                    const e = this.elements.scroller.querySelector(".progress_bar"),
+                          t = this.elements.scroller.querySelector(".index_current"),
+                          i = this.elements.scroller.querySelectorAll(".main_item");
+
+                    if (!e || !t || i.length === 0) {
+                        this.log("Scroller elements not found", "error");
+                        return;
+                    }
+
+                    const a = i.length,
+                          { transitionGap: h, charFadeValue: r, lineStagger: d, transitionDuration: w, scrollAmount: g, scrollDistancePerItem: b } = this.options;
+
+                    gsap.set(i[0], { autoAlpha: 1 });
+                    i.forEach((o, s) => {
+                        if (s > 0) gsap.set(o, { autoAlpha: 0 });
+                    });
+
+                    this.splitTexts = [];
+                    i.forEach((o, s) => {
+                        const n = o.querySelector("p");
+                        if (n) {
+                            const c = new SplitText(n, {
+                                type: "lines, chars",
+                                linesClass: "line",
+                                charsClass: "char",
+                                mask: "lines",
+                                aria: false
+                            });
+                            this.splitTexts[s] = c;
+                            gsap.set(c.chars, { opacity: r });
+                        }
+                    });
+
+                    let u = 0; 
+                    
+                    const x = (o, s) => {
+                        if (o !== s) {
+                            let outgoingDuration = 0;
+
+                            // Outgoing container slide-up and fade-out routine
+                            if (o >= 0 && this.splitTexts[o]) {
+                                const lineCount = this.splitTexts[o].lines.length;
+                                outgoingDuration = 0.4 + d * Math.max(0, lineCount - 1);
+
+                                gsap.to(this.splitTexts[o].lines, {
+                                    autoAlpha: 0,
+                                    y: -30,
+                                    ease: "power4.out",
+                                    duration: 0.4,
+                                    stagger: d,
+                                    onComplete: () => gsap.set(i[o], { autoAlpha: 0 })
+                                });
+                            }
+
+                            // Incoming container entry — wait until outgoing has actually finished
+                            const incomingDelay = Math.max(h, outgoingDuration);
+
+                            gsap.delayedCall(incomingDelay, () => {
+                                if (s >= 0 && this.splitTexts[s]) {
+                                    gsap.set(i[s], { autoAlpha: 1 });
+                                    gsap.fromTo(this.splitTexts[s].lines, 
+                                        { autoAlpha: 0, y: 30 }, 
+                                        { autoAlpha: 1, y: 0, ease: "power4.out", duration: w, stagger: d }
+                                    );
+                                }
+                            });
+                        }
+                    };
+
+                    this.timelines.scroller = ScrollTrigger.create({
+                        trigger: this.elements.scroller,
+                        start: "center center",
+                        end: () => `+=${a * b * g}px`,
+                        pin: true,
+                        scrub: true,
+                        markers: this.debug,
+                        onUpdate: o => {
+                            const s = Math.min(o.progress, g) / g;
+                            let n = Math.floor(s * a + 1e-6);
+                            n = Math.max(0, Math.min(a - 1, n));
+                            
+                            gsap.set(e, { scaleX: s });
+                            
+                            const c = n + 1;
+                            t.textContent = c.toString().padStart(2, "0");
+                            
+                            if (n !== u) {
+                                x(u, n);
+                                u = n;
+                            }
+
+                            if (this.splitTexts[n]) {
+                                const p = s * a - n,
+                                      v = Math.min(p * 1.5, 1),
+                                      y = this.splitTexts[n].chars.length,
+                                      m = Math.floor(v * y);
+
+                                this.splitTexts[n].chars.forEach((f, k) => {
+                                    if (k < m) {
+                                        gsap.set(f, { opacity: 1 });
+                                    } else if (k === m) {
+                                        const S = v * y - m;
+                                        gsap.set(f, { opacity: r + S * (1 - r) });
+                                    } else {
+                                        gsap.set(f, { opacity: r });
+                                    }
+                                });
+                            }
+                        }
+                    });
+
+                    if (!this.timelines.backgroundFixed) {
+                        const o = this.elements.scroller.offsetTop,
+                              s = this.elements.scroller.offsetHeight,
+                              n = a * b * g,
+                              c = o + s + n;
+
+                        this.timelines.backgroundFixed = ScrollTrigger.create({
+                            trigger: this.block,
+                            start: "top top",
+                            end: () => `+=${c}px`,
+                            pin: this.elements.background,
+                            pinSpacing: false,
+                            markers: this.debug,
+                            onUpdate: p => {
+                                this.animateBackgroundChild(p.progress);
+                            }
+                        });
+
+                        ScrollTrigger.refresh();
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new CustomScroller();
+        });
+    </script>
+</body>
+</html>

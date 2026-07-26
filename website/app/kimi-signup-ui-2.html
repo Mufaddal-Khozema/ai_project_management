@@ -1,0 +1,759 @@
+<html lang="zh-CN" class="dark" style="color-scheme: dark;">
+<head>
+    <meta charset="utf-8">
+    <meta name="color-scheme" content="light dark">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://esm.sh; style-src 'unsafe-inline'; font-src https://assets.kimi.com data:; img-src data: blob: https:; media-src data: blob: https:; connect-src https://esm.sh; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; worker-src 'none';">
+    <title>Kimi Widget Sandbox</title>
+    <style>
+      :root{color-scheme:light dark;--color-bg: #ffffff;--color-border: #e5e5e5;--color-text-secondary: #737373;--font-sans: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;--font-mono: "SF Mono", Monaco, "Fira Code", "Courier New", monospace;--seo-chat-Colors-KMBlue: #1783ff;--seo-chat-Colors-KMBlue-hover: rgba(22, 127, 247, 1);--seo-chat-Colors-Red: #ff3849;--seo-chat-Colors-Green: #16c456;--seo-chat-Colors-Yellow: #ffd230;--seo-chat-Colors-Orange: #ff9500;--seo-chat-Colors-Purple: #985ffb;--seo-chat-Chart-Green: #7eb233;--seo-chat-Chart-Purple: #a44185;--seo-chat-Chart-Neutral: #b2b2b2;--seo-chat-Bg-Primary: #ffffff;--seo-chat-Bg-Primary-hover: rgba(247, 247, 247, 1);--seo-chat-Bg-Secondary: #f5f5f5;--seo-chat-BgGp-Secondary: #ffffff;--seo-chat-BgGp-Secondary-hover: rgba(247, 247, 247, 1);--seo-chat-Labels-Primary: rgba(0, 0, 0, .9);--seo-chat-Labels-Primary-hover: rgba(37, 37, 37, 1);--seo-chat-Labels-Primary-active: rgba(0, 0, 0, .905);--seo-chat-Labels-Secondary: rgba(0, 0, 0, .6);--seo-chat-Labels-Tertiary: rgba(0, 0, 0, .45);--seo-chat-Labels-Quaternary: rgba(0, 0, 0, .27);--seo-chat-Fills-F1: rgba(0, 0, 0, .03);--seo-chat-Fills-F1-hover: rgba(0, 0, 0, .06);--seo-chat-Fills-F1-active: rgba(0, 0, 0, .079);--seo-chat-Fills-F2: rgba(0, 0, 0, .05);--seo-chat-Fills-F2-hover: rgba(0, 0, 0, .079);--seo-chat-Fills-F2-active: rgba(0, 0, 0, .098);--seo-chat-Fills-F3: rgba(0, 0, 0, .15);--seo-chat-Fills-F4: rgba(0, 0, 0, .25);--seo-chat-MaskBg-Icon: rgba(0, 0, 0, .3);--seo-chat-MaskBg-Icon-hover: rgba(0, 0, 0, .5);--seo-chat-Separators-S1: rgba(0, 0, 0, .13);--seo-chat-Separators-S1-hover: rgba(0, 0, 0, .156);--seo-chat-Separators-S1-active: rgba(0, 0, 0, .173);--seo-chat-Others-BubbleGray_PC: #f5f5f5;--seo-chat-Others-LightRedBg: rgba(255, 77, 77, .1);--seo-chat-Others-LightGreenBg: rgba(22, 196, 86, .1);--seo-chat-Others-LightOrangeBg: rgba(255, 149, 0, .1);--seo-chat-Others-LightYellowBg: rgba(255, 200, 0, .1);--seo-chat-Others-LightPurpleBg: rgba(152, 95, 251, .1);}
+    </style>
+  <style>
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+  </style>
+<style>
+/* ==================== CUSTOM CSS (cannot be expressed in Tailwind) ==================== */
+@keyframes meshFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(2%, -1%) scale(1.02); }
+  50% { transform: translate(-1%, 2%) scale(0.98); }
+  75% { transform: translate(-2%, -1%) scale(1.01); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-30px, 40px) scale(1.1); }
+}
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -30px) scale(0.9); }
+}
+@keyframes successIn {
+  from { opacity: 0; transform: scale(0.95) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes ringPulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.1); opacity: 0.1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mesh background - complex gradients, noise, animations */
+.mesh-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.mesh-bg::before {
+  content: ''; position: absolute;
+  width: 140%; height: 140%; top: -20%; left: -20%;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 40%, rgba(99, 102, 241, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 40% at 60% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+  animation: meshFloat 20s ease-in-out infinite;
+}
+.mesh-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.025; mix-blend-mode: overlay;
+}
+
+/* Floating orbs */
+.orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; opacity: 0.4; }
+.orb-1 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.3), transparent 70%);
+  top: -100px; right: -100px;
+  animation: orbFloat1 15s ease-in-out infinite;
+}
+.orb-2 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2), transparent 70%);
+  bottom: 10%; left: 5%;
+  animation: orbFloat2 18s ease-in-out infinite;
+}
+
+/* Particle canvas */
+#particleCanvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+/* Visual panel gradient overlay */
+.visual-panel::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(10,10,12,0.3) 50%, rgba(10,10,12,0.85) 100%);
+  z-index: 1;
+}
+
+/* Step connector fill animation */
+.step-connector { flex: 1; height: 1px; background: rgba(255,255,255,0.06); position: relative; overflow: hidden; }
+.step-connector::after {
+  content: ''; position: absolute; inset: 0;
+  background: #6366f1;
+  transform: translateX(-100%);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.step-connector.filled::after { transform: translateX(0); }
+
+/* Logo mark inner cutout */
+.logo-mark::after {
+  content: ''; position: absolute; inset: 1px;
+  border-radius: calc(8px - 1px);
+  background: #0a0a0c;
+}
+
+/* Success ring outer glow */
+.success-ring::before {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, transparent);
+  opacity: 0.3;
+  animation: ringPulse 2s ease-in-out infinite;
+}
+
+/* Divider lines */
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: rgba(255,255,255,0.06);
+}
+
+/* Submit button overlay */
+.submit-btn { position: relative; overflow: hidden; }
+.submit-btn::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+  opacity: 0; transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.submit-btn:hover::before { opacity: 1; }
+
+/* JS-managed state transitions */
+.step-content { display: none; }
+.step-content.active { display: block; }
+.step-content.visible { opacity: 1 !important; transform: translateY(0) !important; }
+.success-state { display: none; }
+.success-state.active { display: block; animation: successIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.error-message { opacity: 0; transform: translateY(-4px); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.error-message.show { opacity: 1; transform: translateY(0); }
+.form-input.error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.1) !important; }
+
+/* Step states */
+.step { transition: color 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.step.active { color: #f5f5f7; }
+.step.completed { color: #6366f1; }
+.step-number { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.step.active .step-number { border-color: #6366f1; background: rgba(99,102,241,0.1); color: #6366f1; }
+.step.completed .step-number { border-color: #6366f1; background: #6366f1; color: #fff; }
+
+/* Button loading state */
+.submit-btn.loading .btn-loader { display: block; }
+.submit-btn.loading .btn-text { display: none; }
+
+/* Password strength bar colors */
+.strength-bar.weak { background: #ef4444; }
+.strength-bar.fair { background: #f59e0b; }
+.strength-bar.good { background: #3b82f6; }
+.strength-bar.strong { background: #22c55e; }
+
+/* Focus sibling icon */
+.form-input:focus + .input-icon { color: #6366f1; }
+
+/* Custom checkbox */
+.checkbox-input {
+  appearance: none; width: 20px; height: 20px; min-width: 20px;
+  border: 1.5px solid rgba(255,255,255,0.06);
+  border-radius: 6px; background: #1a1a1f; cursor: pointer;
+  position: relative; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); margin-top: 1px;
+}
+.checkbox-input:checked { background: #6366f1; border-color: #6366f1; }
+.checkbox-input:checked::after {
+  content: ''; position: absolute; left: 6px; top: 2px;
+  width: 5px; height: 10px;
+  border: solid white; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body class="font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] bg-[#0a0a0c] text-[#f5f5f7] min-h-screen overflow-x-hidden antialiased">
+
+<div id="widget-root">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coordina - Onboarding</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+
+  <!-- Animated Mesh Background -->
+  <div class="mesh-bg"></div>
+
+  <!-- Floating Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <!-- Particle Canvas -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- Main Page -->
+  <div class="relative z-[2] min-h-screen flex max-[900px]:flex-col">
+
+    <!-- Left: Visual Story Panel -->
+    <div class="visual-panel flex-1 min-h-screen relative flex flex-col justify-end p-12 overflow-hidden max-[900px]:min-h-[280px] max-[900px]:p-8 max-[480px]:min-h-[220px] max-[480px]:p-6">
+      <img src="https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&amp;w=2000&amp;auto=format&amp;fit=crop" alt="Abstract network visualization" class="absolute inset-0 w-full h-full object-cover opacity-60 saturate-[0.7] contrast-[1.1] max-[900px]:opacity-40">
+      <div class="relative z-[2] max-w-[480px]">
+        <div class="font-['JetBrains_Mono',monospace] text-[11px] font-medium tracking-[0.15em] uppercase text-indigo-500 mb-5 inline-flex items-center gap-2">
+          <span class="size-[6px] rounded-full bg-indigo-500" style="animation:pulse 2s ease-in-out infinite"></span>
+          Now onboarding
+        </div>
+        <h1 class="text-3xl md:text-4xl lg:text-5xl xl:text-[42px] font-semibold leading-[1.15] tracking-[-0.02em] mb-4 bg-gradient-to-br from-white to-white/70 bg-clip-text text-transparent">Where projects find their rhythm.</h1>
+        <p class="text-[15px] leading-[1.7] text-[#8e8e93] max-w-[400px]">
+          Join the teams who have replaced status meetings with intelligent coordination. Your workflow, amplified.
+        </p>
+        <div class="flex gap-8 mt-8 pt-6 border-t border-white/5 max-[900px]:gap-5 max-[480px]:hidden">
+          <div class="flex flex-col gap-1">
+            <span class="font-['JetBrains_Mono',monospace] text-2xl font-medium text-[#f5f5f7] max-[900px]:text-xl">12K+</span>
+            <span class="text-xs text-[#636366] tracking-[0.05em]">Teams synced</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="font-['JetBrains_Mono',monospace] text-2xl font-medium text-[#f5f5f7] max-[900px]:text-xl">4.2M</span>
+            <span class="text-xs text-[#636366] tracking-[0.05em]">Tasks routed</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="font-['JetBrains_Mono',monospace] text-2xl font-medium text-[#f5f5f7] max-[900px]:text-xl">98.7%</span>
+            <span class="text-xs text-[#636366] tracking-[0.05em]">Uptime</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Form Panel -->
+    <div class="w-full max-w-[520px] min-h-screen flex flex-col justify-center p-12 relative bg-[#111114]/70 backdrop-blur-2xl backdrop-saturate-150 border-l border-white/5 max-[900px]:max-w-full max-[900px]:min-h-auto max-[900px]:p-8 max-[900px]:border-l-0 max-[900px]:border-t border-white/5 max-[480px]:p-6">
+      <div class="mb-10">
+        <div class="flex items-center gap-[10px] mb-8">
+          <div class="size-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center relative overflow-hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="relative z-[1] size-4">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <span class="text-xl font-semibold tracking-[-0.03em] text-[#f5f5f7]">Coordina</span>
+        </div>
+        <h2 class="text-[28px] font-semibold tracking-[-0.02em] leading-[1.2] mb-2 max-[480px]:text-2xl">Begin your setup</h2>
+        <p class="text-[15px] text-[#8e8e93] leading-[1.6]">Two quick steps to get your team coordinates locked in.</p>
+      </div>
+
+      <!-- Progress Steps -->
+      <div class="flex items-center gap-2 mb-10 progress-track">
+        <div class="step flex items-center gap-2 text-xs font-medium text-[#636366] active" data-step="1">
+          <span class="step-number size-7 rounded-full border border-white/5 flex items-center justify-center font-['JetBrains_Mono',monospace] text-[11px] font-medium">1</span>
+          <span>Identity</span>
+        </div>
+        <div class="step-connector" data-connector="1"></div>
+        <div class="step flex items-center gap-2 text-xs font-medium text-[#636366]" data-step="2">
+          <span class="step-number size-7 rounded-full border border-white/5 flex items-center justify-center font-['JetBrains_Mono',monospace] text-[11px] font-medium">2</span>
+          <span>Credentials</span>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form id="signupForm" novalidate="">
+        <!-- Step 1: Identity -->
+        <div class="step-content active" data-step-content="1" style="opacity:0;transform:translateY(12px);transition:all 0.5s cubic-bezier(0.16,1,0.3,1)">
+          <div class="mb-5 relative">
+            <label class="block text-[13px] font-medium text-[#8e8e93] mb-2 tracking-[0.01em]" for="fullName">Full name</label>
+            <div class="relative input-wrapper">
+              <input type="text" id="fullName" class="form-input w-full h-[52px] px-4 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-normal outline-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-[#636366] hover:border-white/[.12] focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1),0_0_20px_rgba(99,102,241,0.3)]" placeholder="e.g. Alex Chen" autocomplete="name">
+              <svg class="input-icon absolute right-4 top-1/2 -translate-y-1/2 text-[#636366] pointer-events-none transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="error-message text-xs text-red-500 mt-1.5 flex items-center gap-1" id="fullNameError">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Please enter your full name
+            </div>
+          </div>
+
+          <div class="mb-5 relative">
+            <label class="block text-[13px] font-medium text-[#8e8e93] mb-2 tracking-[0.01em]" for="email">Work email</label>
+            <div class="relative input-wrapper">
+              <input type="email" id="email" class="form-input w-full h-[52px] px-4 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-normal outline-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-[#636366] hover:border-white/[.12] focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1),0_0_20px_rgba(99,102,241,0.3)]" placeholder="alex@company.com" autocomplete="email">
+              <svg class="input-icon absolute right-4 top-1/2 -translate-y-1/2 text-[#636366] pointer-events-none transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+              </svg>
+            </div>
+            <div class="error-message text-xs text-red-500 mt-1.5 flex items-center gap-1" id="emailError">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Please enter a valid email address
+            </div>
+          </div>
+
+          <div class="mb-5 relative">
+            <label class="block text-[13px] font-medium text-[#8e8e93] mb-2 tracking-[0.01em]" for="company">Company or team</label>
+            <div class="relative input-wrapper">
+              <input type="text" id="company" class="form-input w-full h-[52px] px-4 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-normal outline-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-[#636366] hover:border-white/[.12] focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1),0_0_20px_rgba(99,102,241,0.3)]" placeholder="Acme Industries" autocomplete="organization">
+              <svg class="input-icon absolute right-4 top-1/2 -translate-y-1/2 text-[#636366] pointer-events-none transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"></path>
+                <path d="M5 21V7l8-4 8 4v14"></path>
+                <path d="M9 21v-6h6v6"></path>
+                <path d="M10 9h4"></path>
+                <path d="M10 13h4"></path>
+              </svg>
+            </div>
+            <div class="error-message text-xs text-red-500 mt-1.5 flex items-center gap-1" id="companyError">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Company name is required
+            </div>
+          </div>
+
+          <button type="button" class="submit-btn w-full h-[52px] bg-gradient-to-br from-indigo-500 to-violet-600 border-none rounded-xl text-white font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-semibold tracking-[-0.01em] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(99,102,241,0.35),0_0_60px_rgba(99,102,241,0.15)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="step1Next">
+            <span class="btn-text">Continue</span>
+            <span class="btn-loader size-[18px] border-2 border-white/30 border-t-white rounded-full hidden"></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="ml-1">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Step 2: Credentials -->
+        <div class="step-content" data-step-content="2" style="opacity:0;transform:translateY(12px);transition:all 0.5s cubic-bezier(0.16,1,0.3,1)">
+          <div class="mb-5 relative">
+            <label class="block text-[13px] font-medium text-[#8e8e93] mb-2 tracking-[0.01em]" for="password">Create password</label>
+            <div class="relative input-wrapper">
+              <input type="password" id="password" class="form-input w-full h-[52px] px-4 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-normal outline-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-[#636366] hover:border-white/[.12] focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1),0_0_20px_rgba(99,102,241,0.3)]" placeholder="Min. 8 characters" autocomplete="new-password">
+              <button type="button" class="password-toggle absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none text-[#636366] cursor-pointer p-1 flex items-center justify-center transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:text-[#f5f5f7]" id="togglePassword" tabindex="-1">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="eyeIcon">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <div class="flex gap-1 mt-2.5 h-[3px]" id="strengthMeter">
+              <div class="strength-bar flex-1 rounded-sm bg-white/5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"></div>
+              <div class="strength-bar flex-1 rounded-sm bg-white/5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"></div>
+              <div class="strength-bar flex-1 rounded-sm bg-white/5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"></div>
+              <div class="strength-bar flex-1 rounded-sm bg-white/5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"></div>
+            </div>
+            <div class="strength-label text-[11px] text-[#636366] mt-1.5 font-['JetBrains_Mono',monospace]" id="strengthLabel"></div>
+            <div class="error-message text-xs text-red-500 mt-1.5 flex items-center gap-1" id="passwordError">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Password must be at least 8 characters
+            </div>
+          </div>
+
+          <div class="mb-5 relative">
+            <label class="block text-[13px] font-medium text-[#8e8e93] mb-2 tracking-[0.01em]" for="confirmPassword">Confirm password</label>
+            <div class="relative input-wrapper">
+              <input type="password" id="confirmPassword" class="form-input w-full h-[52px] px-4 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-normal outline-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-[#636366] hover:border-white/[.12] focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.1),0_0_20px_rgba(99,102,241,0.3)]" placeholder="Repeat your password" autocomplete="new-password">
+            </div>
+            <div class="error-message text-xs text-red-500 mt-1.5 flex items-center gap-1" id="confirmPasswordError">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Passwords do not match
+            </div>
+          </div>
+
+          <label class="checkbox-group flex items-start gap-3 my-6 cursor-pointer">
+            <input type="checkbox" class="checkbox-input mt-[1px]" id="termsCheck">
+            <span class="text-[13px] leading-[1.6] text-[#8e8e93]">
+              I agree to the <a href="#" class="text-indigo-500 no-underline font-medium transition-opacity duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:opacity-80">Terms of Service</a> and <a href="#" class="text-indigo-500 no-underline font-medium transition-opacity duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:opacity-80">Privacy Policy</a>. I also consent to receive product updates and coordination tips.
+            </span>
+          </label>
+
+          <button type="submit" class="submit-btn w-full h-[52px] bg-gradient-to-br from-indigo-500 to-violet-600 border-none rounded-xl text-white font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-semibold tracking-[-0.01em] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(99,102,241,0.35),0_0_60px_rgba(99,102,241,0.15)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="submitBtn">
+            <span class="btn-text">Activate my workspace</span>
+            <span class="btn-loader size-[18px] border-2 border-white/30 border-t-white rounded-full hidden"></span>
+          </button>
+
+          <button type="button" class="social-btn w-full mt-3 bg-transparent border border-white/5 text-[#8e8e93] h-12 rounded-xl font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-sm font-medium cursor-pointer flex items-center justify-center gap-[10px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white/[.05] hover:border-white/[.12] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]" id="backBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6"></path>
+            </svg>
+            Back
+          </button>
+        </div>
+
+        <!-- Success State -->
+        <div class="success-state text-center py-10" id="successState">
+          <div class="success-ring size-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-6 relative">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-semibold mb-2">You are all set</h3>
+          <p class="text-[15px] text-[#8e8e93] leading-[1.6] mb-6">
+            A verification link has been dispatched to your inbox. Click it to unlock your coordination dashboard.
+          </p>
+          <button type="button" class="submit-btn w-full h-[52px] bg-gradient-to-br from-indigo-500 to-violet-600 border-none rounded-xl text-white font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-semibold tracking-[-0.01em] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(99,102,241,0.35),0_0_60px_rgba(99,102,241,0.15)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" onclick="window.location.reload()">
+            <span class="btn-text">Open my inbox</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="divider flex items-center gap-4 my-7 text-[#636366] text-xs font-medium">or</div>
+
+      <div class="social-grid grid grid-cols-2 gap-3 max-[480px]:grid-cols-1">
+        <button type="button" class="h-12 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-sm font-medium cursor-pointer flex items-center justify-center gap-[10px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white/[.05] hover:border-white/[.12] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"></path>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+          </svg>
+          Google
+        </button>
+        <button type="button" class="h-12 bg-[#1a1a1f] border border-white/5 rounded-xl text-[#f5f5f7] font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-sm font-medium cursor-pointer flex items-center justify-center gap-[10px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white/[.05] hover:border-white/[.12] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"></path>
+          </svg>
+          GitHub
+        </button>
+      </div>
+
+      <div class="form-footer text-center mt-8 text-sm text-[#8e8e93]">
+        Already have coordinates? <a href="#" class="text-[#f5f5f7] no-underline font-semibold transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:text-indigo-500">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== PARTICLE SYSTEM =====
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let mouseX = 0;
+    let mouseY = 0;
+    let isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 1.5 + 0.5;
+        this.speedX = (Math.random() - 0.5) * 0.3;
+        this.speedY = (Math.random() - 0.5) * 0.3;
+        this.opacity = Math.random() * 0.5 + 0.1;
+        this.life = Math.random() * 200 + 100;
+        this.age = 0;
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.age++;
+
+        if (!isTouch) {
+          const dx = this.x - mouseX;
+          const dy = this.y - mouseY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            const force = (120 - dist) / 120;
+            this.x += (dx / dist) * force * 1.5;
+            this.y += (dy / dist) * force * 1.5;
+          }
+        }
+
+        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height || this.age > this.life) {
+          this.reset();
+        }
+      }
+
+      draw() {
+        const fade = 1 - (this.age / this.life);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(160, 160, 180, ${this.opacity * fade})`;
+        ctx.fill();
+      }
+    }
+
+    const particleCount = isTouch ? 30 : 60;
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+
+    function drawConnections() {
+      const maxDist = 120;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < maxDist) {
+            const opacity = (1 - dist / maxDist) * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(140, 140, 180, ${opacity})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    let frameCount = 0;
+    function animate() {
+      frameCount++;
+      if (isTouch && frameCount % 2 !== 0) {
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      drawConnections();
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    // ===== FORM LOGIC =====
+    const form = document.getElementById('signupForm');
+    const step1Next = document.getElementById('step1Next');
+    const backBtn = document.getElementById('backBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirmPassword');
+    const strengthMeter = document.getElementById('strengthMeter');
+    const strengthLabel = document.getElementById('strengthLabel');
+    const eyeIcon = document.getElementById('eyeIcon');
+
+    let currentStep = 1;
+    let passwordVisible = false;
+
+    function goToStep(step) {
+      const contents = document.querySelectorAll('.step-content');
+      const steps = document.querySelectorAll('.step');
+      const connectors = document.querySelectorAll('.step-connector');
+
+      contents.forEach(c => {
+        c.classList.remove('active', 'visible');
+      });
+
+      steps.forEach((s, i) => {
+        s.classList.remove('active', 'completed');
+        if (i + 1 < step) {
+          s.classList.add('completed');
+        } else if (i + 1 === step) {
+          s.classList.add('active');
+        }
+      });
+
+      connectors.forEach((c, i) => {
+        c.classList.toggle('filled', i + 1 < step);
+      });
+
+      const target = document.querySelector(`[data-step-content="${step}"]`);
+      if (target) {
+        target.classList.add('active');
+        setTimeout(() => target.classList.add('visible'), 50);
+      }
+
+      currentStep = step;
+    }
+
+    step1Next.addEventListener('click', () => {
+      const fullName = document.getElementById('fullName');
+      const email = document.getElementById('email');
+      const company = document.getElementById('company');
+      let valid = true;
+
+      if (!fullName.value.trim() || fullName.value.trim().length < 2) {
+        showError('fullName', true);
+        valid = false;
+      } else {
+        showError('fullName', false);
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.value.trim())) {
+        showError('email', true);
+        valid = false;
+      } else {
+        showError('email', false);
+      }
+
+      if (!company.value.trim()) {
+        showError('company', true);
+        valid = false;
+      } else {
+        showError('company', false);
+      }
+
+      if (valid) {
+        step1Next.classList.add('loading');
+        setTimeout(() => {
+          step1Next.classList.remove('loading');
+          goToStep(2);
+        }, 600);
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      goToStep(1);
+    });
+
+    togglePassword.addEventListener('click', () => {
+      passwordVisible = !passwordVisible;
+      passwordInput.type = passwordVisible ? 'text' : 'password';
+      confirmInput.type = passwordVisible ? 'text' : 'password';
+      eyeIcon.innerHTML = passwordVisible
+        ? '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/><line x1="4.22" y1="4.22" x2="19.78" y2="19.78"/>'
+        : '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+    });
+
+    passwordInput.addEventListener('input', () => {
+      const val = passwordInput.value;
+      const bars = strengthMeter.querySelectorAll('.strength-bar');
+
+      bars.forEach(b => b.className = 'strength-bar');
+
+      let strength = 0;
+      if (val.length >= 8) strength++;
+      if (val.length >= 12) strength++;
+      if (/[A-Z]/.test(val)) strength++;
+      if (/[0-9]/.test(val)) strength++;
+      if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+      const classes = ['weak', 'fair', 'good', 'strong'];
+      const labels = ['Too weak', 'Could be stronger', 'Solid', 'Fortress-level'];
+      const activeBars = Math.min(Math.ceil(strength / 1.5), 4);
+
+      for (let i = 0; i < activeBars; i++) {
+        bars[i].classList.add(classes[Math.min(activeBars - 1, 3)]);
+      }
+
+      strengthLabel.textContent = val.length > 0 ? labels[Math.min(activeBars - 1, 3)] : '';
+      showError('password', false);
+    });
+
+    ['fullName', 'email', 'company'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => showError(id, false));
+    });
+
+    confirmInput.addEventListener('input', () => showError('confirmPassword', false));
+
+    function showError(fieldId, show) {
+      const input = document.getElementById(fieldId);
+      const error = document.getElementById(fieldId + 'Error');
+      if (input) input.classList.toggle('error', show);
+      if (error) error.classList.toggle('show', show);
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const password = passwordInput.value;
+      const confirm = confirmInput.value;
+      const terms = document.getElementById('termsCheck');
+      let valid = true;
+
+      if (password.length < 8) {
+        showError('password', true);
+        valid = false;
+      }
+
+      if (password !== confirm || !confirm) {
+        showError('confirmPassword', true);
+        valid = false;
+      }
+
+      if (!terms.checked) {
+        terms.parentElement.style.animation = 'shake 0.4s ease';
+        setTimeout(() => terms.parentElement.style.animation = '', 400);
+        valid = false;
+      }
+
+      if (valid) {
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+
+        setTimeout(() => {
+          submitBtn.classList.remove('loading');
+          document.querySelectorAll('.step-content').forEach(c => c.style.display = 'none');
+          document.querySelector('.progress-track').style.display = 'none';
+          document.querySelector('.divider').style.display = 'none';
+          document.querySelector('.social-grid').style.display = 'none';
+          document.querySelector('.form-footer').style.display = 'none';
+          document.getElementById('successState').classList.add('active');
+        }, 2000);
+      }
+    });
+
+    // Input focus effects
+    document.querySelectorAll('.form-input').forEach(input => {
+      input.addEventListener('focus', () => {
+        input.parentElement.style.transform = 'scale(1.01)';
+      });
+      input.addEventListener('blur', () => {
+        input.parentElement.style.transform = 'scale(1)';
+      });
+    });
+  </script>
+
+</div>
+<script>
+  "use strict";(()=>{var j=Object.create;var x=Object.defineProperty;var Q=Object.getOwnPropertyDescriptor;var Z=Object.getOwnPropertyNames;var K=Object.getPrototypeOf,$=Object.prototype.hasOwnProperty;var V=(t,e,r)=>e in t?x(t,e,{enumerable:!0,configurable:!0,writable:!0,value:r}):t[e]=r;var R=(t=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(t,{get:(e,r)=>(typeof require<"u"?require:e)[r]}):t)(function(t){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+t+'" is not supported')});var Y=(t,e,r,n)=>{if(e&&typeof e=="object"||typeof e=="function")for(let o of Z(e))!$.call(t,o)&&o!==r&&x(t,o,{get:()=>e[o],enumerable:!(n=Q(e,o))||n.enumerable});return t};var O=(t,e,r)=>(r=t!=null?j(K(t)):{},Y(e||!t||!t.__esModule?x(r,"default",{value:t,enumerable:!0}):r,t));var p=(t,e,r)=>V(t,typeof e!="symbol"?e+"":e,r);var P={SANDBOX_INIT:"request/sandbox-init"},c={INITIALIZED:"ui/notifications/initialized",SIZE_CHANGED:"ui/notifications/size-changed",SCRIPT_LOADING_STARTED:"notifications/script-loading-started",SCRIPT_LOADING_FINISHED:"notifications/script-loading-finished",MESSAGE:"ui/message",OPEN_LINK:"ui/open-link",ERROR:"ui/notifications/error",LOG:"notifications/message"},u={TOOL_INPUT_PARTIAL:"notifications/tool-input-partial",TOOL_INPUT:"notifications/tool-input",TOOL_RESULT:"notifications/tool-result",HOST_CONTEXT_CHANGE:"notifications/host-context-change"};var tt=["https://www.kimi.com","https://kimi.com","https://kimi.moonshot.cn","https://*.kimi.team"];function _(t){try{let e=new URL(t),r=e.hostname,n=e.protocol.replace(":","");return r==="localhost"||r==="127.0.0.1"?!0:tt.some(o=>{let[s,i]=o.split("://");if(n!==s)return!1;if(i?.startsWith("*.")){let d=i.slice(2);return r.endsWith("."+d)}return r===i})}catch{return!1}}var et=new Set(Object.values(u)),b=t=>!!t&&typeof t=="object",rt=t=>b(t)?typeof t.id=="number"&&!("method"in t):!1,nt=t=>b(t)?typeof t.method=="string"&&et.has(t.method):!1,w=class extends Error{constructor(r,n){super(r);p(this,"code");p(this,"data");this.code=r;this.data=n}};function it(t){return"error"in t}function ot(t){try{if(!t||typeof t!="object")return!1;let e=t;return typeof e.id=="number"&&typeof e.method=="string"}catch{return!1}}var at=class{constructor(r){p(this,"_listeners");this._listeners=new Map;this._listeners.set("__all__",[])}on(r,n){this._listeners.has(r)||this._listeners.set(r,[]),this._listeners.get(r).push(n)}off(r,n){if(!this._listeners.has(r))return;let o=this._listeners.get(r);this._listeners.set(r,o.filter(i=>i!==n))}_emit(r,...n){if(this._listeners.has("__all__"))for(let o of this._listeners.get("__all__"))o(r,...n);if(this._listeners.has(r))for(let o of this._listeners.get(r))o(...n)}};var T="__wc__";function st(t){let e={};for(let r of t){if(r[T])continue;let n=r.getAttribute(T);if(n){try{e=JSON.parse(atob(n))}catch{}continue}r[T]=!0;let o=r.getAttribute("data-wc-config")||r.getAttribute("data-config");if(o)try{JSON.parse(o)}catch{continue}let i=r.querySelectorAll(`[${T}]`);for(let d of i)d[T]=!0;let s=r.querySelectorAll("[data-wc-config]");for(let d of s)try{let f=d.getAttribute("data-wc-config");if(f){let l=JSON.parse(f);for(let[E,y]of Object.entries(l))d.setAttribute(E,y);d.removeAttribute("data-wc-config")}}catch{}let a=r.querySelectorAll("[data-config]");for(let d of a)try{let f=d.getAttribute("data-config");if(f){let l=JSON.parse(f);for(let[E,y]of Object.entries(l))d.setAttribute(E,y);d.removeAttribute("data-config")}}catch{}e=Object.assign(e,st(Array.from(r.children)))}return e}st(Array.from(document.body.children));
+</script>
+
+</body>
+</html>
