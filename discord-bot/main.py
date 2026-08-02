@@ -3,9 +3,6 @@ import re
 import discord
 import requests
 from dotenv import load_dotenv
-from agent import run_agent
-from taiga_client import TaigaClient
-
 
 load_dotenv()
 TOKEN= os.getenv("DISCORD_TOKEN")
@@ -15,94 +12,105 @@ TAIGA_PASS = os.getenv("TAIGA_PASS")
 TAIGA_PROJECT_SLUG = os.getenv("TAIGA_PROJECT_SLUG")
 ALLOWED_CHANNEL_NAME = "taiga-bot"
 ALLOWED_ROLES = {"Project Manager", "Developer"}
-# DELETE_ROLES = {"Project Manager"}
 
 intents = discord.Intents.default()
 intents.message_content=True
 intents.members =True
 client = discord.Client(intents=intents)
-
-taiga = TaigaClient(TAIGA_URL, TAIGA_USER, TAIGA_PASS)
-_project_id_cache = None
+_cached_token = None
 
 # initial login
-# def taiga_login():
-#     resp=requests.post(f"{TAIGA_URL}/auth",json={
-#         "type":"normal",
-#         "username":TAIGA_USER,
-#         "password":TAIGA_PASS
-#     })
-#     resp.raise_for_status()
-#     return resp.json()["auth_token"]
+def taiga_login():
+    resp=requests.post(f"{TAIGA_URL}/auth",json={
+        "type":"normal",
+        "username":TAIGA_USER,
+        "password":TAIGA_PASS
+    })
+    resp.raise_for_status()
+    return resp.json()["auth_token"]
 
-def get_project_id():
-    global _project_id_cache
-    if _project_id_cache is None:
-        _project_id_cache = taiga.get_project_id(TAIGA_PROJECT_SLUG)
-    return _project_id_cache
+def get_project_id(token):
+    headers= {"Authorization": f"Bearer {token}"}
+    resp=requests.get(
+        f"{TAIGA_URL}/projects/by_slug?",
+        params={"slug": TAIGA_PROJECT_SLUG},
+        headers=headers
+    )
+    resp.raise_for_status()
+    return resp.json()["id"]
+
+def get_taiga_token():
+    global _cached_token
+    if _cached_token is None:
+        _cached_token = taiga_login()
+    return _cached_token
+
+def create_taiga_issue(subject, description=""):
+    token=get_taiga_token()
+    try:
+        project_id = get_project_id(token)
+    except requests.HTTPError as e:
+        # token was expired needs to login again
+        if e.response.status_code == 401:  
+            token = taiga_login()
+            _cached_token = token
+            project_id = get_project_id(token)
+        else:
+            raise
+
+    headers = {"Authorization": f"Bearer {token}"}
+    payload={
+        "project": project_id,
+        "subject": subject,
+        "description":description
+    }
+    resp = requests.post(f"{TAIGA_URL}/issues", json= payload, headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+@client.event
+async def on_ready():
+    print(f"Logged in as {client.user}")
 
 @client.event
 async def on_message(message):
-    print("=== ON_MESSAGE FIRED ===")
-    print(f"[DEBUG] channel={message.channel.name!r} content={message.content!r} author={message.author}")
-    ...
-    # DEBUG
-    print(f"[DEBUG] channel={message.channel.name!r} content={message.content!r} author={message.author}")
+
+    # check for roles
+    print(message.author.roles)
 
     if message.author == client.user:
         return
     
-    if message.channel.name != ALLOWED_CHANNEL_NAME:
+    if message.channel.name!=ALLOWED_CHANNEL_NAME:
         return
     
-    if not client.user.mentioned_in(message) and not message.content.startswith("!"):
+    if message.content.strip() == "!issue":
+        await message.channel.send("Usage: `!issue Title | Optional description`")
         return
     
-    user_roles = {role.name for role in message.author.roles}
-    # DEBUG
-    print(f"[DEBUG] user_roles={user_roles}")
+    # matches a discord message that starts with !issue, followed by one or more whitespaces and captures what ever is written afterwords.
+    match=re.match(r"!issue\s+(.+)", message.content)
 
-    if not user_roles & ALLOWED_ROLES:
-        # 
-        print("[DEBUG] role check failed, sending permission message")
+    if match:
+        # check if the user role exists in the defined roles 
+        user_roles = {role.name for role in message.author.roles}
 
-        await message.channel.send("You dont have the permisson to use this bot!")
-    return
+        if not user_roles & ALLOWED_ROLES:
+            await message.channel.send("You don't have permission to proceed with the action.")
+            return
+        # to match the first regex group only
+        content= match.group(1)
 
-    content= message.content
-    if client.user.mentioned_in(message):
-        content = content.replace(f"<@{client.user.id}","").strip()
+        # if user writes "Login Button | Doesnt work" then split from | and separate it into title and description
+        if "|" in content:
+            title, description = content.split("|", 1)
+        else:
+            title, description= content, ""
 
-    # 
-    print(f"[DEBUG] about to fetch project_id")
-
-    try:
-        project_id = get_project_id()
-        # 
-        print(f"[DEBUG] project_id={project_id}")
-
-    except Exception as e:
-        # 
-        print(f"[DEBUG] project_id fetch failed: {e!r}")
-
-        await message.channel.send(f"Could not reach taiga Project: {e}")
-        return
-    
-    # 
-    print(f"[DEBUG] calling run_agent with content={content!r}")
-
-    async with message.channel.typing():
         try:
-            reply = run_agent(content,project_id)
-            # 
-            print(f"[DEBUG] reply={reply!r}")
-
+            issue= create_taiga_issue(title.strip(), description.strip())
+            await message.channel.send(f"Issue was successfully created in Taiga #{issue['ref']}:{issue['subject']}")
         except Exception as e:
-            # 
-            print(f"[DEBUG] run_agent raised: {e!r}")
-
-            reply = f"Something went wrong: {e}"
-
-    await message.channel.send(reply[:2000])
+            await message.channel.send(f"Failed to create issue: {e}")
 
 client.run(TOKEN)
