@@ -13,13 +13,15 @@ TAIGA_USER = os.getenv("TAIGA_USER")
 TAIGA_PASS = os.getenv("TAIGA_PASS")
 TAIGA_PROJECT_SLUG = os.getenv("TAIGA_PROJECT_SLUG")
 TRIGGER_ROLE_NAME = os.getenv("DISCORD_TRIGGER_ROLE_NAME", "FYP")
+HISTORY_TURNS = int(os.getenv("AGENT_HISTORY_TURNS", "10"))
 
 ALLOWED_ROLES = {"Project Manager", "Developer"}
 DELETE_ROLES = {"Project Manager"}
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    level =logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
 )
 logger = logging.getLogger("discord_bot")
 
@@ -93,6 +95,11 @@ async def on_message(message):
         logger.exception("Failed to resolve Taiga project id")
         await message.channel.send(f"Could not reach Taiga project: {e}")
         return
+
+    channel_id = message.channel.id
+    channel_name = getattr(message.channel,"name", None)
+    guild_id=  getattr(message.guild, "id", None)
+
 
     async with message.channel.typing():
         try:

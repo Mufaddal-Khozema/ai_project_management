@@ -1,70 +1,3 @@
-# import requests
-
-# class TaigaClient:
-
-#     # basic project initialization
-#     def __init__(self,base_url, username,password):
-#         self.base_url = base_url
-#         self.username = username
-#         self.password = password
-#         self.token = None
-#         self.project_cache = {}
-
-#     # request send to base url for authorizing token via params
-#     def login(self):
-#         resp = requests.post(f"{self.base_url}/auth",json={
-#             "type":"normal",
-#             "username": self.username,
-#             "password": self.password
-#         })
-#         resp.raise_for_status()
-#         self.token= resp.json()["auth_token"]
-#         return self.token
-
-#     def _headers(self):
-#         # if there is no token then reset login and get auth token.
-#         if not self.token:
-#             self.login()
-#         return {"Authorization": f"Bearer {self.token}"}
-    
-#     def _request(self,method, path, **kwargs):
-#         resp = requests.request(method, f"{self.base_url}{path}",headers=self._headers(), **kwargs)
-        
-#         if resp.status_code == 401:
-#             self.login()
-#             resp= requests.request(method, f"{self.base_url}{path}",headers=self._headers(), **kwargs)
-        
-#         resp.raise_for_status()
-#         return resp.json() if resp.text else None
-    
-#     # if slug is not in project cache then, send a request on the slug and get the id of the project
-#     def get_project_id(self, slug):
-#         if slug not in self.project_cache:
-#             data= self._request("GET","/projects/by_slug",params={"slug":slug})
-#             self.project_cache[slug]= data["id"]
-#         return self.project_cache[slug]
-    
-#     # CRUD
-#     # resource are named entities such as issues, tasks, epics
-
-#     def create(self, resource, payload):
-#         return self._request("POST",f"/{resource}", json=payload)
-
-#     # def list(self,resource, **filters):
-#     #     return self._request("GET", f"/{resource}", params=filters)
-    
-#     # def get(self,resource,id):
-#     #     return self._request("GET",f"/{resource}/{id}")
-    
-#     # def update(self,resource, payload,id):
-#     #     return self._request("POST",f"/{resource}/{id}", json=payload)
-    
-#     # # change this to deactivate instead of deleting.
-#     # def delete(self, resource,payload, id):
-#     #     return self._request("DELETE",f"/{resource}/{id}")
-
-
-
 import requests
 import logging
 
@@ -79,6 +12,7 @@ class TaigaClient:
         self.password = password
         self.token = None
         self.project_cache = {}
+        self._reference_cache={} 
 
     def login(self):
         logger.info("Logging in to Taiga at %s as %s", self.base_url, self.username)
@@ -153,3 +87,68 @@ class TaigaClient:
             f"/{resource}",
             json=payload,
         )
+
+    def list(self, resource, **filters):
+        logger.info("Listing Taiga resource=%s filters=%s", resource, filters)
+        return self._request(
+            "GET",
+            f"/{resource}",
+            params=filters,
+        )
+
+    def update(self, resource,id, payload):
+        logger.info("Updating Taiga resource=%s id=%s payload=%s", resource, id, payload)
+        return self._request(
+            "PATCH",
+            f"/{resource}/{id}",
+            json=payload
+        )
+
+
+    def get(self, resource, id):
+        logger.info("Fetching Taiga resource=%s id=%s", resource, id)
+        return self._request(
+            "GET",
+            f"/{resource}/{id}",
+        )
+
+    def get_reference_data(self, resource, project_id, force_refresh=False):
+        cache_key = (resource,project_id)
+        if force_refresh or cache_key not in self._reference_cache:
+            logger.info("Fetching Taiga reference data resource=%s project=%s", resource, project_id)
+            data = self._request("GET", f"/{resource}", params={"project":project_id})
+            self._reference_cache[cache_key] = data or []
+        return self._reference_cache[cache_key]
+
+    def get_priorities(self,project_id):
+        return self.get_reference_data("priorities",project_id)
+
+    def get_severities(self, project_id):
+        return self.get_reference_data("severities", project_id)
+
+    def get_issue_types(self, project_id):
+        return self.get_reference_data("issue-types", project_id)
+    
+    def get_statuses(self, project_id, resource):
+        # Each item type has its own status table in Taiga.
+        status_resource = {
+            "issues": "issue-statuses",
+            "tasks": "task-statuses",
+            "userstories": "userstory-statuses",
+            "epics": "epic-statuses",
+        }.get(resource)
+        if not status_resource:
+            raise ValueError(f"No status resource known for '{resource}'")
+        return self.get_reference_data(status_resource, project_id)
+
+    def get_by_ref(self, resource,project_id,ref):
+        logger.info("Fetching Taiga resource=%s by ref=%s project=%s", resource, ref, project_id)
+        return self._request(
+        "GET",
+        f"/{resource}/by_ref",
+        params={"project": project_id, "ref": ref},
+    )
+
+    def get_memberships(self, project_id):
+        return self.get_reference_data("memberships", project_id)
+ 
