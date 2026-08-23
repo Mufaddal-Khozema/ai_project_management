@@ -11,7 +11,6 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Brand tokens — cohesive across all pages */
   --color-brand: #6366f1;
   --color-brand-hover: rgba(99, 102, 241, 0.1);
   --color-text-primary: #f5f5f7;
@@ -20,6 +19,32 @@
   --color-bg-surface: #111114;
   --color-bg-elevated: #1a1a1f;
   --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-success: #34d399;
+  --color-success-bg: rgba(52, 211, 153, 0.1);
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(251, 191, 36, 0.1);
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.1);
+
+  --color-card: var(--color-bg-surface);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-bg-elevated);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary: var(--color-brand);
+  --color-primary-foreground: #fff;
+  --color-secondary: var(--color-bg-elevated);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-muted: var(--color-bg-elevated);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-accent: var(--color-brand-hover);
+  --color-accent-foreground: var(--color-brand);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #fff;
+  --color-border: var(--color-border-subtle);
+  --color-input: var(--color-border-subtle);
+  --color-ring: var(--color-brand);
+  --radius-md: 0.5rem;
 }
 
 @theme {

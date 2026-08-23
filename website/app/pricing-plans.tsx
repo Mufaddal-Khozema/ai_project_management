@@ -5,15 +5,17 @@ import PricingCards from "./pricing-cards";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export default async function PricingPlans() {
+  let plans;
   try {
     const serverClient = createClient(createConfig({ baseUrl: API_URL }));
     const { data } = await apiPaymentsPlansPlansHandler({
       client: serverClient,
       throwOnError: true,
     });
-    return <PricingCards plans={data.plans} />;
+    plans = data.plans;
   } catch (err) {
-	  console.error(err);
-	  throw err;
+    console.error(err);
   }
+
+  return <PricingCards plans={plans ?? []} />;
 }

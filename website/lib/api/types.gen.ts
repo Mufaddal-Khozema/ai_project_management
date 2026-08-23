@@ -5,6 +5,141 @@ export type ClientOptions = {
 };
 
 /**
+ * CancelSubscriptionResponse
+ */
+export type CancelSubscriptionResponse = {
+    plan_id: string;
+    status: string;
+    cancel_at_period_end: boolean;
+    effective_end: string;
+};
+
+/**
+ * DisconnectResponse
+ */
+export type DisconnectResponse = {
+    message: string;
+};
+
+/**
+ * InitiateAuthRequest
+ */
+export type InitiateAuthRequest = {
+    redirect_source?: 'onboarding' | 'settings';
+    company_name?: string | null;
+};
+
+/**
+ * InitiateAuthResponse
+ */
+export type InitiateAuthResponse = {
+    authorization_url: string;
+};
+
+/**
+ * IntegrationMember
+ */
+export type IntegrationMember = {
+    id: string;
+    name: string;
+    username: string;
+    email: string;
+    avatar: string;
+};
+
+/**
+ * IntegrationMembersResponse
+ */
+export type IntegrationMembersResponse = {
+    provider: string;
+    account_name: string | null;
+    members: Array<IntegrationMember>;
+};
+
+/**
+ * IntegrationResponse
+ */
+export type IntegrationResponse = {
+    uuid: string;
+    provider: string;
+    account_name: string | null;
+    status: 'connected' | 'expired' | 'error';
+    expires_at: string | null;
+    last_synced_at: string | null;
+    created_on: string;
+    updated_on: string;
+};
+
+/**
+ * IntegrationScope
+ */
+export type IntegrationScope = {
+    id: string;
+    name: string;
+    parent_id?: string | null;
+};
+
+/**
+ * IntegrationScopesResponse
+ */
+export type IntegrationScopesResponse = {
+    provider: string;
+    account_name: string | null;
+    scopes: Array<IntegrationScope>;
+};
+
+/**
+ * IntegrationsListResponse
+ */
+export type IntegrationsListResponse = {
+    integrations: Array<IntegrationResponse>;
+};
+
+/**
+ * InvoiceResponse
+ */
+export type InvoiceResponse = {
+    id: string;
+    number?: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    created: string;
+    hosted_invoice_url?: string | null;
+    invoice_pdf?: string | null;
+};
+
+/**
+ * InvoicesResponse
+ */
+export type InvoicesResponse = {
+    invoices: Array<InvoiceResponse>;
+};
+
+/**
+ * MatchItem
+ */
+export type MatchItem = {
+    pm_member_id: string;
+    comm_member_id: string;
+};
+
+/**
+ * OnboardingRequest
+ */
+export type OnboardingRequest = {
+    company_name: string;
+    role?: string | null;
+    team_size?: string | null;
+    acquisition_source?: string | null;
+    comm_platform?: string | null;
+    pm_platform?: string | null;
+    project_id?: string | null;
+    channel_id?: string | null;
+    matches?: Array<MatchItem>;
+};
+
+/**
  * PlanResponse
  */
 export type PlanResponse = {
@@ -28,6 +163,15 @@ export type PlansResponse = {
 };
 
 /**
+ * RefreshResponse
+ */
+export type RefreshResponse = {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+};
+
+/**
  * SendOTPRequest
  */
 export type SendOtpRequest = {
@@ -46,7 +190,7 @@ export type SendOtpResponse = {
  * SetupIntentRequest
  */
 export type SetupIntentRequest = {
-    name: string;
+    name?: string | null;
     email: string;
     price_id: string;
 };
@@ -61,11 +205,50 @@ export type SetupIntentResponse = {
 };
 
 /**
- * SocialAuthRequest
+ * SubscriptionResponse
  */
-export type SocialAuthRequest = {
-    code: string;
-    redirect_uri: string;
+export type SubscriptionResponse = {
+    plan_id: string;
+    plan_name: string;
+    billing_interval: string;
+    status: string;
+    price: number;
+    currency?: string;
+    current_period_end?: string | null;
+    trial_end?: string | null;
+    cancel_at_period_end?: boolean;
+    started_at?: string | null;
+};
+
+/**
+ * TaigaConnectRequest
+ */
+export type TaigaConnectRequest = {
+    username: string;
+    password: string;
+};
+
+/**
+ * UpdateProfileRequest
+ */
+export type UpdateProfileRequest = {
+    name?: string | null;
+    avatar?: string | null;
+};
+
+/**
+ * UserResponse
+ */
+export type UserResponse = {
+    uuid: string;
+    email: string;
+    status: string;
+    name: string | null;
+    avatar?: string | null;
+    has_subscription?: boolean;
+    onboarding_completed?: boolean;
+    created_on: string;
+    updated_on: string;
 };
 
 /**
@@ -74,6 +257,21 @@ export type SocialAuthRequest = {
 export type VerifyOtpRequest = {
     email: string;
     otp: string;
+};
+
+/**
+ * WorkspaceResponse
+ */
+export type WorkspaceResponse = {
+    uuid: string;
+    company_name: string;
+    role: string | null;
+    team_size: string | null;
+    acquisition_source: string | null;
+    comm_platform: string | null;
+    pm_platform: string | null;
+    created_on: string;
+    updated_on: string;
 };
 
 export type ApiHealthHealthCheckData = {
@@ -158,16 +356,32 @@ export type ApiAuthEmailVerifyOtpVerifyOtpHandlerResponses = {
 
 export type ApiAuthEmailVerifyOtpVerifyOtpHandlerResponse = ApiAuthEmailVerifyOtpVerifyOtpHandlerResponses[keyof ApiAuthEmailVerifyOtpVerifyOtpHandlerResponses];
 
-export type ApiAuthSocialProviderSocialAuthHandlerData = {
-    body: SocialAuthRequest;
+export type ApiAuthRefreshRefreshHandlerData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/refresh';
+};
+
+export type ApiAuthRefreshRefreshHandlerResponses = {
+    /**
+     * Document created, URL follows
+     */
+    201: RefreshResponse;
+};
+
+export type ApiAuthRefreshRefreshHandlerResponse = ApiAuthRefreshRefreshHandlerResponses[keyof ApiAuthRefreshRefreshHandlerResponses];
+
+export type ApiAuthProviderLoginSocialLoginData = {
+    body?: never;
     path: {
         provider: string;
     };
     query?: never;
-    url: '/api/auth/social/{provider}';
+    url: '/api/auth/{provider}/login';
 };
 
-export type ApiAuthSocialProviderSocialAuthHandlerErrors = {
+export type ApiAuthProviderLoginSocialLoginErrors = {
     /**
      * Validation Exception
      */
@@ -180,18 +394,45 @@ export type ApiAuthSocialProviderSocialAuthHandlerErrors = {
     };
 };
 
-export type ApiAuthSocialProviderSocialAuthHandlerError = ApiAuthSocialProviderSocialAuthHandlerErrors[keyof ApiAuthSocialProviderSocialAuthHandlerErrors];
+export type ApiAuthProviderLoginSocialLoginError = ApiAuthProviderLoginSocialLoginErrors[keyof ApiAuthProviderLoginSocialLoginErrors];
 
-export type ApiAuthSocialProviderSocialAuthHandlerResponses = {
+export type ApiAuthProviderLoginSocialLoginResponses = {
     /**
-     * Document created, URL follows
+     * Redirect Response
      */
-    201: {
-        [key: string]: unknown;
+    200: unknown;
+};
+
+export type ApiAuthProviderCallbackSocialCallbackData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/auth/{provider}/callback';
+};
+
+export type ApiAuthProviderCallbackSocialCallbackErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
     };
 };
 
-export type ApiAuthSocialProviderSocialAuthHandlerResponse = ApiAuthSocialProviderSocialAuthHandlerResponses[keyof ApiAuthSocialProviderSocialAuthHandlerResponses];
+export type ApiAuthProviderCallbackSocialCallbackError = ApiAuthProviderCallbackSocialCallbackErrors[keyof ApiAuthProviderCallbackSocialCallbackErrors];
+
+export type ApiAuthProviderCallbackSocialCallbackResponses = {
+    /**
+     * Redirect Response
+     */
+    200: unknown;
+};
 
 export type ApiPaymentsPlansPlansHandlerData = {
     body?: never;
@@ -258,16 +499,78 @@ export type ApiPaymentsWebhookWebhookHandlerResponses = {
 
 export type ApiPaymentsWebhookWebhookHandlerResponse = ApiPaymentsWebhookWebhookHandlerResponses[keyof ApiPaymentsWebhookWebhookHandlerResponses];
 
-export type AuthProviderLoginSocialLoginData = {
+export type ApiPaymentsCurrentCurrentSubscriptionHandlerData = {
     body?: never;
-    path: {
-        provider: string;
-    };
+    path?: never;
     query?: never;
-    url: '/auth/{provider}/login';
+    url: '/api/payments/current';
 };
 
-export type AuthProviderLoginSocialLoginErrors = {
+export type ApiPaymentsCurrentCurrentSubscriptionHandlerResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: SubscriptionResponse;
+};
+
+export type ApiPaymentsCurrentCurrentSubscriptionHandlerResponse = ApiPaymentsCurrentCurrentSubscriptionHandlerResponses[keyof ApiPaymentsCurrentCurrentSubscriptionHandlerResponses];
+
+export type ApiPaymentsCancelCancelSubscriptionHandlerData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/payments/cancel';
+};
+
+export type ApiPaymentsCancelCancelSubscriptionHandlerResponses = {
+    /**
+     * Document created, URL follows
+     */
+    201: CancelSubscriptionResponse;
+};
+
+export type ApiPaymentsCancelCancelSubscriptionHandlerResponse = ApiPaymentsCancelCancelSubscriptionHandlerResponses[keyof ApiPaymentsCancelCancelSubscriptionHandlerResponses];
+
+export type ApiPaymentsInvoicesListInvoicesHandlerData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/payments/invoices';
+};
+
+export type ApiPaymentsInvoicesListInvoicesHandlerResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: InvoicesResponse;
+};
+
+export type ApiPaymentsInvoicesListInvoicesHandlerResponse = ApiPaymentsInvoicesListInvoicesHandlerResponses[keyof ApiPaymentsInvoicesListInvoicesHandlerResponses];
+
+export type ApiUsersMeGetCurrentUserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/users/me';
+};
+
+export type ApiUsersMeGetCurrentUserResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: UserResponse;
+};
+
+export type ApiUsersMeGetCurrentUserResponse = ApiUsersMeGetCurrentUserResponses[keyof ApiUsersMeGetCurrentUserResponses];
+
+export type ApiUsersMeUpdateCurrentUserData = {
+    body: UpdateProfileRequest;
+    path?: never;
+    query?: never;
+    url: '/api/users/me';
+};
+
+export type ApiUsersMeUpdateCurrentUserErrors = {
     /**
      * Validation Exception
      */
@@ -280,25 +583,25 @@ export type AuthProviderLoginSocialLoginErrors = {
     };
 };
 
-export type AuthProviderLoginSocialLoginError = AuthProviderLoginSocialLoginErrors[keyof AuthProviderLoginSocialLoginErrors];
+export type ApiUsersMeUpdateCurrentUserError = ApiUsersMeUpdateCurrentUserErrors[keyof ApiUsersMeUpdateCurrentUserErrors];
 
-export type AuthProviderLoginSocialLoginResponses = {
+export type ApiUsersMeUpdateCurrentUserResponses = {
     /**
-     * Redirect Response
+     * Request fulfilled, document follows
      */
-    200: unknown;
+    200: UserResponse;
 };
 
-export type AuthProviderCallbackSocialCallbackData = {
-    body?: never;
-    path: {
-        provider: string;
-    };
+export type ApiUsersMeUpdateCurrentUserResponse = ApiUsersMeUpdateCurrentUserResponses[keyof ApiUsersMeUpdateCurrentUserResponses];
+
+export type ApiOnboardingSubmitOnboardingData = {
+    body: OnboardingRequest;
+    path?: never;
     query?: never;
-    url: '/auth/{provider}/callback';
+    url: '/api/onboarding';
 };
 
-export type AuthProviderCallbackSocialCallbackErrors = {
+export type ApiOnboardingSubmitOnboardingErrors = {
     /**
      * Validation Exception
      */
@@ -311,11 +614,357 @@ export type AuthProviderCallbackSocialCallbackErrors = {
     };
 };
 
-export type AuthProviderCallbackSocialCallbackError = AuthProviderCallbackSocialCallbackErrors[keyof AuthProviderCallbackSocialCallbackErrors];
+export type ApiOnboardingSubmitOnboardingError = ApiOnboardingSubmitOnboardingErrors[keyof ApiOnboardingSubmitOnboardingErrors];
 
-export type AuthProviderCallbackSocialCallbackResponses = {
+export type ApiOnboardingSubmitOnboardingResponses = {
+    /**
+     * Document created, URL follows
+     */
+    201: WorkspaceResponse;
+};
+
+export type ApiOnboardingSubmitOnboardingResponse = ApiOnboardingSubmitOnboardingResponses[keyof ApiOnboardingSubmitOnboardingResponses];
+
+export type ApiIntegrationsListIntegrationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/integrations';
+};
+
+export type ApiIntegrationsListIntegrationsResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationsListResponse;
+};
+
+export type ApiIntegrationsListIntegrationsResponse = ApiIntegrationsListIntegrationsResponses[keyof ApiIntegrationsListIntegrationsResponses];
+
+export type ApiIntegrationsProviderAuthInitiateAuthData = {
+    body: InitiateAuthRequest;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/auth';
+};
+
+export type ApiIntegrationsProviderAuthInitiateAuthErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderAuthInitiateAuthError = ApiIntegrationsProviderAuthInitiateAuthErrors[keyof ApiIntegrationsProviderAuthInitiateAuthErrors];
+
+export type ApiIntegrationsProviderAuthInitiateAuthResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: InitiateAuthResponse;
+};
+
+export type ApiIntegrationsProviderAuthInitiateAuthResponse = ApiIntegrationsProviderAuthInitiateAuthResponses[keyof ApiIntegrationsProviderAuthInitiateAuthResponses];
+
+export type ApiIntegrationsOauthProviderCallbackOauthCallbackData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/oauth/{provider}/callback';
+};
+
+export type ApiIntegrationsOauthProviderCallbackOauthCallbackErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsOauthProviderCallbackOauthCallbackError = ApiIntegrationsOauthProviderCallbackOauthCallbackErrors[keyof ApiIntegrationsOauthProviderCallbackOauthCallbackErrors];
+
+export type ApiIntegrationsOauthProviderCallbackOauthCallbackResponses = {
     /**
      * Redirect Response
      */
     200: unknown;
 };
+
+export type ApiIntegrationsTaigaConnectConnectTaigaData = {
+    body: TaigaConnectRequest;
+    path?: never;
+    query?: never;
+    url: '/api/integrations/taiga/connect';
+};
+
+export type ApiIntegrationsTaigaConnectConnectTaigaErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsTaigaConnectConnectTaigaError = ApiIntegrationsTaigaConnectConnectTaigaErrors[keyof ApiIntegrationsTaigaConnectConnectTaigaErrors];
+
+export type ApiIntegrationsTaigaConnectConnectTaigaResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationResponse;
+};
+
+export type ApiIntegrationsTaigaConnectConnectTaigaResponse = ApiIntegrationsTaigaConnectConnectTaigaResponses[keyof ApiIntegrationsTaigaConnectConnectTaigaResponses];
+
+export type ApiIntegrationsProviderDisconnectDisconnectData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/disconnect';
+};
+
+export type ApiIntegrationsProviderDisconnectDisconnectErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderDisconnectDisconnectError = ApiIntegrationsProviderDisconnectDisconnectErrors[keyof ApiIntegrationsProviderDisconnectDisconnectErrors];
+
+export type ApiIntegrationsProviderDisconnectDisconnectResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: DisconnectResponse;
+};
+
+export type ApiIntegrationsProviderDisconnectDisconnectResponse = ApiIntegrationsProviderDisconnectDisconnectResponses[keyof ApiIntegrationsProviderDisconnectDisconnectResponses];
+
+export type ApiIntegrationsProviderRefreshRefreshData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/refresh';
+};
+
+export type ApiIntegrationsProviderRefreshRefreshErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderRefreshRefreshError = ApiIntegrationsProviderRefreshRefreshErrors[keyof ApiIntegrationsProviderRefreshRefreshErrors];
+
+export type ApiIntegrationsProviderRefreshRefreshResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationResponse;
+};
+
+export type ApiIntegrationsProviderRefreshRefreshResponse = ApiIntegrationsProviderRefreshRefreshResponses[keyof ApiIntegrationsProviderRefreshRefreshResponses];
+
+export type ApiIntegrationsProviderMembersListMembersData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/members';
+};
+
+export type ApiIntegrationsProviderMembersListMembersErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderMembersListMembersError = ApiIntegrationsProviderMembersListMembersErrors[keyof ApiIntegrationsProviderMembersListMembersErrors];
+
+export type ApiIntegrationsProviderMembersListMembersResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationMembersResponse;
+};
+
+export type ApiIntegrationsProviderMembersListMembersResponse = ApiIntegrationsProviderMembersListMembersResponses[keyof ApiIntegrationsProviderMembersListMembersResponses];
+
+export type ApiIntegrationsProviderProjectsListProjectsData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/projects';
+};
+
+export type ApiIntegrationsProviderProjectsListProjectsErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderProjectsListProjectsError = ApiIntegrationsProviderProjectsListProjectsErrors[keyof ApiIntegrationsProviderProjectsListProjectsErrors];
+
+export type ApiIntegrationsProviderProjectsListProjectsResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationScopesResponse;
+};
+
+export type ApiIntegrationsProviderProjectsListProjectsResponse = ApiIntegrationsProviderProjectsListProjectsResponses[keyof ApiIntegrationsProviderProjectsListProjectsResponses];
+
+export type ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersData = {
+    body?: never;
+    path: {
+        provider: string;
+        project_id: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/projects/{project_id}/members';
+};
+
+export type ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersError = ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersErrors[keyof ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersErrors];
+
+export type ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationMembersResponse;
+};
+
+export type ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponse = ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponses[keyof ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponses];
+
+export type ApiIntegrationsProviderChannelsListChannelsData = {
+    body?: never;
+    path: {
+        provider: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/channels';
+};
+
+export type ApiIntegrationsProviderChannelsListChannelsErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderChannelsListChannelsError = ApiIntegrationsProviderChannelsListChannelsErrors[keyof ApiIntegrationsProviderChannelsListChannelsErrors];
+
+export type ApiIntegrationsProviderChannelsListChannelsResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationScopesResponse;
+};
+
+export type ApiIntegrationsProviderChannelsListChannelsResponse = ApiIntegrationsProviderChannelsListChannelsResponses[keyof ApiIntegrationsProviderChannelsListChannelsResponses];
+
+export type ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersData = {
+    body?: never;
+    path: {
+        provider: string;
+        channel_id: string;
+    };
+    query?: never;
+    url: '/api/integrations/{provider}/channels/{channel_id}/members';
+};
+
+export type ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        status_code: number;
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+    };
+};
+
+export type ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersError = ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersErrors[keyof ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersErrors];
+
+export type ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponses = {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: IntegrationMembersResponse;
+};
+
+export type ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponse = ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponses[keyof ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponses];

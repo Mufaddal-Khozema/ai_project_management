@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { apiAuthEmailSendOtpSendOtpHandler, apiAuthEmailVerifyOtpVerifyOtpHandler, apiAuthSocialProviderSocialAuthHandler, apiHealthHealthCheck, apiPaymentsPlansPlansHandler, apiPaymentsSetupIntentSetupIntentHandler, apiPaymentsWebhookWebhookHandler, authProviderCallbackSocialCallback, authProviderLoginSocialLogin, type Options } from '../sdk.gen';
-import type { ApiAuthEmailSendOtpSendOtpHandlerData, ApiAuthEmailSendOtpSendOtpHandlerError, ApiAuthEmailSendOtpSendOtpHandlerResponse, ApiAuthEmailVerifyOtpVerifyOtpHandlerData, ApiAuthEmailVerifyOtpVerifyOtpHandlerError, ApiAuthEmailVerifyOtpVerifyOtpHandlerResponse, ApiAuthSocialProviderSocialAuthHandlerData, ApiAuthSocialProviderSocialAuthHandlerError, ApiAuthSocialProviderSocialAuthHandlerResponse, ApiHealthHealthCheckData, ApiHealthHealthCheckResponse, ApiPaymentsPlansPlansHandlerData, ApiPaymentsPlansPlansHandlerResponse, ApiPaymentsSetupIntentSetupIntentHandlerData, ApiPaymentsSetupIntentSetupIntentHandlerError, ApiPaymentsSetupIntentSetupIntentHandlerResponse, ApiPaymentsWebhookWebhookHandlerData, ApiPaymentsWebhookWebhookHandlerResponse, AuthProviderCallbackSocialCallbackData, AuthProviderCallbackSocialCallbackError, AuthProviderLoginSocialLoginData, AuthProviderLoginSocialLoginError } from '../types.gen';
+import { apiAuthEmailSendOtpSendOtpHandler, apiAuthEmailVerifyOtpVerifyOtpHandler, apiAuthProviderCallbackSocialCallback, apiAuthProviderLoginSocialLogin, apiAuthRefreshRefreshHandler, apiHealthHealthCheck, apiIntegrationsListIntegrations, apiIntegrationsOauthProviderCallbackOauthCallback, apiIntegrationsProviderAuthInitiateAuth, apiIntegrationsProviderChannelsChannelIdMembersListChannelMembers, apiIntegrationsProviderChannelsListChannels, apiIntegrationsProviderDisconnectDisconnect, apiIntegrationsProviderMembersListMembers, apiIntegrationsProviderProjectsListProjects, apiIntegrationsProviderProjectsProjectIdMembersListProjectMembers, apiIntegrationsProviderRefreshRefresh, apiIntegrationsTaigaConnectConnectTaiga, apiOnboardingSubmitOnboarding, apiPaymentsCancelCancelSubscriptionHandler, apiPaymentsCurrentCurrentSubscriptionHandler, apiPaymentsInvoicesListInvoicesHandler, apiPaymentsPlansPlansHandler, apiPaymentsSetupIntentSetupIntentHandler, apiPaymentsWebhookWebhookHandler, apiUsersMeGetCurrentUser, apiUsersMeUpdateCurrentUser, type Options } from '../sdk.gen';
+import type { ApiAuthEmailSendOtpSendOtpHandlerData, ApiAuthEmailSendOtpSendOtpHandlerError, ApiAuthEmailSendOtpSendOtpHandlerResponse, ApiAuthEmailVerifyOtpVerifyOtpHandlerData, ApiAuthEmailVerifyOtpVerifyOtpHandlerError, ApiAuthEmailVerifyOtpVerifyOtpHandlerResponse, ApiAuthProviderCallbackSocialCallbackData, ApiAuthProviderCallbackSocialCallbackError, ApiAuthProviderLoginSocialLoginData, ApiAuthProviderLoginSocialLoginError, ApiAuthRefreshRefreshHandlerData, ApiAuthRefreshRefreshHandlerResponse, ApiHealthHealthCheckData, ApiHealthHealthCheckResponse, ApiIntegrationsListIntegrationsData, ApiIntegrationsListIntegrationsResponse, ApiIntegrationsOauthProviderCallbackOauthCallbackData, ApiIntegrationsOauthProviderCallbackOauthCallbackError, ApiIntegrationsProviderAuthInitiateAuthData, ApiIntegrationsProviderAuthInitiateAuthError, ApiIntegrationsProviderAuthInitiateAuthResponse, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersData, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersError, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponse, ApiIntegrationsProviderChannelsListChannelsData, ApiIntegrationsProviderChannelsListChannelsError, ApiIntegrationsProviderChannelsListChannelsResponse, ApiIntegrationsProviderDisconnectDisconnectData, ApiIntegrationsProviderDisconnectDisconnectError, ApiIntegrationsProviderDisconnectDisconnectResponse, ApiIntegrationsProviderMembersListMembersData, ApiIntegrationsProviderMembersListMembersError, ApiIntegrationsProviderMembersListMembersResponse, ApiIntegrationsProviderProjectsListProjectsData, ApiIntegrationsProviderProjectsListProjectsError, ApiIntegrationsProviderProjectsListProjectsResponse, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersData, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersError, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponse, ApiIntegrationsProviderRefreshRefreshData, ApiIntegrationsProviderRefreshRefreshError, ApiIntegrationsProviderRefreshRefreshResponse, ApiIntegrationsTaigaConnectConnectTaigaData, ApiIntegrationsTaigaConnectConnectTaigaError, ApiIntegrationsTaigaConnectConnectTaigaResponse, ApiOnboardingSubmitOnboardingData, ApiOnboardingSubmitOnboardingError, ApiOnboardingSubmitOnboardingResponse, ApiPaymentsCancelCancelSubscriptionHandlerData, ApiPaymentsCancelCancelSubscriptionHandlerResponse, ApiPaymentsCurrentCurrentSubscriptionHandlerData, ApiPaymentsCurrentCurrentSubscriptionHandlerResponse, ApiPaymentsInvoicesListInvoicesHandlerData, ApiPaymentsInvoicesListInvoicesHandlerResponse, ApiPaymentsPlansPlansHandlerData, ApiPaymentsPlansPlansHandlerResponse, ApiPaymentsSetupIntentSetupIntentHandlerData, ApiPaymentsSetupIntentSetupIntentHandlerError, ApiPaymentsSetupIntentSetupIntentHandlerResponse, ApiPaymentsWebhookWebhookHandlerData, ApiPaymentsWebhookWebhookHandlerResponse, ApiUsersMeGetCurrentUserData, ApiUsersMeGetCurrentUserResponse, ApiUsersMeUpdateCurrentUserData, ApiUsersMeUpdateCurrentUserError, ApiUsersMeUpdateCurrentUserResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -92,12 +92,12 @@ export const apiAuthEmailVerifyOtpVerifyOtpHandlerMutation = (options?: Partial<
 };
 
 /**
- * SocialAuthHandler
+ * RefreshHandler
  */
-export const apiAuthSocialProviderSocialAuthHandlerMutation = (options?: Partial<Options<ApiAuthSocialProviderSocialAuthHandlerData>>): UseMutationOptions<ApiAuthSocialProviderSocialAuthHandlerResponse, ApiAuthSocialProviderSocialAuthHandlerError, Options<ApiAuthSocialProviderSocialAuthHandlerData>> => {
-    const mutationOptions: UseMutationOptions<ApiAuthSocialProviderSocialAuthHandlerResponse, ApiAuthSocialProviderSocialAuthHandlerError, Options<ApiAuthSocialProviderSocialAuthHandlerData>> = {
+export const apiAuthRefreshRefreshHandlerMutation = (options?: Partial<Options<ApiAuthRefreshRefreshHandlerData>>): UseMutationOptions<ApiAuthRefreshRefreshHandlerResponse, DefaultError, Options<ApiAuthRefreshRefreshHandlerData>> => {
+    const mutationOptions: UseMutationOptions<ApiAuthRefreshRefreshHandlerResponse, DefaultError, Options<ApiAuthRefreshRefreshHandlerData>> = {
         mutationFn: async (fnOptions) => {
-            const { data } = await apiAuthSocialProviderSocialAuthHandler({
+            const { data } = await apiAuthRefreshRefreshHandler({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -107,6 +107,42 @@ export const apiAuthSocialProviderSocialAuthHandlerMutation = (options?: Partial
     };
     return mutationOptions;
 };
+
+export const apiAuthProviderLoginSocialLoginQueryKey = (options: Options<ApiAuthProviderLoginSocialLoginData>) => createQueryKey('apiAuthProviderLoginSocialLogin', options);
+
+/**
+ * SocialLogin
+ */
+export const apiAuthProviderLoginSocialLoginOptions = (options: Options<ApiAuthProviderLoginSocialLoginData>) => queryOptions<unknown, ApiAuthProviderLoginSocialLoginError, unknown, ReturnType<typeof apiAuthProviderLoginSocialLoginQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiAuthProviderLoginSocialLogin({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiAuthProviderLoginSocialLoginQueryKey(options)
+});
+
+export const apiAuthProviderCallbackSocialCallbackQueryKey = (options: Options<ApiAuthProviderCallbackSocialCallbackData>) => createQueryKey('apiAuthProviderCallbackSocialCallback', options);
+
+/**
+ * SocialCallback
+ */
+export const apiAuthProviderCallbackSocialCallbackOptions = (options: Options<ApiAuthProviderCallbackSocialCallbackData>) => queryOptions<unknown, ApiAuthProviderCallbackSocialCallbackError, unknown, ReturnType<typeof apiAuthProviderCallbackSocialCallbackQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiAuthProviderCallbackSocialCallback({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiAuthProviderCallbackSocialCallbackQueryKey(options)
+});
 
 export const apiPaymentsPlansPlansHandlerQueryKey = (options?: Options<ApiPaymentsPlansPlansHandlerData>) => createQueryKey('apiPaymentsPlansPlansHandler', options);
 
@@ -160,14 +196,14 @@ export const apiPaymentsWebhookWebhookHandlerMutation = (options?: Partial<Optio
     return mutationOptions;
 };
 
-export const authProviderLoginSocialLoginQueryKey = (options: Options<AuthProviderLoginSocialLoginData>) => createQueryKey('authProviderLoginSocialLogin', options);
+export const apiPaymentsCurrentCurrentSubscriptionHandlerQueryKey = (options?: Options<ApiPaymentsCurrentCurrentSubscriptionHandlerData>) => createQueryKey('apiPaymentsCurrentCurrentSubscriptionHandler', options);
 
 /**
- * SocialLogin
+ * CurrentSubscriptionHandler
  */
-export const authProviderLoginSocialLoginOptions = (options: Options<AuthProviderLoginSocialLoginData>) => queryOptions<unknown, AuthProviderLoginSocialLoginError, unknown, ReturnType<typeof authProviderLoginSocialLoginQueryKey>>({
+export const apiPaymentsCurrentCurrentSubscriptionHandlerOptions = (options?: Options<ApiPaymentsCurrentCurrentSubscriptionHandlerData>) => queryOptions<ApiPaymentsCurrentCurrentSubscriptionHandlerResponse, DefaultError, ApiPaymentsCurrentCurrentSubscriptionHandlerResponse, ReturnType<typeof apiPaymentsCurrentCurrentSubscriptionHandlerQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
-        const { data } = await authProviderLoginSocialLogin({
+        const { data } = await apiPaymentsCurrentCurrentSubscriptionHandler({
             ...options,
             ...queryKey[0],
             signal,
@@ -175,17 +211,34 @@ export const authProviderLoginSocialLoginOptions = (options: Options<AuthProvide
         });
         return data;
     },
-    queryKey: authProviderLoginSocialLoginQueryKey(options)
+    queryKey: apiPaymentsCurrentCurrentSubscriptionHandlerQueryKey(options)
 });
 
-export const authProviderCallbackSocialCallbackQueryKey = (options: Options<AuthProviderCallbackSocialCallbackData>) => createQueryKey('authProviderCallbackSocialCallback', options);
+/**
+ * CancelSubscriptionHandler
+ */
+export const apiPaymentsCancelCancelSubscriptionHandlerMutation = (options?: Partial<Options<ApiPaymentsCancelCancelSubscriptionHandlerData>>): UseMutationOptions<ApiPaymentsCancelCancelSubscriptionHandlerResponse, DefaultError, Options<ApiPaymentsCancelCancelSubscriptionHandlerData>> => {
+    const mutationOptions: UseMutationOptions<ApiPaymentsCancelCancelSubscriptionHandlerResponse, DefaultError, Options<ApiPaymentsCancelCancelSubscriptionHandlerData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiPaymentsCancelCancelSubscriptionHandler({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const apiPaymentsInvoicesListInvoicesHandlerQueryKey = (options?: Options<ApiPaymentsInvoicesListInvoicesHandlerData>) => createQueryKey('apiPaymentsInvoicesListInvoicesHandler', options);
 
 /**
- * SocialCallback
+ * ListInvoicesHandler
  */
-export const authProviderCallbackSocialCallbackOptions = (options: Options<AuthProviderCallbackSocialCallbackData>) => queryOptions<unknown, AuthProviderCallbackSocialCallbackError, unknown, ReturnType<typeof authProviderCallbackSocialCallbackQueryKey>>({
+export const apiPaymentsInvoicesListInvoicesHandlerOptions = (options?: Options<ApiPaymentsInvoicesListInvoicesHandlerData>) => queryOptions<ApiPaymentsInvoicesListInvoicesHandlerResponse, DefaultError, ApiPaymentsInvoicesListInvoicesHandlerResponse, ReturnType<typeof apiPaymentsInvoicesListInvoicesHandlerQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
-        const { data } = await authProviderCallbackSocialCallback({
+        const { data } = await apiPaymentsInvoicesListInvoicesHandler({
             ...options,
             ...queryKey[0],
             signal,
@@ -193,5 +246,251 @@ export const authProviderCallbackSocialCallbackOptions = (options: Options<AuthP
         });
         return data;
     },
-    queryKey: authProviderCallbackSocialCallbackQueryKey(options)
+    queryKey: apiPaymentsInvoicesListInvoicesHandlerQueryKey(options)
+});
+
+export const apiUsersMeGetCurrentUserQueryKey = (options?: Options<ApiUsersMeGetCurrentUserData>) => createQueryKey('apiUsersMeGetCurrentUser', options);
+
+/**
+ * GetCurrentUser
+ */
+export const apiUsersMeGetCurrentUserOptions = (options?: Options<ApiUsersMeGetCurrentUserData>) => queryOptions<ApiUsersMeGetCurrentUserResponse, DefaultError, ApiUsersMeGetCurrentUserResponse, ReturnType<typeof apiUsersMeGetCurrentUserQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiUsersMeGetCurrentUser({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiUsersMeGetCurrentUserQueryKey(options)
+});
+
+/**
+ * UpdateCurrentUser
+ */
+export const apiUsersMeUpdateCurrentUserMutation = (options?: Partial<Options<ApiUsersMeUpdateCurrentUserData>>): UseMutationOptions<ApiUsersMeUpdateCurrentUserResponse, ApiUsersMeUpdateCurrentUserError, Options<ApiUsersMeUpdateCurrentUserData>> => {
+    const mutationOptions: UseMutationOptions<ApiUsersMeUpdateCurrentUserResponse, ApiUsersMeUpdateCurrentUserError, Options<ApiUsersMeUpdateCurrentUserData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiUsersMeUpdateCurrentUser({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * SubmitOnboarding
+ */
+export const apiOnboardingSubmitOnboardingMutation = (options?: Partial<Options<ApiOnboardingSubmitOnboardingData>>): UseMutationOptions<ApiOnboardingSubmitOnboardingResponse, ApiOnboardingSubmitOnboardingError, Options<ApiOnboardingSubmitOnboardingData>> => {
+    const mutationOptions: UseMutationOptions<ApiOnboardingSubmitOnboardingResponse, ApiOnboardingSubmitOnboardingError, Options<ApiOnboardingSubmitOnboardingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiOnboardingSubmitOnboarding({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const apiIntegrationsListIntegrationsQueryKey = (options?: Options<ApiIntegrationsListIntegrationsData>) => createQueryKey('apiIntegrationsListIntegrations', options);
+
+/**
+ * ListIntegrations
+ */
+export const apiIntegrationsListIntegrationsOptions = (options?: Options<ApiIntegrationsListIntegrationsData>) => queryOptions<ApiIntegrationsListIntegrationsResponse, DefaultError, ApiIntegrationsListIntegrationsResponse, ReturnType<typeof apiIntegrationsListIntegrationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsListIntegrations({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsListIntegrationsQueryKey(options)
+});
+
+/**
+ * InitiateAuth
+ */
+export const apiIntegrationsProviderAuthInitiateAuthMutation = (options?: Partial<Options<ApiIntegrationsProviderAuthInitiateAuthData>>): UseMutationOptions<ApiIntegrationsProviderAuthInitiateAuthResponse, ApiIntegrationsProviderAuthInitiateAuthError, Options<ApiIntegrationsProviderAuthInitiateAuthData>> => {
+    const mutationOptions: UseMutationOptions<ApiIntegrationsProviderAuthInitiateAuthResponse, ApiIntegrationsProviderAuthInitiateAuthError, Options<ApiIntegrationsProviderAuthInitiateAuthData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiIntegrationsProviderAuthInitiateAuth({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const apiIntegrationsOauthProviderCallbackOauthCallbackQueryKey = (options: Options<ApiIntegrationsOauthProviderCallbackOauthCallbackData>) => createQueryKey('apiIntegrationsOauthProviderCallbackOauthCallback', options);
+
+/**
+ * OauthCallback
+ */
+export const apiIntegrationsOauthProviderCallbackOauthCallbackOptions = (options: Options<ApiIntegrationsOauthProviderCallbackOauthCallbackData>) => queryOptions<unknown, ApiIntegrationsOauthProviderCallbackOauthCallbackError, unknown, ReturnType<typeof apiIntegrationsOauthProviderCallbackOauthCallbackQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsOauthProviderCallbackOauthCallback({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsOauthProviderCallbackOauthCallbackQueryKey(options)
+});
+
+/**
+ * ConnectTaiga
+ */
+export const apiIntegrationsTaigaConnectConnectTaigaMutation = (options?: Partial<Options<ApiIntegrationsTaigaConnectConnectTaigaData>>): UseMutationOptions<ApiIntegrationsTaigaConnectConnectTaigaResponse, ApiIntegrationsTaigaConnectConnectTaigaError, Options<ApiIntegrationsTaigaConnectConnectTaigaData>> => {
+    const mutationOptions: UseMutationOptions<ApiIntegrationsTaigaConnectConnectTaigaResponse, ApiIntegrationsTaigaConnectConnectTaigaError, Options<ApiIntegrationsTaigaConnectConnectTaigaData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiIntegrationsTaigaConnectConnectTaiga({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Disconnect
+ */
+export const apiIntegrationsProviderDisconnectDisconnectMutation = (options?: Partial<Options<ApiIntegrationsProviderDisconnectDisconnectData>>): UseMutationOptions<ApiIntegrationsProviderDisconnectDisconnectResponse, ApiIntegrationsProviderDisconnectDisconnectError, Options<ApiIntegrationsProviderDisconnectDisconnectData>> => {
+    const mutationOptions: UseMutationOptions<ApiIntegrationsProviderDisconnectDisconnectResponse, ApiIntegrationsProviderDisconnectDisconnectError, Options<ApiIntegrationsProviderDisconnectDisconnectData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiIntegrationsProviderDisconnectDisconnect({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Refresh
+ */
+export const apiIntegrationsProviderRefreshRefreshMutation = (options?: Partial<Options<ApiIntegrationsProviderRefreshRefreshData>>): UseMutationOptions<ApiIntegrationsProviderRefreshRefreshResponse, ApiIntegrationsProviderRefreshRefreshError, Options<ApiIntegrationsProviderRefreshRefreshData>> => {
+    const mutationOptions: UseMutationOptions<ApiIntegrationsProviderRefreshRefreshResponse, ApiIntegrationsProviderRefreshRefreshError, Options<ApiIntegrationsProviderRefreshRefreshData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await apiIntegrationsProviderRefreshRefresh({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const apiIntegrationsProviderMembersListMembersQueryKey = (options: Options<ApiIntegrationsProviderMembersListMembersData>) => createQueryKey('apiIntegrationsProviderMembersListMembers', options);
+
+/**
+ * ListMembers
+ */
+export const apiIntegrationsProviderMembersListMembersOptions = (options: Options<ApiIntegrationsProviderMembersListMembersData>) => queryOptions<ApiIntegrationsProviderMembersListMembersResponse, ApiIntegrationsProviderMembersListMembersError, ApiIntegrationsProviderMembersListMembersResponse, ReturnType<typeof apiIntegrationsProviderMembersListMembersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsProviderMembersListMembers({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsProviderMembersListMembersQueryKey(options)
+});
+
+export const apiIntegrationsProviderProjectsListProjectsQueryKey = (options: Options<ApiIntegrationsProviderProjectsListProjectsData>) => createQueryKey('apiIntegrationsProviderProjectsListProjects', options);
+
+/**
+ * ListProjects
+ */
+export const apiIntegrationsProviderProjectsListProjectsOptions = (options: Options<ApiIntegrationsProviderProjectsListProjectsData>) => queryOptions<ApiIntegrationsProviderProjectsListProjectsResponse, ApiIntegrationsProviderProjectsListProjectsError, ApiIntegrationsProviderProjectsListProjectsResponse, ReturnType<typeof apiIntegrationsProviderProjectsListProjectsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsProviderProjectsListProjects({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsProviderProjectsListProjectsQueryKey(options)
+});
+
+export const apiIntegrationsProviderProjectsProjectIdMembersListProjectMembersQueryKey = (options: Options<ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersData>) => createQueryKey('apiIntegrationsProviderProjectsProjectIdMembersListProjectMembers', options);
+
+/**
+ * ListProjectMembers
+ */
+export const apiIntegrationsProviderProjectsProjectIdMembersListProjectMembersOptions = (options: Options<ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersData>) => queryOptions<ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponse, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersError, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponse, ReturnType<typeof apiIntegrationsProviderProjectsProjectIdMembersListProjectMembersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsProviderProjectsProjectIdMembersListProjectMembers({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsProviderProjectsProjectIdMembersListProjectMembersQueryKey(options)
+});
+
+export const apiIntegrationsProviderChannelsListChannelsQueryKey = (options: Options<ApiIntegrationsProviderChannelsListChannelsData>) => createQueryKey('apiIntegrationsProviderChannelsListChannels', options);
+
+/**
+ * ListChannels
+ */
+export const apiIntegrationsProviderChannelsListChannelsOptions = (options: Options<ApiIntegrationsProviderChannelsListChannelsData>) => queryOptions<ApiIntegrationsProviderChannelsListChannelsResponse, ApiIntegrationsProviderChannelsListChannelsError, ApiIntegrationsProviderChannelsListChannelsResponse, ReturnType<typeof apiIntegrationsProviderChannelsListChannelsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsProviderChannelsListChannels({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsProviderChannelsListChannelsQueryKey(options)
+});
+
+export const apiIntegrationsProviderChannelsChannelIdMembersListChannelMembersQueryKey = (options: Options<ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersData>) => createQueryKey('apiIntegrationsProviderChannelsChannelIdMembersListChannelMembers', options);
+
+/**
+ * ListChannelMembers
+ */
+export const apiIntegrationsProviderChannelsChannelIdMembersListChannelMembersOptions = (options: Options<ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersData>) => queryOptions<ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponse, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersError, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponse, ReturnType<typeof apiIntegrationsProviderChannelsChannelIdMembersListChannelMembersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await apiIntegrationsProviderChannelsChannelIdMembersListChannelMembers({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: apiIntegrationsProviderChannelsChannelIdMembersListChannelMembersQueryKey(options)
 });

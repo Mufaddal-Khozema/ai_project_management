@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import LandingAnimations from "./LandingAnimations";
 import PricingPlans from "./pricing-plans";
 
@@ -295,15 +296,22 @@ export default function Home() {
         </div>
     </section>
 
-    <footer className="bg-[#09090b] border-t border-zinc-900 overflow-hidden select-none pointer-events-none">
-        <div className="w-full text-center pt-16">
+    <footer className="bg-[#09090b] border-t border-zinc-900 overflow-hidden">
+        <div className="w-full text-center pt-16 select-none pointer-events-none">
             <h2 className="text-[14vw] font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-zinc-950 via-zinc-800 to-zinc-950 leading-none">
                 Coordina AI
             </h2>
         </div>
         <div className="w-full px-6 lg:px-12 py-8 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-600 font-medium border-t border-zinc-900/40 mt-8">
             <p>&copy; 2026 CoordinaAI Core Operations. System parameters locked.</p>
-            <p className="mt-2 sm:mt-0">Built for human alignment and high-velocity code stacks.</p>
+            <div className="flex flex-col items-center gap-6 mt-2 sm:mt-0 sm:flex-row">
+                <Link href="/terms" className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                    Terms of Service
+                </Link>
+                <Link href="/privacy" className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                    Privacy Policy
+                </Link>
+            </div>
         </div>
     </footer>
   </>);

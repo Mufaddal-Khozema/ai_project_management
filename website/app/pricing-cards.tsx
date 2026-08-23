@@ -2,13 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import type { PlanResponse } from "@/lib/api/types.gen";
-import { StorageKeys } from "@/constants";
 
 export default function PricingCards({ plans }: { plans: PlanResponse[] }) {
   const router = useRouter();
 
-  const handleSelectPlan = (plan: PlanResponse) => {
-    localStorage.setItem(StorageKeys.SELECTED_PLAN, JSON.stringify(plan));
+  const handleSignup = () => {
     router.push("/signup");
   };
 
@@ -54,14 +52,14 @@ export default function PricingCards({ plans }: { plans: PlanResponse[] }) {
 
             <button
               type="button"
-              onClick={() => handleSelectPlan(plan)}
+              onClick={handleSignup}
               className={`w-full font-semibold py-3 rounded-xl transition text-sm ${
                 isHighlighted
                   ? "bg-indigo-600 text-white hover:bg-indigo-500"
                   : "bg-zinc-800 text-white hover:bg-zinc-700"
               }`}
             >
-              {plan.name === "Enterprise" ? "Contact Sales" : "Start Trial"}
+              {plan.name === "Enterprise" ? "Contact Sales" : "Sign up"}
             </button>
 
             <p className={`text-xs leading-relaxed ${

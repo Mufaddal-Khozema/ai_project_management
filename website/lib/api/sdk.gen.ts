@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApiAuthEmailSendOtpSendOtpHandlerData, ApiAuthEmailSendOtpSendOtpHandlerErrors, ApiAuthEmailSendOtpSendOtpHandlerResponses, ApiAuthEmailVerifyOtpVerifyOtpHandlerData, ApiAuthEmailVerifyOtpVerifyOtpHandlerErrors, ApiAuthEmailVerifyOtpVerifyOtpHandlerResponses, ApiAuthSocialProviderSocialAuthHandlerData, ApiAuthSocialProviderSocialAuthHandlerErrors, ApiAuthSocialProviderSocialAuthHandlerResponses, ApiHealthHealthCheckData, ApiHealthHealthCheckResponses, ApiPaymentsPlansPlansHandlerData, ApiPaymentsPlansPlansHandlerResponses, ApiPaymentsSetupIntentSetupIntentHandlerData, ApiPaymentsSetupIntentSetupIntentHandlerErrors, ApiPaymentsSetupIntentSetupIntentHandlerResponses, ApiPaymentsWebhookWebhookHandlerData, ApiPaymentsWebhookWebhookHandlerResponses, AuthProviderCallbackSocialCallbackData, AuthProviderCallbackSocialCallbackErrors, AuthProviderCallbackSocialCallbackResponses, AuthProviderLoginSocialLoginData, AuthProviderLoginSocialLoginErrors, AuthProviderLoginSocialLoginResponses } from './types.gen';
+import type { ApiAuthEmailSendOtpSendOtpHandlerData, ApiAuthEmailSendOtpSendOtpHandlerErrors, ApiAuthEmailSendOtpSendOtpHandlerResponses, ApiAuthEmailVerifyOtpVerifyOtpHandlerData, ApiAuthEmailVerifyOtpVerifyOtpHandlerErrors, ApiAuthEmailVerifyOtpVerifyOtpHandlerResponses, ApiAuthProviderCallbackSocialCallbackData, ApiAuthProviderCallbackSocialCallbackErrors, ApiAuthProviderCallbackSocialCallbackResponses, ApiAuthProviderLoginSocialLoginData, ApiAuthProviderLoginSocialLoginErrors, ApiAuthProviderLoginSocialLoginResponses, ApiAuthRefreshRefreshHandlerData, ApiAuthRefreshRefreshHandlerResponses, ApiHealthHealthCheckData, ApiHealthHealthCheckResponses, ApiIntegrationsListIntegrationsData, ApiIntegrationsListIntegrationsResponses, ApiIntegrationsOauthProviderCallbackOauthCallbackData, ApiIntegrationsOauthProviderCallbackOauthCallbackErrors, ApiIntegrationsOauthProviderCallbackOauthCallbackResponses, ApiIntegrationsProviderAuthInitiateAuthData, ApiIntegrationsProviderAuthInitiateAuthErrors, ApiIntegrationsProviderAuthInitiateAuthResponses, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersData, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersErrors, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponses, ApiIntegrationsProviderChannelsListChannelsData, ApiIntegrationsProviderChannelsListChannelsErrors, ApiIntegrationsProviderChannelsListChannelsResponses, ApiIntegrationsProviderDisconnectDisconnectData, ApiIntegrationsProviderDisconnectDisconnectErrors, ApiIntegrationsProviderDisconnectDisconnectResponses, ApiIntegrationsProviderMembersListMembersData, ApiIntegrationsProviderMembersListMembersErrors, ApiIntegrationsProviderMembersListMembersResponses, ApiIntegrationsProviderProjectsListProjectsData, ApiIntegrationsProviderProjectsListProjectsErrors, ApiIntegrationsProviderProjectsListProjectsResponses, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersData, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersErrors, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponses, ApiIntegrationsProviderRefreshRefreshData, ApiIntegrationsProviderRefreshRefreshErrors, ApiIntegrationsProviderRefreshRefreshResponses, ApiIntegrationsTaigaConnectConnectTaigaData, ApiIntegrationsTaigaConnectConnectTaigaErrors, ApiIntegrationsTaigaConnectConnectTaigaResponses, ApiOnboardingSubmitOnboardingData, ApiOnboardingSubmitOnboardingErrors, ApiOnboardingSubmitOnboardingResponses, ApiPaymentsCancelCancelSubscriptionHandlerData, ApiPaymentsCancelCancelSubscriptionHandlerResponses, ApiPaymentsCurrentCurrentSubscriptionHandlerData, ApiPaymentsCurrentCurrentSubscriptionHandlerResponses, ApiPaymentsInvoicesListInvoicesHandlerData, ApiPaymentsInvoicesListInvoicesHandlerResponses, ApiPaymentsPlansPlansHandlerData, ApiPaymentsPlansPlansHandlerResponses, ApiPaymentsSetupIntentSetupIntentHandlerData, ApiPaymentsSetupIntentSetupIntentHandlerErrors, ApiPaymentsSetupIntentSetupIntentHandlerResponses, ApiPaymentsWebhookWebhookHandlerData, ApiPaymentsWebhookWebhookHandlerResponses, ApiUsersMeGetCurrentUserData, ApiUsersMeGetCurrentUserResponses, ApiUsersMeUpdateCurrentUserData, ApiUsersMeUpdateCurrentUserErrors, ApiUsersMeUpdateCurrentUserResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -54,16 +54,30 @@ export const apiAuthEmailVerifyOtpVerifyOtpHandler = <ThrowOnError extends boole
 });
 
 /**
- * SocialAuthHandler
+ * RefreshHandler
  */
-export const apiAuthSocialProviderSocialAuthHandler = <ThrowOnError extends boolean = false>(options: Options<ApiAuthSocialProviderSocialAuthHandlerData, ThrowOnError>): RequestResult<ApiAuthSocialProviderSocialAuthHandlerResponses, ApiAuthSocialProviderSocialAuthHandlerErrors, ThrowOnError> => (options.client ?? client).post<ApiAuthSocialProviderSocialAuthHandlerResponses, ApiAuthSocialProviderSocialAuthHandlerErrors, ThrowOnError>({
+export const apiAuthRefreshRefreshHandler = <ThrowOnError extends boolean = false>(options?: Options<ApiAuthRefreshRefreshHandlerData, ThrowOnError>): RequestResult<ApiAuthRefreshRefreshHandlerResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ApiAuthRefreshRefreshHandlerResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/auth/social/{provider}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
+    url: '/api/auth/refresh',
+    ...options
+});
+
+/**
+ * SocialLogin
+ */
+export const apiAuthProviderLoginSocialLogin = <ThrowOnError extends boolean = false>(options: Options<ApiAuthProviderLoginSocialLoginData, ThrowOnError>): RequestResult<ApiAuthProviderLoginSocialLoginResponses, ApiAuthProviderLoginSocialLoginErrors, ThrowOnError> => (options.client ?? client).get<ApiAuthProviderLoginSocialLoginResponses, ApiAuthProviderLoginSocialLoginErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/auth/{provider}/login',
+    ...options
+});
+
+/**
+ * SocialCallback
+ */
+export const apiAuthProviderCallbackSocialCallback = <ThrowOnError extends boolean = false>(options: Options<ApiAuthProviderCallbackSocialCallbackData, ThrowOnError>): RequestResult<ApiAuthProviderCallbackSocialCallbackResponses, ApiAuthProviderCallbackSocialCallbackErrors, ThrowOnError> => (options.client ?? client).get<ApiAuthProviderCallbackSocialCallbackResponses, ApiAuthProviderCallbackSocialCallbackErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/auth/{provider}/callback',
+    ...options
 });
 
 /**
@@ -98,19 +112,170 @@ export const apiPaymentsWebhookWebhookHandler = <ThrowOnError extends boolean = 
 });
 
 /**
- * SocialLogin
+ * CurrentSubscriptionHandler
  */
-export const authProviderLoginSocialLogin = <ThrowOnError extends boolean = false>(options: Options<AuthProviderLoginSocialLoginData, ThrowOnError>): RequestResult<AuthProviderLoginSocialLoginResponses, AuthProviderLoginSocialLoginErrors, ThrowOnError> => (options.client ?? client).get<AuthProviderLoginSocialLoginResponses, AuthProviderLoginSocialLoginErrors, ThrowOnError>({
+export const apiPaymentsCurrentCurrentSubscriptionHandler = <ThrowOnError extends boolean = false>(options?: Options<ApiPaymentsCurrentCurrentSubscriptionHandlerData, ThrowOnError>): RequestResult<ApiPaymentsCurrentCurrentSubscriptionHandlerResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ApiPaymentsCurrentCurrentSubscriptionHandlerResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/auth/{provider}/login',
+    url: '/api/payments/current',
     ...options
 });
 
 /**
- * SocialCallback
+ * CancelSubscriptionHandler
  */
-export const authProviderCallbackSocialCallback = <ThrowOnError extends boolean = false>(options: Options<AuthProviderCallbackSocialCallbackData, ThrowOnError>): RequestResult<AuthProviderCallbackSocialCallbackResponses, AuthProviderCallbackSocialCallbackErrors, ThrowOnError> => (options.client ?? client).get<AuthProviderCallbackSocialCallbackResponses, AuthProviderCallbackSocialCallbackErrors, ThrowOnError>({
+export const apiPaymentsCancelCancelSubscriptionHandler = <ThrowOnError extends boolean = false>(options?: Options<ApiPaymentsCancelCancelSubscriptionHandlerData, ThrowOnError>): RequestResult<ApiPaymentsCancelCancelSubscriptionHandlerResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ApiPaymentsCancelCancelSubscriptionHandlerResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/auth/{provider}/callback',
+    url: '/api/payments/cancel',
+    ...options
+});
+
+/**
+ * ListInvoicesHandler
+ */
+export const apiPaymentsInvoicesListInvoicesHandler = <ThrowOnError extends boolean = false>(options?: Options<ApiPaymentsInvoicesListInvoicesHandlerData, ThrowOnError>): RequestResult<ApiPaymentsInvoicesListInvoicesHandlerResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ApiPaymentsInvoicesListInvoicesHandlerResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/payments/invoices',
+    ...options
+});
+
+/**
+ * GetCurrentUser
+ */
+export const apiUsersMeGetCurrentUser = <ThrowOnError extends boolean = false>(options?: Options<ApiUsersMeGetCurrentUserData, ThrowOnError>): RequestResult<ApiUsersMeGetCurrentUserResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ApiUsersMeGetCurrentUserResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/users/me',
+    ...options
+});
+
+/**
+ * UpdateCurrentUser
+ */
+export const apiUsersMeUpdateCurrentUser = <ThrowOnError extends boolean = false>(options: Options<ApiUsersMeUpdateCurrentUserData, ThrowOnError>): RequestResult<ApiUsersMeUpdateCurrentUserResponses, ApiUsersMeUpdateCurrentUserErrors, ThrowOnError> => (options.client ?? client).patch<ApiUsersMeUpdateCurrentUserResponses, ApiUsersMeUpdateCurrentUserErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/users/me',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * SubmitOnboarding
+ */
+export const apiOnboardingSubmitOnboarding = <ThrowOnError extends boolean = false>(options: Options<ApiOnboardingSubmitOnboardingData, ThrowOnError>): RequestResult<ApiOnboardingSubmitOnboardingResponses, ApiOnboardingSubmitOnboardingErrors, ThrowOnError> => (options.client ?? client).post<ApiOnboardingSubmitOnboardingResponses, ApiOnboardingSubmitOnboardingErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/onboarding',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * ListIntegrations
+ */
+export const apiIntegrationsListIntegrations = <ThrowOnError extends boolean = false>(options?: Options<ApiIntegrationsListIntegrationsData, ThrowOnError>): RequestResult<ApiIntegrationsListIntegrationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ApiIntegrationsListIntegrationsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations',
+    ...options
+});
+
+/**
+ * InitiateAuth
+ */
+export const apiIntegrationsProviderAuthInitiateAuth = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderAuthInitiateAuthData, ThrowOnError>): RequestResult<ApiIntegrationsProviderAuthInitiateAuthResponses, ApiIntegrationsProviderAuthInitiateAuthErrors, ThrowOnError> => (options.client ?? client).post<ApiIntegrationsProviderAuthInitiateAuthResponses, ApiIntegrationsProviderAuthInitiateAuthErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/auth',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * OauthCallback
+ */
+export const apiIntegrationsOauthProviderCallbackOauthCallback = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsOauthProviderCallbackOauthCallbackData, ThrowOnError>): RequestResult<ApiIntegrationsOauthProviderCallbackOauthCallbackResponses, ApiIntegrationsOauthProviderCallbackOauthCallbackErrors, ThrowOnError> => (options.client ?? client).get<ApiIntegrationsOauthProviderCallbackOauthCallbackResponses, ApiIntegrationsOauthProviderCallbackOauthCallbackErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/oauth/{provider}/callback',
+    ...options
+});
+
+/**
+ * ConnectTaiga
+ */
+export const apiIntegrationsTaigaConnectConnectTaiga = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsTaigaConnectConnectTaigaData, ThrowOnError>): RequestResult<ApiIntegrationsTaigaConnectConnectTaigaResponses, ApiIntegrationsTaigaConnectConnectTaigaErrors, ThrowOnError> => (options.client ?? client).post<ApiIntegrationsTaigaConnectConnectTaigaResponses, ApiIntegrationsTaigaConnectConnectTaigaErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/taiga/connect',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Disconnect
+ */
+export const apiIntegrationsProviderDisconnectDisconnect = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderDisconnectDisconnectData, ThrowOnError>): RequestResult<ApiIntegrationsProviderDisconnectDisconnectResponses, ApiIntegrationsProviderDisconnectDisconnectErrors, ThrowOnError> => (options.client ?? client).post<ApiIntegrationsProviderDisconnectDisconnectResponses, ApiIntegrationsProviderDisconnectDisconnectErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/disconnect',
+    ...options
+});
+
+/**
+ * Refresh
+ */
+export const apiIntegrationsProviderRefreshRefresh = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderRefreshRefreshData, ThrowOnError>): RequestResult<ApiIntegrationsProviderRefreshRefreshResponses, ApiIntegrationsProviderRefreshRefreshErrors, ThrowOnError> => (options.client ?? client).post<ApiIntegrationsProviderRefreshRefreshResponses, ApiIntegrationsProviderRefreshRefreshErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/refresh',
+    ...options
+});
+
+/**
+ * ListMembers
+ */
+export const apiIntegrationsProviderMembersListMembers = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderMembersListMembersData, ThrowOnError>): RequestResult<ApiIntegrationsProviderMembersListMembersResponses, ApiIntegrationsProviderMembersListMembersErrors, ThrowOnError> => (options.client ?? client).get<ApiIntegrationsProviderMembersListMembersResponses, ApiIntegrationsProviderMembersListMembersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/members',
+    ...options
+});
+
+/**
+ * ListProjects
+ */
+export const apiIntegrationsProviderProjectsListProjects = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderProjectsListProjectsData, ThrowOnError>): RequestResult<ApiIntegrationsProviderProjectsListProjectsResponses, ApiIntegrationsProviderProjectsListProjectsErrors, ThrowOnError> => (options.client ?? client).get<ApiIntegrationsProviderProjectsListProjectsResponses, ApiIntegrationsProviderProjectsListProjectsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/projects',
+    ...options
+});
+
+/**
+ * ListProjectMembers
+ */
+export const apiIntegrationsProviderProjectsProjectIdMembersListProjectMembers = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersData, ThrowOnError>): RequestResult<ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponses, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersErrors, ThrowOnError> => (options.client ?? client).get<ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersResponses, ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/projects/{project_id}/members',
+    ...options
+});
+
+/**
+ * ListChannels
+ */
+export const apiIntegrationsProviderChannelsListChannels = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderChannelsListChannelsData, ThrowOnError>): RequestResult<ApiIntegrationsProviderChannelsListChannelsResponses, ApiIntegrationsProviderChannelsListChannelsErrors, ThrowOnError> => (options.client ?? client).get<ApiIntegrationsProviderChannelsListChannelsResponses, ApiIntegrationsProviderChannelsListChannelsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/channels',
+    ...options
+});
+
+/**
+ * ListChannelMembers
+ */
+export const apiIntegrationsProviderChannelsChannelIdMembersListChannelMembers = <ThrowOnError extends boolean = false>(options: Options<ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersData, ThrowOnError>): RequestResult<ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponses, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersErrors, ThrowOnError> => (options.client ?? client).get<ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersResponses, ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/integrations/{provider}/channels/{channel_id}/members',
     ...options
 });

@@ -12,6 +12,9 @@
   "paths": {
     "/api/health": {
       "get": {
+        "tags": [
+          "health"
+        ],
         "summary": "HealthCheck",
         "operationId": "ApiHealthHealthCheck",
         "responses": {
@@ -32,6 +35,9 @@
     },
     "/api/auth/email/send-otp": {
       "post": {
+        "tags": [
+          "auth"
+        ],
         "summary": "SendOtpHandler",
         "operationId": "ApiAuthEmailSendOtpSendOtpHandler",
         "requestBody": {
@@ -100,6 +106,9 @@
     },
     "/api/auth/email/verify-otp": {
       "post": {
+        "tags": [
+          "auth"
+        ],
         "summary": "VerifyOtpHandler",
         "operationId": "ApiAuthEmailVerifyOtpVerifyOtpHandler",
         "requestBody": {
@@ -166,10 +175,36 @@
         "deprecated": false
       }
     },
-    "/api/auth/social/{provider}": {
+    "/api/auth/refresh": {
       "post": {
-        "summary": "SocialAuthHandler",
-        "operationId": "ApiAuthSocialProviderSocialAuthHandler",
+        "tags": [
+          "auth"
+        ],
+        "summary": "RefreshHandler",
+        "operationId": "ApiAuthRefreshRefreshHandler",
+        "responses": {
+          "201": {
+            "description": "Document created, URL follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/auth/{provider}/login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "SocialLogin",
+        "operationId": "ApiAuthProviderLoginSocialLogin",
         "parameters": [
           {
             "name": "provider",
@@ -181,25 +216,91 @@
             "deprecated": false
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SocialAuthRequest"
+        "responses": {
+          "200": {
+            "description": "Redirect Response",
+            "headers": {
+              "location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "target path for the redirect",
+                "required": false,
+                "deprecated": false
               }
             }
           },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Document created, URL follows",
-            "headers": {},
+          "400": {
+            "description": "Bad request syntax or unsupported method",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
                 }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/auth/{provider}/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "SocialCallback",
+        "operationId": "ApiAuthProviderCallbackSocialCallback",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Redirect Response",
+            "headers": {
+              "location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "target path for the redirect",
+                "required": false,
+                "deprecated": false
               }
             }
           },
@@ -247,6 +348,9 @@
     },
     "/api/payments/plans": {
       "get": {
+        "tags": [
+          "payments"
+        ],
         "summary": "PlansHandler",
         "operationId": "ApiPaymentsPlansPlansHandler",
         "responses": {
@@ -267,6 +371,9 @@
     },
     "/api/payments/setup-intent": {
       "post": {
+        "tags": [
+          "payments"
+        ],
         "summary": "SetupIntentHandler",
         "operationId": "ApiPaymentsSetupIntentSetupIntentHandler",
         "requestBody": {
@@ -335,6 +442,9 @@
     },
     "/api/payments/webhook": {
       "post": {
+        "tags": [
+          "payments"
+        ],
         "summary": "WebhookHandler",
         "operationId": "ApiPaymentsWebhookWebhookHandler",
         "responses": {
@@ -353,10 +463,350 @@
         "deprecated": false
       }
     },
-    "/auth/{provider}/login": {
+    "/api/payments/current": {
       "get": {
-        "summary": "SocialLogin",
-        "operationId": "AuthProviderLoginSocialLogin",
+        "tags": [
+          "payments"
+        ],
+        "summary": "CurrentSubscriptionHandler",
+        "operationId": "ApiPaymentsCurrentCurrentSubscriptionHandler",
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/payments/cancel": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "CancelSubscriptionHandler",
+        "operationId": "ApiPaymentsCancelCancelSubscriptionHandler",
+        "responses": {
+          "201": {
+            "description": "Document created, URL follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelSubscriptionResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/payments/invoices": {
+      "get": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "ListInvoicesHandler",
+        "operationId": "ApiPaymentsInvoicesListInvoicesHandler",
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicesResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "GetCurrentUser",
+        "operationId": "ApiUsersMeGetCurrentUser",
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "summary": "UpdateCurrentUser",
+        "operationId": "ApiUsersMeUpdateCurrentUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/onboarding": {
+      "post": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "SubmitOnboarding",
+        "operationId": "ApiOnboardingSubmitOnboarding",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Document created, URL follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ListIntegrations",
+        "operationId": "ApiIntegrationsListIntegrations",
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationsListResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/auth": {
+      "post": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "InitiateAuth",
+        "operationId": "ApiIntegrationsProviderAuthInitiateAuth",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateAuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitiateAuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/oauth/{provider}/callback": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "OauthCallback",
+        "operationId": "ApiIntegrationsOauthProviderCallbackOauthCallback",
         "parameters": [
           {
             "name": "provider",
@@ -424,10 +874,84 @@
         "deprecated": false
       }
     },
-    "/auth/{provider}/callback": {
-      "get": {
-        "summary": "SocialCallback",
-        "operationId": "AuthProviderCallbackSocialCallback",
+    "/api/integrations/taiga/connect": {
+      "post": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ConnectTaiga",
+        "operationId": "ApiIntegrationsTaigaConnectConnectTaiga",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaigaConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/disconnect": {
+      "post": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "Disconnect",
+        "operationId": "ApiIntegrationsProviderDisconnectDisconnect",
         "parameters": [
           {
             "name": "provider",
@@ -441,15 +965,463 @@
         ],
         "responses": {
           "200": {
-            "description": "Redirect Response",
-            "headers": {
-              "location": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
-                },
-                "description": "target path for the redirect",
-                "required": false,
-                "deprecated": false
+                  "$ref": "#/components/schemas/DisconnectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/refresh": {
+      "post": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "Refresh",
+        "operationId": "ApiIntegrationsProviderRefreshRefresh",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/members": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ListMembers",
+        "operationId": "ApiIntegrationsProviderMembersListMembers",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationMembersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/projects": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ListProjects",
+        "operationId": "ApiIntegrationsProviderProjectsListProjects",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationScopesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/projects/{project_id}/members": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ListProjectMembers",
+        "operationId": "ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembers",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationMembersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/channels": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ListChannels",
+        "operationId": "ApiIntegrationsProviderChannelsListChannels",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationScopesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request syntax or unsupported method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status_code": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "status_code": 400,
+                      "detail": "Bad Request",
+                      "extra": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/api/integrations/{provider}/channels/{channel_id}/members": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "ListChannelMembers",
+        "operationId": "ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembers",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          },
+          {
+            "name": "channel_id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "deprecated": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationMembersResponse"
+                }
               }
             }
           },
@@ -498,6 +1470,471 @@
   },
   "components": {
     "schemas": {
+      "CancelSubscriptionResponse": {
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean"
+          },
+          "effective_end": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cancel_at_period_end",
+          "effective_end",
+          "plan_id",
+          "status"
+        ],
+        "title": "CancelSubscriptionResponse"
+      },
+      "DisconnectResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "DisconnectResponse"
+      },
+      "InitiateAuthRequest": {
+        "properties": {
+          "redirect_source": {
+            "type": "string",
+            "enum": [
+              "onboarding",
+              "settings"
+            ],
+            "default": "settings"
+          },
+          "company_name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 255
+          }
+        },
+        "type": "object",
+        "required": [],
+        "title": "InitiateAuthRequest"
+      },
+      "InitiateAuthResponse": {
+        "properties": {
+          "authorization_url": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorization_url"
+        ],
+        "title": "InitiateAuthResponse"
+      },
+      "IntegrationMember": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "avatar",
+          "email",
+          "id",
+          "name",
+          "username"
+        ],
+        "title": "IntegrationMember"
+      },
+      "IntegrationMembersResponse": {
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "account_name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/IntegrationMember"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_name",
+          "members",
+          "provider"
+        ],
+        "title": "IntegrationMembersResponse"
+      },
+      "IntegrationResponse": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "account_name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "expired",
+              "error"
+            ]
+          },
+          "expires_at": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_synced_at": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_on": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_on": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_name",
+          "created_on",
+          "expires_at",
+          "last_synced_at",
+          "provider",
+          "status",
+          "updated_on",
+          "uuid"
+        ],
+        "title": "IntegrationResponse"
+      },
+      "IntegrationScope": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "IntegrationScope"
+      },
+      "IntegrationScopesResponse": {
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "account_name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopes": {
+            "items": {
+              "$ref": "#/components/schemas/IntegrationScope"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_name",
+          "provider",
+          "scopes"
+        ],
+        "title": "IntegrationScopesResponse"
+      },
+      "IntegrationsListResponse": {
+        "properties": {
+          "integrations": {
+            "items": {
+              "$ref": "#/components/schemas/IntegrationResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "integrations"
+        ],
+        "title": "IntegrationsListResponse"
+      },
+      "InvoiceResponse": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hosted_invoice_url": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoice_pdf": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "created",
+          "currency",
+          "id",
+          "status"
+        ],
+        "title": "InvoiceResponse"
+      },
+      "InvoicesResponse": {
+        "properties": {
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invoices"
+        ],
+        "title": "InvoicesResponse"
+      },
+      "MatchItem": {
+        "properties": {
+          "pm_member_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "comm_member_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "comm_member_id",
+          "pm_member_id"
+        ],
+        "title": "MatchItem"
+      },
+      "OnboardingRequest": {
+        "properties": {
+          "company_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "role": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 50
+          },
+          "team_size": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 20
+          },
+          "acquisition_source": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 50
+          },
+          "comm_platform": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 50
+          },
+          "pm_platform": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 50
+          },
+          "project_id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 255
+          },
+          "channel_id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "maxLength": 255
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/MatchItem"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_name"
+        ],
+        "title": "OnboardingRequest"
+      },
       "PlanResponse": {
         "properties": {
           "id": {
@@ -570,6 +2007,26 @@
         ],
         "title": "PlansResponse"
       },
+      "RefreshResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "token_type"
+        ],
+        "title": "RefreshResponse"
+      },
       "SendOTPRequest": {
         "properties": {
           "email": {
@@ -602,7 +2059,14 @@
       "SetupIntentRequest": {
         "properties": {
           "name": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "email": {
             "type": "string"
@@ -614,7 +2078,6 @@
         "type": "object",
         "required": [
           "email",
-          "name",
           "price_id"
         ],
         "title": "SetupIntentRequest"
@@ -645,21 +2108,173 @@
         ],
         "title": "SetupIntentResponse"
       },
-      "SocialAuthRequest": {
+      "SubscriptionResponse": {
         "properties": {
-          "code": {
+          "plan_id": {
             "type": "string"
           },
-          "redirect_uri": {
+          "plan_name": {
             "type": "string"
+          },
+          "billing_interval": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string",
+            "default": "usd"
+          },
+          "current_period_end": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trial_end": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancel_at_period_end": {
+            "type": "boolean",
+            "default": false
+          },
+          "started_at": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
-          "code",
-          "redirect_uri"
+          "billing_interval",
+          "plan_id",
+          "plan_name",
+          "price",
+          "status"
         ],
-        "title": "SocialAuthRequest"
+        "title": "SubscriptionResponse"
+      },
+      "TaigaConnectRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "password",
+          "username"
+        ],
+        "title": "TaigaConnectRequest"
+      },
+      "UpdateProfileRequest": {
+        "properties": {
+          "name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatar": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [],
+        "title": "UpdateProfileRequest"
+      },
+      "UserResponse": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatar": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_on": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_on": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_on",
+          "email",
+          "name",
+          "status",
+          "updated_on",
+          "uuid"
+        ],
+        "title": "UserResponse"
       },
       "VerifyOTPRequest": {
         "properties": {
@@ -677,6 +2292,88 @@
           "otp"
         ],
         "title": "VerifyOTPRequest"
+      },
+      "WorkspaceResponse": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "company_name": {
+            "type": "string"
+          },
+          "role": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "team_size": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acquisition_source": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comm_platform": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pm_platform": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_on": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_on": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "acquisition_source",
+          "comm_platform",
+          "company_name",
+          "created_on",
+          "pm_platform",
+          "role",
+          "team_size",
+          "updated_on",
+          "uuid"
+        ],
+        "title": "WorkspaceResponse"
       }
     },
     "securitySchemes": {
