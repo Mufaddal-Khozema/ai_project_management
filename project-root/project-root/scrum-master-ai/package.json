@@ -1,0 +1,12 @@
+{
+  "name": "scrum-master-ai",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "npm install --prefix backend",
+    "dev": "npm run dev --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

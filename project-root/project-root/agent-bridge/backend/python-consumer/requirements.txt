@@ -1,0 +1,18 @@
+# Kafka
+kafka-python>=2.0.0
+
+# Redis + MongoDB (memory stores)
+redis>=5.0.0
+pymongo>=4.7.0
+
+# Inherited from agent-bridge (must match)
+langchain>=1.0.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-community>=0.3.0
+requests>=2.32.0
+python-dotenv>=1.0.0
+pydantic>=2.7.0
+
+# ── Token counting for memory/context budgeting ──────────────────
+tiktoken>=0.7.0
