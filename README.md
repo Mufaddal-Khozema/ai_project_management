@@ -299,3 +299,63 @@ Expected output: **9 passed**
 | `RATE_LIMIT_REQUESTS`             | 10                       | Max requests per window            |
 | `RATE_LIMIT_WINDOW_SECONDS`       | 60                       | Rate limit window                  |
 | `DEFAULT_ROLE`                    | user                     | Role assigned at registration      |
+
+---
+
+## 🔌 Integrations (OAuth Connection Flows)
+
+CoordinaAI lets workspaces connect Slack, MS Teams, Discord, Jira, ClickUp, and
+Taiga. Each provider requires its own OAuth app. Follow the steps below per
+provider, then copy `.env.example` → `.env` and fill in the client ID/secret.
+
+### 1. Set `APP_URL` and `FRONTEND_URL`
+
+The backend builds the provider redirect URI from `APP_URL`:
+
+```
+{APP_URL}/api/integrations/oauth/{provider}/callback
+```
+
+`FRONTEND_URL` is where the user lands after the provider redirects back
+(`{FRONTEND_URL}/integrations/callback?provider=...&status=...&source=...`).
+
+### 2. Register an OAuth app per provider
+
+| Provider  | Where to register                    | Redirect URI (add to app)                |
+|-----------|--------------------------------------|------------------------------------------|
+| Slack     | api.slack.com → Your apps → OAuth & Permissions | `{APP_URL}/api/integrations/oauth/slack/callback` |
+| MS Teams  | Azure portal → Entra ID → App registrations | `{APP_URL}/api/integrations/oauth/teams/callback` |
+| Discord   | discord.com/developers → Applications | `{APP_URL}/api/integrations/oauth/discord/callback` |
+| Jira      | developer.atlassian.com → My apps    | `{APP_URL}/api/integrations/oauth/jira/callback` |
+| ClickUp   | app.clickup.com → Settings → OAuth Apps | `{APP_URL}/api/integrations/oauth/clickup/callback` |
+| Taiga      | n/a — no OAuth app needed (uses your Taiga account credentials) | `{TAIGA_BASE_URL}/api/v1/auth/token` (default `https://tree.taiga.io`) |
+
+### 3. Scopes
+
+The backend requests the scopes it needs automatically (see
+`backend/lib/oauth.py`). Grant the same scopes on the app so token exchange
+succeeds:
+
+- **Slack** — `channels:read`, `channels:history`, `groups:read`, `users:read`, `team:read`, `chat:write`
+- **MS Teams** — `offline_access`, `User.Read`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Send`
+- **Discord** — `identify`, `guilds`
+- **Jira** — `read:jira-user`, `read:jira-work`, `write:jira-work`, `offline_access`
+- **ClickUp** — `tasks:read`, `tasks:write`, `spaces:read`, `folders:read`, `lists:read`, `teams:read`
+- **Taiga** — no OAuth scopes. Taiga 6 exposes no OAuth2 server, so connecting
+  asks for the user's Taiga credentials and exchanges them against
+  `POST {TAIGA_BASE_URL}/api/v1/auth/token` for a token (+ refresh via
+  `/api/v1/auth/token/refresh`). Set `TAIGA_BASE_URL` to your instance
+  (self-hosted or cloud; defaults to `https://tree.taiga.io`).
+
+### 4. Token encryption key
+
+Access tokens are encrypted at rest with a Fernet key. Generate one and set
+`INTEGRATION_TOKEN_ENCRYPTION_KEY`:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+`INTEGRATION_TOKEN_REFRESH_ENABLED` (default `true`) runs a background loop that
+refreshes expiring tokens via the provider's refresh-token grant. Set it to
+`false` to disable the loop (e.g. in tests).
