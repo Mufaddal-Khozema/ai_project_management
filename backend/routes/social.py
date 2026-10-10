@@ -29,7 +29,7 @@ def _clean_states() -> None:
         _oauth_states.pop(s, None)
 
 
-@get("/auth/{provider:str}/login", sync_to_thread=False)
+@get("/auth/{provider:str}/login", sync_to_thread=False, operation_id="socialLogin")
 async def social_login(provider: str) -> Redirect:
     _clean_states()
     if provider not in ("google", "github"):
@@ -41,7 +41,7 @@ async def social_login(provider: str) -> Redirect:
     return Redirect(auth_url)
 
 
-@get("/auth/{provider:str}/callback", sync_to_thread=False)
+@get("/auth/{provider:str}/callback", sync_to_thread=False, operation_id="socialCallback")
 async def social_callback(provider: str, request: Request) -> Redirect:
     params = request.query_params
     code = params.get("code")

@@ -68,6 +68,9 @@ class Settings:
     stripe_price_monthly: str = field(default_factory=get_env("STRIPE_PRICE_MONTHLY", ""))
     stripe_price_yearly: str = field(default_factory=get_env("STRIPE_PRICE_YEARLY", ""))
 
+    redis_url: str = field(default_factory=get_env("REDIS_URL", "redis://localhost:6379/0"))
+    identity_cache_ttl_seconds: int = field(default_factory=get_env("IDENTITY_CACHE_TTL_SECONDS", 60))
+
 
 @cache
 def get_settings() -> Settings:

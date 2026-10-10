@@ -5,7 +5,7 @@ import jwt as pyjwt
 
 from litestar.exceptions import HTTPException
 from litestar.response import Response
-from litestar.security.jwt import OAuth2PasswordBearerAuth
+from litestar.security.jwt import JWTAuth
 
 from config import settings
 
@@ -53,9 +53,8 @@ def set_refresh_cookie(response: Response, email: str) -> Response:
     return response
 
 
-jwt_auth: OAuth2PasswordBearerAuth[dict] = OAuth2PasswordBearerAuth[dict](
+jwt_auth: JWTAuth[dict] = JWTAuth[dict](
     token_secret=settings.jwt_secret_key,
-    token_url="/api/auth/login",
     algorithm=settings.jwt_algorithm,
     exclude=[
         "^/api/auth",

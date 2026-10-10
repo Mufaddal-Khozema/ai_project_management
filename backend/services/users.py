@@ -4,7 +4,7 @@ import structlog
 
 from litestar.exceptions import HTTPException
 
-from repositories import payment_repo, user_repo, workspace_repo
+from repositories import payment_repo, user_repo, workspace_member_repo, workspace_repo
 from schemas.user import UpdateProfileRequest, UserResponse
 
 logger = structlog.get_logger(__name__)
@@ -35,6 +35,33 @@ def get_profile(email: str) -> UserResponse:
         created_on=user["created_on"],
         updated_on=user["updated_on"],
     )
+
+
+def list_workspace_members(email: str) -> list[dict]:
+    user = user_repo.find_by_email(email)
+    if not user:
+        logger.warning("user not found for member list", email=email)
+        raise HTTPException(status_code=404, detail="User not found")
+    workspace = workspace_repo.find_by_user_id(user["id"])
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    memberships = workspace_member_repo.list_by_workspace(workspace["id"])
+    members: list[dict] = []
+    for m in memberships:
+        member_user = user_repo.find_by_id(m["user_id"])
+        if not member_user:
+            continue
+        members.append(
+            {
+                "user_id": member_user.id,
+                "email": member_user.email,
+                "name": member_user.name,
+                "avatar": member_user.avatar,
+                "role": m.get("role", "member"),
+                "status": m.get("status", "pending"),
+            }
+        )
+    return members
 
 
 def update_profile(email: str, body: UpdateProfileRequest) -> UserResponse:

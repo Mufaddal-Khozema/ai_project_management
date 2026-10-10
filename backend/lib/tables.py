@@ -166,9 +166,21 @@ class Subscription(Table, tablename="subscription", db=DB):
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())
 
-CREATE_USER_ACCOUNT_STATUS_DDL = """
-CREATE TYPE user_account_status AS ENUM ('registered', 'pending', 'email_verified');
-"""
+
+class ServiceApiKey(Table, tablename="service_api_keys", db=DB):
+    """Per-service credential for headless consumers of the identity API.
+
+    ``discord-bot`` and ``project-root`` services authenticate to
+    ``POST /api/identity/resolve`` with ``Authorization: Bearer <raw key>``.
+    Only the SHA-256 hex digest (``key_hash``) is stored — the raw key is
+    shown once at creation time and cannot be recovered afterwards.
+    Revocation is deletion of the row.
+    """
+
+    uuid = UUID(null=False, default=UUID4, unique=True)
+    service_name = Varchar(length=100, null=False, unique=True)
+    key_hash = Varchar(length=64, null=False, unique=True)
+    created_on = Timestamp(null=False, default=TimestampNow())
 
 CREATE_INTEGRATIONS_WORKSPACE_PROVIDER_UNIQUE_DDL = """
 CREATE UNIQUE INDEX IF NOT EXISTS integrations_workspace_id_provider_idx
@@ -190,10 +202,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS email_log_user_id_email_type_entity_id_idx
 ON email_log (user_id, email_type, entity_id);
 """
 
+CREATE_USER_ACCOUNT_STATUS_DDL = """
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_account_status') 
+    THEN CREATE TYPE user_account_status AS ENUM ('registered', 'pending', 'email_verified');
+    END IF;
+END
+$$;
+"""
 
 def create_user_account_status_type() -> None:
     run_sync(DB.run_ddl(CREATE_USER_ACCOUNT_STATUS_DDL, in_pool=False))
-
 
 def create_integrations_indexes() -> None:
     run_sync(DB.run_ddl(CREATE_INTEGRATIONS_WORKSPACE_PROVIDER_UNIQUE_DDL, in_pool=False))
@@ -221,6 +241,7 @@ def create_all_tables() -> None:
     ExternalIdentity.create_table(if_not_exists=True).run_sync()
     Subscription.create_table(if_not_exists=True).run_sync()
     EmailLog.create_table(if_not_exists=True).run_sync()
+    ServiceApiKey.create_table(if_not_exists=True).run_sync()
     create_integrations_indexes()
     create_external_identities_indexes()
     create_workspace_members_index()

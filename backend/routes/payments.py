@@ -28,7 +28,7 @@ from services.payments import (
 logger = structlog.get_logger(__name__)
 
 
-@get("/payments/plans")
+@get("/payments/plans", operation_id="listPlans")
 async def plans_handler() -> PlansResponse:
     try:
         plans = get_plans()
@@ -38,7 +38,7 @@ async def plans_handler() -> PlansResponse:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@post("/payments/setup-intent")
+@post("/payments/setup-intent", operation_id="setupIntent")
 async def setup_intent_handler(data: SetupIntentRequest) -> SetupIntentResponse:
     try:
         result = create_setup_intent(
@@ -54,7 +54,7 @@ async def setup_intent_handler(data: SetupIntentRequest) -> SetupIntentResponse:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@post("/payments/webhook")
+@post("/payments/webhook", operation_id="paymentsWebhook")
 async def webhook_handler(request: Request) -> Response:
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
@@ -71,7 +71,7 @@ async def webhook_handler(request: Request) -> Response:
         )
 
 
-@get("/payments/current")
+@get("/payments/current", operation_id="getCurrentSubscription")
 async def current_subscription_handler(request: Request) -> SubscriptionResponse:
     try:
         result = get_current_subscription(request.user.sub)
@@ -83,7 +83,7 @@ async def current_subscription_handler(request: Request) -> SubscriptionResponse
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@post("/payments/cancel")
+@post("/payments/cancel", operation_id="cancelSubscription")
 async def cancel_subscription_handler(request: Request) -> CancelSubscriptionResponse:
     try:
         result = cancel_subscription(request.user.sub)
@@ -95,7 +95,7 @@ async def cancel_subscription_handler(request: Request) -> CancelSubscriptionRes
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@get("/payments/invoices")
+@get("/payments/invoices", operation_id="getInvoices")
 async def list_invoices_handler(request: Request) -> InvoicesResponse:
     try:
         result = list_invoices(request.user.sub)

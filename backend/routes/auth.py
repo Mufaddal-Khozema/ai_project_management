@@ -24,7 +24,7 @@ from services.auth import send_otp, verify_otp
 logger = structlog.get_logger(__name__)
 
 
-@post("/auth/email/send-otp")
+@post("/auth/email/send-otp", operation_id="sendOtp")
 async def send_otp_handler(data: SendOTPRequest, request: Request) -> SendOTPResponse:
     try:
         result = send_otp(email=data.email, request=request)
@@ -36,7 +36,7 @@ async def send_otp_handler(data: SendOTPRequest, request: Request) -> SendOTPRes
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@post("/auth/email/verify-otp")
+@post("/auth/email/verify-otp", operation_id="verifyOtp")
 async def verify_otp_handler(data: VerifyOTPRequest) -> Response:
     try:
         verified_email = verify_otp(email=data.email, otp=data.otp)
@@ -53,7 +53,7 @@ async def verify_otp_handler(data: VerifyOTPRequest) -> Response:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@post("/auth/refresh")
+@post("/auth/refresh", operation_id="refreshToken")
 async def refresh_handler(request: Request) -> RefreshResponse:
     try:
         refresh_token = request.cookies.get(REFRESH_COOKIE_KEY)

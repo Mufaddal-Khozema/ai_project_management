@@ -16,6 +16,19 @@ class UserResponse(BaseModel):
     updated_on: datetime
 
 
+class WorkspaceMemberResponse(BaseModel):
+    user_id: int
+    email: str | None
+    name: str | None
+    avatar: str | None = None
+    role: str
+    status: str
+
+
+class WorkspaceMembersResponse(BaseModel):
+    members: list[WorkspaceMemberResponse]
+
+
 class UpdateProfileRequest(BaseModel):
     name: str | None = None
     avatar: str | None = None

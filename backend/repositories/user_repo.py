@@ -14,9 +14,8 @@ def find_by_email(email: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def find_by_id(user_id: int) -> dict[str, Any] | None:
-    rows = User.select().where(User.id == user_id).run_sync()
-    return rows[0] if rows else None
+def find_by_id(user_id: int) -> User | None:
+    return User.objects().get(User.id == user_id).run_sync()
 
 
 def create_user(email: str, otp: str, otp_expires_at: datetime) -> dict[str, Any]:

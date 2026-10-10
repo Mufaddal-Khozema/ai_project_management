@@ -7,3 +7,4 @@ asyncpg==0.31.0
 litestar-granian[uvloop]==0.15.0
 httpx-oauth==0.17.0
 stripe==11.6.0
+redis==8.1.0

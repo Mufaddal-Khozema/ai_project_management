@@ -27,7 +27,7 @@ def _validate_provider(provider: str) -> None:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
 
-@get("/integrations", sync_to_thread=False)
+@get("/integrations", sync_to_thread=False, operation_id="listIntegrations")
 async def list_integrations(request: Request) -> IntegrationsListResponse:
     email = request.user.sub
     items = integration_service.list_integrations(email)
@@ -36,7 +36,7 @@ async def list_integrations(request: Request) -> IntegrationsListResponse:
     )
 
 
-@post("/integrations/{provider:str}/auth", status_code=200, sync_to_thread=False)
+@post("/integrations/{provider:str}/auth", status_code=200, sync_to_thread=False, operation_id="initiateIntegrationAuth")
 async def initiate_auth(
     provider: str,
     data: InitiateAuthRequest,
@@ -54,6 +54,7 @@ async def initiate_auth(
     "/integrations/oauth/{provider:str}/callback",
     sync_to_thread=False,
     exclude_from_auth=True,
+    operation_id="oauthCallback",
 )
 async def oauth_callback(provider: str, request: Request) -> Redirect:
     _validate_provider(provider)
@@ -70,14 +71,14 @@ async def oauth_callback(provider: str, request: Request) -> Redirect:
     return Redirect(redirect_url)
 
 
-@post("/integrations/taiga/connect", status_code=200, sync_to_thread=False)
+@post("/integrations/taiga/connect", status_code=200, sync_to_thread=False, operation_id="connectTaiga")
 async def connect_taiga(data: TaigaConnectRequest, request: Request) -> IntegrationResponse:
     email = request.user.sub
     row = await integration_service.connect_taiga(email, data.username, data.password, request)
     return IntegrationResponse(**row)
 
 
-@post("/integrations/{provider:str}/disconnect", status_code=200, sync_to_thread=False)
+@post("/integrations/{provider:str}/disconnect", status_code=200, sync_to_thread=False, operation_id="disconnectIntegration")
 async def disconnect(provider: str, request: Request) -> DisconnectResponse:
     _validate_provider(provider)
     email = request.user.sub
@@ -85,7 +86,7 @@ async def disconnect(provider: str, request: Request) -> DisconnectResponse:
     return DisconnectResponse(message="disconnected")
 
 
-@post("/integrations/{provider:str}/refresh", status_code=200, sync_to_thread=False)
+@post("/integrations/{provider:str}/refresh", status_code=200, sync_to_thread=False, operation_id="refreshIntegration")
 async def refresh(provider: str, request: Request) -> IntegrationResponse:
     _validate_provider(provider)
     email = request.user.sub
@@ -93,7 +94,7 @@ async def refresh(provider: str, request: Request) -> IntegrationResponse:
     return IntegrationResponse(**row)
 
 
-@get("/integrations/{provider:str}/members", sync_to_thread=False)
+@get("/integrations/{provider:str}/members", sync_to_thread=False, operation_id="listMembers")
 async def list_members(provider: str, request: Request) -> IntegrationMembersResponse:
     _validate_provider(provider)
     email = request.user.sub
@@ -101,7 +102,7 @@ async def list_members(provider: str, request: Request) -> IntegrationMembersRes
     return IntegrationMembersResponse(**result)
 
 
-@get("/integrations/{provider:str}/projects", sync_to_thread=False)
+@get("/integrations/{provider:str}/projects", sync_to_thread=False, operation_id="listProjects")
 async def list_projects(provider: str, request: Request) -> IntegrationScopesResponse:
     _validate_provider(provider)
     email = request.user.sub
@@ -109,7 +110,7 @@ async def list_projects(provider: str, request: Request) -> IntegrationScopesRes
     return IntegrationScopesResponse(**result)
 
 
-@get("/integrations/{provider:str}/projects/{project_id:str}/members", sync_to_thread=False)
+@get("/integrations/{provider:str}/projects/{project_id:str}/members", sync_to_thread=False, operation_id="listProjectMembers")
 async def list_project_members(provider: str, project_id: str, request: Request) -> IntegrationMembersResponse:
     _validate_provider(provider)
     email = request.user.sub
@@ -117,7 +118,7 @@ async def list_project_members(provider: str, project_id: str, request: Request)
     return IntegrationMembersResponse(**result)
 
 
-@get("/integrations/{provider:str}/channels", sync_to_thread=False)
+@get("/integrations/{provider:str}/channels", sync_to_thread=False, operation_id="listChannels")
 async def list_channels(provider: str, request: Request) -> IntegrationScopesResponse:
     _validate_provider(provider)
     email = request.user.sub
@@ -125,7 +126,7 @@ async def list_channels(provider: str, request: Request) -> IntegrationScopesRes
     return IntegrationScopesResponse(**result)
 
 
-@get("/integrations/{provider:str}/channels/{channel_id:str}/members", sync_to_thread=False)
+@get("/integrations/{provider:str}/channels/{channel_id:str}/members", sync_to_thread=False, operation_id="listChannelMembers")
 async def list_channel_members(provider: str, channel_id: str, request: Request) -> IntegrationMembersResponse:
     _validate_provider(provider)
     email = request.user.sub

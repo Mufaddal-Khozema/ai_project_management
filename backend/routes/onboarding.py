@@ -12,7 +12,7 @@ from services import onboarding as onboarding_service
 logger = structlog.get_logger(__name__)
 
 
-@post("/onboarding")
+@post("/onboarding", operation_id="submitOnboarding")
 async def submit_onboarding(
     data: OnboardingRequest,
     request: Request,
