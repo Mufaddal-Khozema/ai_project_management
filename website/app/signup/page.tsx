@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useMutation } from "@tanstack/react-query";
-import { useSendOtpMutation, useVerifyOtpMutation, getCurrentUser, sdk } from "@/lib/api";
-import { StorageKeys } from "@/constants";
+import { useSendOtpMutation, useVerifyOtpMutation } from "@/lib/api/@tanstack/react-query.gen";
+import { getCurrentUser } from "@/lib/api/sdk.gen";
+import { API_URL, StorageKeys } from "@/constants";
 
 const btnCls =
   "w-full h-[38px] bg-indigo-600 border-none rounded-xl text-white font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-semibold tracking-[-0.01em] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-indigo-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none";
@@ -32,7 +32,7 @@ export default function SignupPage() {
 
   const getPostAuthPath = async () => {
     try {
-      const { data } = await getCurrentUser({ client: sdk });
+      const { data } = await getCurrentUser();
       return data?.has_subscription ? "/admin?onboarding=1" : "/plans";
     } catch {
       return "/plans";
@@ -60,6 +60,8 @@ export default function SignupPage() {
       return;
     }
 
+    // Only check auth state if we have an existing token (e.g. from a prior OAuth flow).
+    // Don't redirect new signups if no token exists.
     if (localStorage.getItem(StorageKeys.TOKEN)) {
       getPostAuthPath().then((dest) => router.replace(dest));
     }
@@ -232,7 +234,7 @@ export default function SignupPage() {
             {authMode === "social" ? (
               <>
                 <div className="flex flex-col gap-2.5 mb-4">
-                  <button type="button" className={socialBtnCls} onClick={() => { window.location.href = "/api/auth/google/login"; }} disabled={oauthLoading}>
+                  <button type="button" className={socialBtnCls} onClick={() => { window.location.href = `${API_URL}/api/auth/google/login`; }} disabled={oauthLoading}>
                     {oauthLoading ? (
                       <span className="size-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
@@ -245,7 +247,7 @@ export default function SignupPage() {
                     )}
                     Continue with Google
                   </button>
-                  <button type="button" className={socialBtnCls} onClick={() => { window.location.href = "/api/auth/github/login"; }} disabled={oauthLoading}>
+                  <button type="button" className={socialBtnCls} onClick={() => { window.location.href = `${API_URL}/api/auth/github/login`; }} disabled={oauthLoading}>
                     {oauthLoading ? (
                       <span className="size-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (

@@ -1,21 +1,26 @@
-import { createClient, createConfig } from "@/lib/api/client";
-import { apiPaymentsPlansPlansHandler } from "@/lib/api/sdk.gen";
+import { createClient } from "@/lib/api/client";
+import { listPlans } from "@/lib/api/sdk.gen";
 import PricingCards from "./pricing-cards";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { PlanResponse } from "@/lib/api/types.gen";
+import { API_URL } from "@/constants";
 
 export default async function PricingPlans() {
-  let plans;
+  let plans: PlanResponse[] = [];
+
   try {
-    const serverClient = createClient(createConfig({ baseUrl: API_URL }));
-    const { data } = await apiPaymentsPlansPlansHandler({
+    const serverClient = createClient({
+      baseUrl: API_URL,
+    });
+
+    const { data } = await listPlans({
       client: serverClient,
       throwOnError: true,
     });
+
     plans = data.plans;
   } catch (err) {
     console.error(err);
   }
 
-  return <PricingCards plans={plans ?? []} />;
+  return <PricingCards plans={plans} />;
 }

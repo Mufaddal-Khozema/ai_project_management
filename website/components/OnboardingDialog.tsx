@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -20,17 +20,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { OnboardingRequest, IntegrationResponse, MatchItem } from "@/lib/api";
+import type { OnboardingRequest, IntegrationResponse, MatchItem } from "@/lib/api/types.gen";
 import {
+  apiIntegrationsListIntegrationsQueryKey,
   useIntegrations,
   useInitiateIntegrationAuthMutation,
   useTaigaConnectMutation,
-  useListProjects,
-  useListProjectMembers,
-  useListChannels,
-  useListChannelMembers,
+  listProjectsOptions,
+  listProjectMembersOptions,
+  listChannelsOptions,
+  listChannelMembersOptions,
   listIntegrationsQueryKey,
-} from "@/lib/api";
+} from "@/lib/api/@tanstack/react-query.gen";
 import { TaigaConnectForm } from "@/components/TaigaConnectForm";
 import {
   integrationProviders,
@@ -92,24 +93,36 @@ export function OnboardingDialog({
 
   const isMatchStep = step === "match";
 
-  const projectsQuery = useListProjects(
-    selectedPm,
-    step === "project" || step === "channel" || isMatchStep,
-  );
-  const projectMembersQuery = useListProjectMembers(
-    selectedPm,
-    selectedProject,
-    isMatchStep && PROJECT_PROVIDERS.has(selectedPm),
-  );
-  const channelsQuery = useListChannels(
-    selectedComm,
-    step === "channel" || isMatchStep,
-  );
-  const channelMembersQuery = useListChannelMembers(
-    selectedComm,
-    selectedChannel,
-    isMatchStep && CHANNEL_PROVIDERS.has(selectedComm),
-  );
+  const projectsQuery = useQuery({
+    ...listProjectsOptions({ path: { provider: selectedPm } }),
+    enabled:
+      (step === "project" || step === "channel" || isMatchStep) &&
+      selectedPm.length > 0,
+  });
+  const projectMembersQuery = useQuery({
+    ...listProjectMembersOptions({
+      path: { provider: selectedPm, project_id: selectedProject },
+    }),
+    enabled:
+      isMatchStep &&
+      PROJECT_PROVIDERS.has(selectedPm) &&
+      selectedPm.length > 0 &&
+      selectedProject.length > 0,
+  });
+  const channelsQuery = useQuery({
+    ...listChannelsOptions({ path: { provider: selectedComm } }),
+    enabled: (step === "channel" || isMatchStep) && selectedComm.length > 0,
+  });
+  const channelMembersQuery = useQuery({
+    ...listChannelMembersOptions({
+      path: { provider: selectedComm, channel_id: selectedChannel },
+    }),
+    enabled:
+      isMatchStep &&
+      CHANNEL_PROVIDERS.has(selectedComm) &&
+      selectedComm.length > 0 &&
+      selectedChannel.length > 0,
+  });
 
   const integrationsById = useMemo(() => {
     const map: Record<string, IntegrationResponse> = {};
@@ -160,7 +173,7 @@ export function OnboardingDialog({
   const handleTaigaConnect = async (username: string, password: string) => {
     setConnectingProvider("taiga");
     try {
-      await taigaConnect.mutateAsync({ username, password });
+      await taigaConnect.mutateAsync({ body: { username, password } });
       setSelectedPm("taiga");
       queryClient.invalidateQueries({ queryKey: listIntegrationsQueryKey() });
     } finally {

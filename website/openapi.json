@@ -16,7 +16,7 @@
           "health"
         ],
         "summary": "HealthCheck",
-        "operationId": "ApiHealthHealthCheck",
+        "operationId": "healthCheck",
         "responses": {
           "200": {
             "description": "Request fulfilled, document follows",
@@ -39,7 +39,7 @@
           "auth"
         ],
         "summary": "SendOtpHandler",
-        "operationId": "ApiAuthEmailSendOtpSendOtpHandler",
+        "operationId": "sendOtp",
         "requestBody": {
           "content": {
             "application/json": {
@@ -110,7 +110,7 @@
           "auth"
         ],
         "summary": "VerifyOtpHandler",
-        "operationId": "ApiAuthEmailVerifyOtpVerifyOtpHandler",
+        "operationId": "verifyOtp",
         "requestBody": {
           "content": {
             "application/json": {
@@ -181,7 +181,7 @@
           "auth"
         ],
         "summary": "RefreshHandler",
-        "operationId": "ApiAuthRefreshRefreshHandler",
+        "operationId": "refreshToken",
         "responses": {
           "201": {
             "description": "Document created, URL follows",
@@ -204,7 +204,7 @@
           "auth"
         ],
         "summary": "SocialLogin",
-        "operationId": "ApiAuthProviderLoginSocialLogin",
+        "operationId": "socialLogin",
         "parameters": [
           {
             "name": "provider",
@@ -278,7 +278,7 @@
           "auth"
         ],
         "summary": "SocialCallback",
-        "operationId": "ApiAuthProviderCallbackSocialCallback",
+        "operationId": "socialCallback",
         "parameters": [
           {
             "name": "provider",
@@ -352,7 +352,7 @@
           "payments"
         ],
         "summary": "PlansHandler",
-        "operationId": "ApiPaymentsPlansPlansHandler",
+        "operationId": "listPlans",
         "responses": {
           "200": {
             "description": "Request fulfilled, document follows",
@@ -375,7 +375,7 @@
           "payments"
         ],
         "summary": "SetupIntentHandler",
-        "operationId": "ApiPaymentsSetupIntentSetupIntentHandler",
+        "operationId": "setupIntent",
         "requestBody": {
           "content": {
             "application/json": {
@@ -446,7 +446,7 @@
           "payments"
         ],
         "summary": "WebhookHandler",
-        "operationId": "ApiPaymentsWebhookWebhookHandler",
+        "operationId": "paymentsWebhook",
         "responses": {
           "201": {
             "description": "Document created, URL follows",
@@ -469,7 +469,7 @@
           "payments"
         ],
         "summary": "CurrentSubscriptionHandler",
-        "operationId": "ApiPaymentsCurrentCurrentSubscriptionHandler",
+        "operationId": "getCurrentSubscription",
         "responses": {
           "200": {
             "description": "Request fulfilled, document follows",
@@ -492,7 +492,7 @@
           "payments"
         ],
         "summary": "CancelSubscriptionHandler",
-        "operationId": "ApiPaymentsCancelCancelSubscriptionHandler",
+        "operationId": "cancelSubscription",
         "responses": {
           "201": {
             "description": "Document created, URL follows",
@@ -515,7 +515,7 @@
           "payments"
         ],
         "summary": "ListInvoicesHandler",
-        "operationId": "ApiPaymentsInvoicesListInvoicesHandler",
+        "operationId": "getInvoices",
         "responses": {
           "200": {
             "description": "Request fulfilled, document follows",
@@ -532,13 +532,36 @@
         "deprecated": false
       }
     },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "ListWorkspaceUsers",
+        "operationId": "listWorkspaceUsers",
+        "responses": {
+          "200": {
+            "description": "Request fulfilled, document follows",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMembersResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
     "/api/users/me": {
       "get": {
         "tags": [
           "users"
         ],
         "summary": "GetCurrentUser",
-        "operationId": "ApiUsersMeGetCurrentUser",
+        "operationId": "getCurrentUser",
         "responses": {
           "200": {
             "description": "Request fulfilled, document follows",
@@ -559,7 +582,7 @@
           "users"
         ],
         "summary": "UpdateCurrentUser",
-        "operationId": "ApiUsersMeUpdateCurrentUser",
+        "operationId": "updateCurrentUser",
         "requestBody": {
           "content": {
             "application/json": {
@@ -630,7 +653,7 @@
           "onboarding"
         ],
         "summary": "SubmitOnboarding",
-        "operationId": "ApiOnboardingSubmitOnboarding",
+        "operationId": "submitOnboarding",
         "requestBody": {
           "content": {
             "application/json": {
@@ -701,7 +724,7 @@
           "integrations"
         ],
         "summary": "ListIntegrations",
-        "operationId": "ApiIntegrationsListIntegrations",
+        "operationId": "listIntegrations",
         "responses": {
           "200": {
             "description": "Request fulfilled, document follows",
@@ -724,7 +747,7 @@
           "integrations"
         ],
         "summary": "InitiateAuth",
-        "operationId": "ApiIntegrationsProviderAuthInitiateAuth",
+        "operationId": "initiateIntegrationAuth",
         "parameters": [
           {
             "name": "provider",
@@ -806,7 +829,7 @@
           "integrations"
         ],
         "summary": "OauthCallback",
-        "operationId": "ApiIntegrationsOauthProviderCallbackOauthCallback",
+        "operationId": "oauthCallback",
         "parameters": [
           {
             "name": "provider",
@@ -880,7 +903,7 @@
           "integrations"
         ],
         "summary": "ConnectTaiga",
-        "operationId": "ApiIntegrationsTaigaConnectConnectTaiga",
+        "operationId": "connectTaiga",
         "requestBody": {
           "content": {
             "application/json": {
@@ -951,7 +974,7 @@
           "integrations"
         ],
         "summary": "Disconnect",
-        "operationId": "ApiIntegrationsProviderDisconnectDisconnect",
+        "operationId": "disconnectIntegration",
         "parameters": [
           {
             "name": "provider",
@@ -1023,7 +1046,7 @@
           "integrations"
         ],
         "summary": "Refresh",
-        "operationId": "ApiIntegrationsProviderRefreshRefresh",
+        "operationId": "refreshIntegration",
         "parameters": [
           {
             "name": "provider",
@@ -1095,7 +1118,7 @@
           "integrations"
         ],
         "summary": "ListMembers",
-        "operationId": "ApiIntegrationsProviderMembersListMembers",
+        "operationId": "listMembers",
         "parameters": [
           {
             "name": "provider",
@@ -1167,7 +1190,7 @@
           "integrations"
         ],
         "summary": "ListProjects",
-        "operationId": "ApiIntegrationsProviderProjectsListProjects",
+        "operationId": "listProjects",
         "parameters": [
           {
             "name": "provider",
@@ -1239,7 +1262,7 @@
           "integrations"
         ],
         "summary": "ListProjectMembers",
-        "operationId": "ApiIntegrationsProviderProjectsProjectIdMembersListProjectMembers",
+        "operationId": "listProjectMembers",
         "parameters": [
           {
             "name": "provider",
@@ -1320,7 +1343,7 @@
           "integrations"
         ],
         "summary": "ListChannels",
-        "operationId": "ApiIntegrationsProviderChannelsListChannels",
+        "operationId": "listChannels",
         "parameters": [
           {
             "name": "provider",
@@ -1392,7 +1415,7 @@
           "integrations"
         ],
         "summary": "ListChannelMembers",
-        "operationId": "ApiIntegrationsProviderChannelsChannelIdMembersListChannelMembers",
+        "operationId": "listChannelMembers",
         "parameters": [
           {
             "name": "provider",
@@ -2256,6 +2279,14 @@
               }
             ]
           },
+          "has_subscription": {
+            "type": "boolean",
+            "default": false
+          },
+          "onboarding_completed": {
+            "type": "boolean",
+            "default": false
+          },
           "created_on": {
             "type": "string",
             "format": "date-time"
@@ -2292,6 +2323,73 @@
           "otp"
         ],
         "title": "VerifyOTPRequest"
+      },
+      "WorkspaceMemberResponse": {
+        "properties": {
+          "user_id": {
+            "type": "integer"
+          },
+          "email": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatar": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "name",
+          "role",
+          "status",
+          "user_id"
+        ],
+        "title": "WorkspaceMemberResponse"
+      },
+      "WorkspaceMembersResponse": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceMemberResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object",
+        "required": [
+          "members"
+        ],
+        "title": "WorkspaceMembersResponse"
       },
       "WorkspaceResponse": {
         "properties": {

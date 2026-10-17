@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Settings, LogOut } from "lucide-react";
-import { useCurrentUser } from "@/lib/api";
+import { useCurrentUser } from "@/lib/api/@tanstack/react-query.gen";
 import { StorageKeys } from "@/constants";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {

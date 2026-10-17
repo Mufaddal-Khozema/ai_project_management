@@ -11,6 +11,7 @@ export default defineConfig({
     {
       name: '@tanstack/react-query',
       mutationOptions: true,
+      useQuery: true,
     },
   ],
 });

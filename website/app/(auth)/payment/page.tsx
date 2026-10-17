@@ -7,10 +7,9 @@ import { useMutation } from "@tanstack/react-query";
 import { withAuth } from "@/components/withAuth";
 import { getStripe } from "@/lib/stripe";
 import { PaymentForm } from "@/components/PaymentForm";
-import { setupIntentMutationOptions, getCurrentUser } from "@/lib/api";
-import { sdk } from "@/lib/api";
-import { apiPaymentsPlansPlansHandler } from "@/lib/api/sdk.gen";
+import { setupIntentMutation } from "@/lib/api/@tanstack/react-query.gen";
 import type { PlanResponse } from "@/lib/api/types.gen";
+import { getCurrentUser, listPlans } from "@/lib/api";
 
 function PaymentPage() {
   const router = useRouter();
@@ -25,7 +24,6 @@ function PaymentPage() {
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState<string | null>(null);
 
-  const setupIntentMutation = useMutation(setupIntentMutationOptions());
   const setupStarted = useRef(false);
 
   useEffect(() => {
@@ -34,7 +32,7 @@ function PaymentPage() {
       return;
     }
 
-    apiPaymentsPlansPlansHandler({ client: sdk, throwOnError: true })
+    listPlans({ throwOnError: true })
       .then(({ data }) => {
         const found = data.plans.find((p) => p.id === planId);
         if (!found) {
@@ -46,7 +44,7 @@ function PaymentPage() {
       .catch(() => router.replace("/plans"))
       .finally(() => setPlansLoading(false));
 
-    getCurrentUser({ client: sdk })
+    getCurrentUser({ throwOnError: true })
       .then(({ data }) => {
         if (data) {
           setUserEmail(data.email);
@@ -56,23 +54,23 @@ function PaymentPage() {
       .catch(() => {});
   }, [planId, billing, router]);
 
+  const mutation = useMutation({
+    ...setupIntentMutation(),
+    onSuccess: (data) => {
+      setClientSecret(data.client_secret);
+    },
+    onError: (err) => {
+      setSetupError(err instanceof Error ? err.message : "Something went wrong");
+    }
+  });
+
   useEffect(() => {
-    if (!plan || !userEmail || clientSecret || setupError || setupStarted.current) return;
+    if (!plan || !userEmail || setupError || setupStarted.current) return;
     setupStarted.current = true;
     const priceId =
       billing === "monthly" ? plan.price_id_monthly : plan.price_id_yearly;
-    setupIntentMutation.mutate(
-      { body: { name: userName ?? undefined, email: userEmail, price_id: priceId } },
-      {
-        onSuccess: (data) => {
-          setClientSecret(data.client_secret);
-        },
-        onError: (err) => {
-          setSetupError(err instanceof Error ? err.message : "Something went wrong");
-        },
-      }
-    );
-  }, [plan, userEmail, clientSecret, setupError, billing, userName]);
+    mutation.mutate({ body: { name: userName ?? undefined, email: userEmail, price_id: priceId } });
+  }, [plan, userEmail, setupError, billing, userName]);
 
   if (plansLoading) {
     return (
@@ -205,7 +203,7 @@ function PaymentPage() {
               </Elements>
             ) : (
               <>
-                {setupIntentMutation.isPending && (
+                {mutation.isPending && (
                   <div className="h-[38px] px-4 bg-zinc-800 border border-zinc-800 rounded-xl flex items-center text-zinc-500 text-[13px] gap-2">
                     <span className="size-[16px] border-2 border-zinc-600 border-t-indigo-500 rounded-full animate-spin" />
                     Loading secure payment…

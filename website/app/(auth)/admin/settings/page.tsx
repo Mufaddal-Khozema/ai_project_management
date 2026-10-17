@@ -29,9 +29,9 @@ import {
   useTaigaConnectMutation,
   useInitiateIntegrationAuthMutation,
   useDisconnectIntegrationMutation,
-  listIntegrationsQueryKey,
-  type IntegrationResponse,
-} from "@/lib/api";
+} from "@/lib/api/@tanstack/react-query.gen";
+import type { IntegrationResponse } from "@/lib/api/types.gen";
+import { listIntegrationsQueryKey } from "@/lib/api/@tanstack/react-query.gen";
 import { IntegrationCard } from "@/components/IntegrationCard";
 import { BillingTab } from "@/components/BillingTab";
 import {
@@ -116,7 +116,7 @@ export default function SettingsPage() {
   const handleTaigaConnect = async (username: string, password: string) => {
     setConnectingProvider("taiga");
     try {
-      await taigaConnect.mutateAsync({ username, password });
+      await taigaConnect.mutateAsync({ body: { username, password } });
       queryClient.invalidateQueries({ queryKey: listIntegrationsQueryKey() });
     } finally {
       setConnectingProvider(null);

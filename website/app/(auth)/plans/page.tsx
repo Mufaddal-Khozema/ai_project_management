@@ -1,26 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { withAuth } from "@/components/withAuth";
-import { sdk } from "@/lib/api";
-import { apiPaymentsPlansPlansHandler } from "@/lib/api/sdk.gen";
+import { useListPlansQuery } from "@/lib/api/@tanstack/react-query.gen";
 import type { PlanResponse } from "@/lib/api/types.gen";
 
 function PlansPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPlanId = searchParams.get("current");
-  const [plans, setPlans] = useState<PlanResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: plansData, isPending } = useListPlansQuery();
+  const plans = plansData?.plans ?? [];
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-
-  useEffect(() => {
-    apiPaymentsPlansPlansHandler({ client: sdk, throwOnError: true })
-      .then(({ data }) => setPlans(data.plans))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
 
   const handleSelect = (planId: string) => {
     router.push(`/payment?plan=${planId}&billing=${billing}`);
@@ -102,7 +94,7 @@ function PlansPage() {
             </div>
           </div>
 
-          {loading ? (
+          {isPending ? (
             <div className="grid md:grid-cols-3 gap-8">
               {[1, 2, 3].map((i) => (
                 <div

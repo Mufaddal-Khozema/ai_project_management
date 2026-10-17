@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { TaigaConnectForm } from "@/components/TaigaConnectForm";
-import type { IntegrationResponse } from "@/lib/api";
+import type { IntegrationResponse } from "@/lib/api/types.gen";
 import type { IntegrationProvider } from "@/lib/integrations";
 import { formatExpiry } from "@/lib/integrations";
 

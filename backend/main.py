@@ -5,6 +5,7 @@ import os
 os.environ.setdefault("LITESTAR_WARN_SYNC_TO_THREAD_WITH_ASYNC", "0")
 
 from litestar import Litestar
+from litestar.config.cors import CORSConfig
 from litestar.openapi.config import OpenAPIConfig
 from litestar.plugins.problem_details import ProblemDetailsConfig, ProblemDetailsPlugin
 from litestar.plugins.structlog import StructlogPlugin
@@ -31,9 +32,25 @@ from listeners.integrations import (
 )
 from routes import api_router
 
+def _cors_origins() -> list[str]:
+    url = settings.frontend_url
+    origins = {url}
+    if "localhost" in url:
+        origins.add(url.replace("localhost", "127.0.0.1"))
+    if "127.0.0.1" in url:
+        origins.add(url.replace("127.0.0.1", "localhost"))
+    return sorted(origins)
+
+
 def create_app() -> Litestar:
     return Litestar(
         route_handlers=[api_router],
+        cors_config=CORSConfig(
+            allow_origins=_cors_origins(),
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        ),
         listeners=[
             send_otp_email,
             send_payment_confirmation_email,

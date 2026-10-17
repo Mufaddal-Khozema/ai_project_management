@@ -31,7 +31,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
-import { useCurrentUser, useSubmitOnboardingMutation, useIntegrations } from "@/lib/api";
+import { useCurrentUser, useSubmitOnboardingMutation, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
 import { integrationProviders, formatExpiry } from "@/lib/integrations";
 import { useState, useMemo } from "react";
 

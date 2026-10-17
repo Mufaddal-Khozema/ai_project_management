@@ -13,7 +13,6 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { projects } from "@/lib/data";
 import {
   Search,
   ArrowUpRight,
@@ -21,13 +20,38 @@ import {
   Minus,
   Filter,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useListProjectsQuery, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
 
 export default function ProjectsPage() {
   const [search, setSearch] = useState("");
+  const { data: projectsData, isLoading: isProjectsLoading } = useListProjectsQuery({
+    path: { provider: "taiga" },
+  });
+  const { data: integrationsData } = useIntegrations();
 
-  const filtered = projects.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+  const scopes = useMemo(() => projectsData?.scopes ?? [], [projectsData?.scopes]);
+  const projects = useMemo(
+    () =>
+      scopes.map((s) => ({
+        id: s.id,
+        name: s.name,
+        status: "on-track",
+        health: 100,
+        lead: "",
+        team: [],
+        sprint: "",
+        tasksDone: 0,
+        tasksTotal: 0,
+        lastActivity: "-",
+        scopeChange: "",
+        velocity: "→ 0%",
+      })),
+    [scopes]
+  );
+  const filtered = useMemo(
+    () => projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
+    [projects, search]
   );
 
   const statusBadge = (status: string) => {

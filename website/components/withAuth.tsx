@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { client } from "@/lib/api";
 import { StorageKeys } from "@/constants";
 
 export function withAuth<P extends object>(Component: React.ComponentType<P>) {
@@ -11,11 +12,17 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
 
     useEffect(() => {
       const token = localStorage.getItem(StorageKeys.TOKEN);
-      if (!token) {
-        router.replace("/signup");
+      if (token) {
+        // Set token as cookie so backend JWT middleware can read it
+        document.cookie = `${StorageKeys.TOKEN}=${token}; path=/; max-age=${60 * 60 * 24 * 365}; secure}`;
+        // Also ensure the Hey API client auth config has the token for SDK requests
+        client.setConfig({
+          auth: () => localStorage.getItem(StorageKeys.TOKEN) ?? undefined,
+        });
       } else {
-        setChecking(false);
+        router.replace("/signup");
       }
+      setChecking(false);
     }, [router]);
 
     if (checking) {

@@ -13,7 +13,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/lib/api";
+import { useCurrentUser } from "@/lib/api/@tanstack/react-query.gen";
 import { UserMenu } from "@/components/UserMenu";
 
 const nav = [

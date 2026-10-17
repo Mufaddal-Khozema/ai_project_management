@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
-import { useCurrentUser, useUpdateProfileMutation } from "@/lib/api";
+import { useCurrentUser, useUpdateProfileMutation } from "@/lib/api/@tanstack/react-query.gen";
 import {
   UserCircle,
   Bell,

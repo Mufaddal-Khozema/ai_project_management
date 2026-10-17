@@ -28,10 +28,9 @@ import {
   useCurrentSubscription,
   useInvoices,
   useCancelSubscriptionMutation,
-  currentSubscriptionQueryKey,
-  type SubscriptionResponse,
-  type InvoiceResponse,
-} from "@/lib/api";
+  apiPaymentsCurrentCurrentSubscriptionHandlerQueryKey,
+} from "@/lib/api/@tanstack/react-query.gen";
+import type { SubscriptionResponse, InvoiceResponse } from "@/lib/api/types.gen";
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   trialing: { label: "Trial", className: "" },
@@ -109,7 +108,7 @@ export function BillingTab() {
     try {
       await cancelMutation.mutateAsync({});
       await queryClient.invalidateQueries({
-        queryKey: currentSubscriptionQueryKey(),
+        queryKey: apiPaymentsCurrentCurrentSubscriptionHandlerQueryKey(),
       });
       setCancelOpen(false);
     } catch (err) {

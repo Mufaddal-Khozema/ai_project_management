@@ -18,20 +18,30 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { users } from "@/lib/data";
 import { Search, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useListWorkspaceUsersQuery } from "@/lib/api/@tanstack/react-query.gen";
 
 export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("all");
+  const { data, isLoading } = useListWorkspaceUsersQuery();
 
-  const teams = Array.from(new Set(users.map((u) => u.team)));
-  const filtered = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) &&
-      (teamFilter === "all" || u.team === teamFilter)
-  );
+  const users = useMemo(() => (data?.members ?? []).map((m: any) => ({ 
+    ...m, 
+    velocityTrend: m.velocityTrend || "±0%", 
+    trustRate: m.trustRate ?? 0, 
+    hoursSaved: m.hoursSaved ?? 0, 
+    workload: m.workload ?? 0, 
+    activeProjects: m.activeProjects ?? 0, 
+    tasksClosedThisWeek: m.tasksClosedThisWeek ?? 0 
+  })), [data?.members]);
+  const teams = useMemo(() => Array.from(new Set(users.map((u: any) => u.team || u.role || "Unknown"))), [users]);
+  const filtered = useMemo(() => users.filter(
+    (u: any) =>
+      (u.name?.toLowerCase()?.includes(search.toLowerCase()) ?? false) &&
+      (teamFilter === "all" || (u.team?.toLowerCase() === teamFilter.toLowerCase() || u.role?.toLowerCase() === teamFilter.toLowerCase()))
+  ), [users, search, teamFilter]);
 
   const statusDot = (status: string) => {
     const colors: Record<string, string> = {
