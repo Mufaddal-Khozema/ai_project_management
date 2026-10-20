@@ -6,15 +6,17 @@ logger = logging.getLogger("discord_bot.taiga")
 
 
 class TaigaClient:
-    def __init__(self, base_url, username, password):
+    def __init__(self, base_url, username=None, password=None, token=None):
         self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
-        self.token = None
+        self.token = token
         self.project_cache = {}
-        self._reference_cache={} 
+        self._reference_cache = {}
 
     def login(self):
+        if not (self.username and self.password):
+            raise PermissionError("Taiga token was rejected and there are no credentials to refresh it")
         logger.info("Logging in to Taiga at %s as %s", self.base_url, self.username)
         resp = requests.post(
             f"{self.base_url}/auth",
@@ -23,6 +25,7 @@ class TaigaClient:
                 "username": self.username,
                 "password": self.password,
             },
+            timeout=15,
         )
 
         resp.raise_for_status()
@@ -38,6 +41,7 @@ class TaigaClient:
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
+            "x-disable-pagination":"True",
         }
 
     def _request(self, method, path, **kwargs):
@@ -47,6 +51,7 @@ class TaigaClient:
             f"{self.base_url}{path}",
             headers=self._headers(),
             **kwargs,
+            timeout=15,
         )
 
         if resp.status_code == 401:
@@ -57,6 +62,8 @@ class TaigaClient:
                 f"{self.base_url}{path}",
                 headers=self._headers(),
                 **kwargs,
+                timeout=15,
+
             )
 
         if not resp.ok:
