@@ -1,24 +1,42 @@
 import os
 import logging
+from datetime import date, datetime
+
+import dateparser
 import requests
 from dotenv import load_dotenv
-from datetime import datetime, timezone
-import dateparser
-from langchain_groq import ChatGroq
 from langchain.agents import create_agent
 from langchain.tools import tool
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_groq import ChatGroq
+
+from schema import (
+    CreateItemInput,
+    FetchItemInput,
+    ItemSummary,
+    ListItemsInput,
+    ListResult,
+    ResolveDateInput,
+    TaigaItem,
+    UpdateItemInput,
+)
 from taiga_client import TaigaClient
 
 load_dotenv()
 logger = logging.getLogger("discord_bot.agent")
 
-GROQ_API_KEY=os.getenv("GROQ_API_KEY")
-GROQ_MODEL= "openai/gpt-oss-20b"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = "openai/gpt-oss-20b"
 
-# model = ChatGroq(model = "openai/gpt-oss-20b", groq_api_key = GROQ_API_KEY)
+_clients = {}
 
-taiga= TaigaClient(os.getenv("TAIGA_URL"),os.getenv("TAIGA_USER"),os.getenv("TAIGA_PASS"))
+
+def get_taiga_client(user_uuid, token):
+    key = (user_uuid, token)
+    if key not in _clients:
+        _clients[key] = TaigaClient(os.getenv("TAIGA_URL"), token=token)
+    return _clients[key]
+
 
 SYSTEM_PROMPT = (
     "You are a Taiga project assistant. Use the available tools to fulfil the user's request. "
@@ -27,11 +45,31 @@ SYSTEM_PROMPT = (
     "When creating an issue, pass any of assigned_to, priority, severity, type, status, or "
     "due_date the user mentioned - use the person's name or the word they used (e.g. 'high', "
     "'bug', 'critical', 'umer') and the tool will resolve it against the project's actual data. "
-    "If a field can't be resolved, tell the user which one and continue with the rest."
+    "If a field can't be resolved, tell the user which one and continue with the rest. "
+    "To find, filter or list items (e.g. 'high priority issues', 'tasks assigned to umer'), "
+    "use list_items. Report priority, severity, type and status by name, never by ID. "
+    "When showing multiple items, output them as a standard markdown table "
+    "(| col | col | with a |---|---| separator row). Put any explanation outside the table. "
 )
 
-def _best_match(items,query, keys):
-    """Case-insensitive exact match first, then substring match, over 'keys' per item."""
+PRIORITY_RESOURCES = ("issues", "tasks", "userstories")
+
+_model = None
+
+
+def get_model():
+    """Lazily build the ChatGroq client."""
+    global _model
+    if _model is None:
+        _model = ChatGroq(model=GROQ_MODEL, groq_api_key=GROQ_API_KEY, temperature=0)
+    return _model
+
+
+# ---------------------------------------------------------------------------
+# Lookup helpers
+# ---------------------------------------------------------------------------
+def _best_match(items, query, keys):
+    """Case-insensitive exact match first, then substring match, over `keys` per item."""
     if not query:
         return None
 
@@ -51,141 +89,194 @@ def _best_match(items,query, keys):
 
     return None
 
-def _resolve_member_id(project_id, name):
-    memebers= taiga.get_memberships(project_id)
-    match =_best_match(memebers,name,["full_name_display", "full_name", "username"])
+
+def _resolve_member_id(taiga, project_id, name):
+    members = [m for m in taiga.get_memberships(project_id) if m.get("user")]
+    match = _best_match(members, name, ["full_name_display", "full_name", "username"])
     return match["user"] if match else None
-    
-def _resolve_reference_id(project_id, name, getter):
-    items = getter(project_id)
-    match = _best_match(items, name, ["name"])
+
+
+def _resolve_reference_id(taiga, project_id, name, getter):
+    match = _best_match(getter(project_id), name, ["name"])
     return match["id"] if match else None
 
-_model = None
 
-def get_model():
-    """Lazily build the ChatGroq client so import time doesn't require a running server."""
-    global _model 
-    if _model is None:
-        logger.info("Creating ChatGroq client model=%s")
-        _model = ChatGroq(model=GROQ_MODEL, groq_api_key = GROQ_API_KEY, temperature=0)
+def _name_of(items, item_id):
+    for it in items:
+        if it.get("id") == item_id:
+            return it.get("name")
+    return None
 
-    return _model
 
-def make_tools(project_id):
-    """Build the Taiga tools bound to the specific project id
-    Rebuilt per call(mirror the old code's per request agent) since project_id comes from the Discord message, not from the model.
+def _http_error_text(e):
+    return e.response.text if e.response is not None else str(e)
+
+
+def _iso(value):
+    """Tool args may arrive as date objects (from the schema); Taiga wants ISO strings."""
+    return value.isoformat() if isinstance(value, date) else value
+
+
+def _resolve_fields(
+    taiga,
+    project_id,
+    resource,
+    *,
+    assigned_to=None,
+    priority=None,
+    severity=None,
+    type=None,
+    status=None,
+    priority_resources=PRIORITY_RESOURCES,
+):
+    """Turn the user's words into Taiga IDs.
+
+    Returns (fields, problems): `fields` is ready to merge into a payload or filter dict,
+    `problems` is a list of human-readable reasons something couldn't be resolved.
+    Shared by create_item, update_item and list_items.
+    """
+    fields, problems = {}, []
+
+    def lookup(label, value, getter, key):
+        rid = _resolve_reference_id(taiga, project_id, value, getter)
+        if rid:
+            fields[key] = rid
+        else:
+            problems.append(f"could not find a {label} matching '{value}'")
+
+    if assigned_to:
+        uid = _resolve_member_id(taiga, project_id, assigned_to)
+        if uid:
+            fields["assigned_to"] = uid
+        else:
+            problems.append(f"could not find a project member matching '{assigned_to}'")
+
+    if priority:
+        if resource in priority_resources:
+            lookup("priority", priority, taiga.get_priorities, "priority")
+        else:
+            problems.append(f"priority does not apply to {resource}")
+
+    if severity:
+        if resource == "issues":
+            lookup("severity", severity, taiga.get_severities, "severity")
+        else:
+            problems.append(f"severity only applies to issues, not {resource}")
+
+    if type:
+        if resource == "issues":
+            lookup("issue type", type, taiga.get_issue_types, "type")
+        else:
+            problems.append(f"type does not apply to {resource}")
+
+    if status:
+        lookup("status", status, lambda pid: taiga.get_statuses(pid, resource), "status")
+
+    return fields, problems
+
+
+def _summarize(taiga, raw, resource, project_id, details=False) -> ItemSummary:
+    """Validate a raw Taiga record and turn it into a compact, human-readable summary."""
+    item = TaigaItem.model_validate(raw)
+    out = ItemSummary(
+        ref=item.ref,
+        subject=item.subject or item.name,
+        status=item.status_extra_info.name if item.status_extra_info else None,
+        assigned_to=(
+            item.assigned_to_extra_info.full_name_display
+            if item.assigned_to_extra_info
+            else None
+        ),
+        due_date=item.due_date,
+    )
+
+    if resource == "issues":
+        out.priority = _name_of(taiga.get_priorities(project_id), item.priority)
+        out.severity = _name_of(taiga.get_severities(project_id), item.severity)
+        out.type = _name_of(taiga.get_issue_types(project_id), item.type)
+
+    if details:
+        out.description = item.description
+        out.tags = item.tags
+    return out
+
+
+def _dump(model):
+    return model.model_dump(mode="json", exclude_none=True)
+
+
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+def make_tools(taiga, project_id):
+    """Build the Taiga tools bound to a specific project id.
+
+    Rebuilt per call because project_id comes from the bot config, not from the model.
     """
 
-    @tool
-    def resolve_date(expression:str)->str:
+    @tool(args_schema=ResolveDateInput)
+    def resolve_date(expression: str) -> str:
         """Convert a natural-language date expression (e.g. '2 weeks from now',
         'next Friday', 'tomorrow') into an ISO date string (YYYY-MM-DD).
         Always use this instead of computing relative dates yourself."""
         parsed = dateparser.parse(
             expression,
-            settings={"PREFER_DATES_FROM": "future", "RELATIVE_BASE": datetime.now()}
+            settings={"PREFER_DATES_FROM": "future", "RELATIVE_BASE": datetime.now()},
         )
         if not parsed:
             return f"Could not parse a date from '{expression}'"
         return parsed.date().isoformat()
 
-    @tool
+    @tool(args_schema=CreateItemInput)
     def create_item(
-        resource:str,
-        subject:str,
-        description:str="",
-        assigned_to:str=None,
+        resource: str,
+        subject: str,
+        description: str = "",
+        assigned_to: str = None,
         priority: str = None,
         severity: str = None,
         type: str = None,
         status: str = None,
-        due_date: str = None,
+        due_date: date = None,
     ) -> dict:
         """Create a new issue, task, user story or epic in Taiga.
-        resource must be one of: issues, tasks, userstories, epics.
-        assigned_to: the assignee's name or username, e.g. 'umer'.
-        priority: priority name, e.g. 'high' (issues, tasks, userstories only).
-        severity: severity name, e.g. 'critical' (issues only).
-        type: issue type name, e.g. 'bug' (issues only).
-        status: status name, e.g. 'in progress'.
-        due_date: an ISO date (YYYY-MM-DD) - resolve relative dates with resolve_date first."""
+        Names (assignee, priority, severity, type, status) are resolved against the project."""
+        payload = {"project": project_id, "subject": subject, "description": description}
 
-        payload = {"project":project_id,"subject":subject, "description":description}    
+        fields, warnings = _resolve_fields(
+            taiga, project_id, resource,
+            assigned_to=assigned_to, priority=priority, severity=severity,
+            type=type, status=status,
+        )
+        payload.update(fields)
 
-        warnings = []
-
-        if assigned_to:
-            uid = _resolve_member_id (project_id, assigned_to)
-            if uid:
-                payload["assigned_to"] = uid
-            else:
-                warnings.append(f"could not find a project member matching '{assigned_to}'")
-
-        if priority:
-            if resource in ("issues", "tasks", "userstories"):
-                pid = _resolve_reference_id(project_id, priority, taiga.get_priorities)
-                if pid:
-                    payload["priority"] = pid
-                else:
-                    warnings.append(f"could not find a priority matching '{priority}'")
-            else:
-                warnings.append(f"priority does not apply to {resource}")
-
-        if severity:
-            if resource == "issues":
-                sid = _resolve_reference_id(project_id, severity, taiga.get_severities)
-                if sid:
-                    payload["severity"] = sid
-                else:
-                    warnings.append(f"could not find a severity matching '{severity}'")
-            else:
-                warnings.append(f"severity only applies to issues, not {resource}")
- 
-        if type:
-            if resource == "issues":
-                tid = _resolve_reference_id(project_id, type, taiga.get_issue_types)
-                if tid:
-                    payload["type"] = tid
-                else:
-                    warnings.append(f"could not find an issue type matching '{type}'")
-            else:
-                warnings.append(f"type does not apply to {resource}")
- 
-        if status:
-            stid = _resolve_reference_id(
-                project_id, status, lambda pid: taiga.get_statuses(pid, resource)
-            )
-            if stid:
-                payload["status"] = stid
-            else:
-                warnings.append(f"could not find a status matching '{status}'")
- 
         if due_date:
-            payload["due_date"] = due_date
- 
-        result = taiga.create(resource, payload)
-
-        logger.info("TOOL NAME: %s", create_item.name)
-        logger.info("TOOL DESCRIPTION: %s", create_item.description)
-        logger.info("TOOL SCHEMA: %s", create_item.args_schema.model_json_schema())
-
-
-        return {"created": result, "warnings": warnings} if warnings else {"created": result}
-    
-    @tool
-    def fetch_item(resource:str, ref:int )->dict:
-        """Fetch an existing issue, task, user story or epic by its Taiga reference number(the number shown in Taiga, e.g. 'Epic #14' -> ref=14).
-        resource must be one of: issues, tasks, userstories, epics."""
+            payload["due_date"] = _iso(due_date)
 
         try:
-            return taiga.get_by_ref(resource, project_id, ref)
+            result = taiga.create(resource, payload)
+        except requests.exceptions.HTTPError as e:
+            return {"error": _http_error_text(e)}
+
+        out = {"created": _dump(_summarize(taiga, result, resource, project_id))}
+        if warnings:
+            out["warnings"] = warnings
+        return out
+
+    @tool(args_schema=FetchItemInput)
+    def fetch_item(resource: str, ref: int) -> dict:
+        """Fetch an existing issue, task, user story or epic by its Taiga reference number
+        (the number shown in Taiga, e.g. 'Epic #14' -> ref=14)."""
+        try:
+            raw = taiga.get_by_ref(resource, project_id, ref)
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 404:
                 return {"error": f"No {resource[:-1]} with ref {ref} found in this project."}
-            raise
+            return {"error": _http_error_text(e)}
 
-    @tool
+        return _dump(_summarize(taiga, raw, resource, project_id, details=True))
+
+    @tool(args_schema=UpdateItemInput)
     def update_item(
         resource: str,
         ref: int,
@@ -196,88 +287,84 @@ def make_tools(project_id):
         severity: str = None,
         type: str = None,
         status: str = None,
-        due_date: str = None,
+        due_date: date = None,
         tags: list[str] = None,
-        ) -> dict:
-        """Update any attribute of an existing issue, task, userstory or epic,
-        identified by its Taiga reference number. Only pass fields that should change.
-        resource must be one of: issues, tasks, userstories, epics."""
-
+    ) -> dict:
+        """Update any attribute of an existing issue, task, user story or epic,
+        identified by its Taiga reference number. Only pass fields that should change."""
         try:
-            current = taiga.get_by_ref(resource, project_id,ref)
+            current = taiga.get_by_ref(resource, project_id, ref)
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 404:
                 return {"error": f"No {resource[:-1]} with ref {ref} found in this project."}
-            raise
+            return {"error": _http_error_text(e)}
 
         payload = {"version": current["version"]}
-        warnings= []
 
         if subject is not None:
             payload["subject"] = subject
-
         if description is not None:
             payload["description"] = description
 
-        if assigned_to:
-            uid = _resolve_member_id(project_id, assigned_to)
-            if uid:
-                payload["assigned_to"] = uid
-            else:
-                warnings.append(f"could not find a project member matching '{assigned_to}'")
-
-        if priority:
-            if resource in ("issues", "tasks", "userstories"):
-                pid = _resolve_reference_id(project_id, priority, taiga.get_priorities)
-                if pid:
-                    payload["priority"] = pid
-                else:
-                    warnings.append(f"could not find a priority matching '{priority}'")
-            else:
-                warnings.append(f"priority does not apply to {resource}")
-
-        if severity:
-            if resource == "issues":
-                sid = _resolve_reference_id(project_id, severity, taiga.get_severities)
-                if sid:
-                    payload["severity"] = sid
-                else:
-                    warnings.append(f"could not find a severity matching '{severity}'")
-            else:
-                warnings.append(f"severity only applies to issues, not {resource}")
-
-        if type:
-            if resource == "issues":
-                tid = _resolve_reference_id(project_id, type, taiga.get_issue_types)
-                if tid:
-                    payload["type"] = tid
-                else:
-                    warnings.append(f"could not find an issue type matching '{type}'")
-            else:
-                warnings.append(f"type does not apply to {resource}")
-        
-        if status:
-            stid = _resolve_reference_id(
-                project_id, status, lambda pid: taiga.get_statuses(pid, resource)
-            )
-            if stid:
-                payload["status"] = stid
-            else:
-                warnings.append(f"could not find a status matching '{status}'")
+        fields, warnings = _resolve_fields(
+            taiga, project_id, resource,
+            assigned_to=assigned_to, priority=priority, severity=severity,
+            type=type, status=status,
+        )
+        payload.update(fields)
 
         if due_date:
-            payload["due_date"] = due_date
+            payload["due_date"] = _iso(due_date)
         if tags is not None:
             payload["tags"] = tags
 
-        result = taiga.update(resource, current["id"], payload)
-        return {"updated": result, "warnings": warnings} if warnings else {"updated": result}
+        try:
+            result = taiga.update(resource, current["id"], payload)
+        except requests.exceptions.HTTPError as e:
+            return {"error": _http_error_text(e)}
+
+        out = {"updated": _dump(_summarize(taiga, result, resource, project_id))}
+        if warnings:
+            out["warnings"] = warnings
+        return out
+
+    @tool(args_schema=ListItemsInput)
+    def list_items(
+        resource: str,
+        status: str = None,
+        priority: str = None,
+        severity: str = None,
+        type: str = None,
+        assigned_to: str = None,
+    ) -> dict:
+        """List issues, tasks, user stories or epics in the project, optionally filtered.
+        Use for requests like 'show high priority issues' or "what's assigned to umer".
+        Pass filter values as the user's words. priority, severity and type only apply to issues."""
+        fields, problems = _resolve_fields(
+            taiga, project_id, resource,
+            assigned_to=assigned_to, priority=priority, severity=severity,
+            type=type, status=status,
+            priority_resources=("issues",),
+        )
+
+        # Don't silently return an unfiltered list when a filter didn't resolve
+        if problems:
+            return {"error": "Could not resolve: " + "; ".join(problems)}
+
+        try:
+            items = taiga.list(resource, project=project_id, **fields) or []
+        except requests.exceptions.HTTPError as e:
+            return {"error": _http_error_text(e)}
+
+        rows = [_summarize(taiga, i, resource, project_id) for i in items[:50]]
+        return _dump(ListResult(count=len(items), shown=len(rows), items=rows))
+
+    return [resolve_date, create_item, fetch_item, update_item, list_items]
 
 
-    return [resolve_date, create_item, fetch_item, update_item]
-
-        
-# later functionality
+# ---------------------------------------------------------------------------
+# Agent runner
+# ---------------------------------------------------------------------------
 def _history_to_messages(history):
     """Convert DB rows (objects with .role/.content) into LangChain messages."""
     messages = []
@@ -288,28 +375,25 @@ def _history_to_messages(history):
             messages.append(AIMessage(content=row.content))
     return messages
 
-def run_agent(user_message, project_id, history =None):
-    """Run one turn of the Taiga agent via Groq and return the reply text.
-    history: optional list of DB Message rows (oldest first) used as short-term memory.
-    """
-    tools = make_tools(project_id)
+
+def run_agent(user_message, taiga, project_id, history=None, related=None):
+    """Run one turn of the Taiga agent via Groq and return the reply text."""
+    tools = make_tools(taiga, project_id)
     system_prompt = SYSTEM_PROMPT.format(today=datetime.now().date().isoformat())
-    agent = create_agent(
-        get_model(),
-        tools = tools, 
-        system_prompt = system_prompt,
-    )
-    messages = [HumanMessage(content=user_message)]
+    if related:
+        lines = "\n".join(f"- {r.author_name}: {r.content}" for r in related)
+        system_prompt += f"\n\nPossibly relevant earlier messages (context only):\n{lines}"
+
+    agent = create_agent(get_model(), tools=tools, system_prompt=system_prompt)
+    messages = _history_to_messages(history) + [HumanMessage(content=user_message)]
     try:
-        result = agent.invoke({"messages":messages})
+        result = agent.invoke({"messages": messages})
     except Exception:
         logger.exception("Agent invocation failed")
         raise
 
-    final_messages = result.get("messages",[])
-    for msg in reversed(final_messages):
+    for msg in reversed(result.get("messages", [])):
         if isinstance(msg, AIMessage) and msg.content:
-            return msg.content
+            return str(msg.content)
 
     return "Sorry, I couldn't complete that request."
-
