@@ -20,7 +20,7 @@ def _normalize(value: Any) -> Any:
 
 
 async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, bool]:
-    user = user_repo.find_by_email(email)
+    user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("user not found for onboarding", email=email)
         raise HTTPException(status_code=404, detail="User not found")
@@ -39,9 +39,9 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         if field in workspace_fields and (value := _normalize(getattr(data, field))) is not None
     }
 
-    existing = workspace_repo.find_by_user_id(user["id"])
+    existing = await workspace_repo.find_by_user_id(user["id"])
     if not existing:
-        row = workspace_repo.create(user["id"], provided)
+        row = await workspace_repo.create(user["id"], provided)
         logger.info(
             "workspace created from onboarding",
             user_id=user["id"],
@@ -49,7 +49,7 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         )
         created = True
     else:
-        row = workspace_repo.update(existing["id"], provided)
+        row = await workspace_repo.update(existing["id"], provided)
         logger.info(
             "workspace updated from onboarding",
             user_id=user["id"],
@@ -57,7 +57,7 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         )
         created = False
 
-    workspace_member_repo.add(
+    await workspace_member_repo.add(
         row["id"],
         user["id"],
         role="owner",
@@ -81,7 +81,7 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         )
 
     if row["onboarding_completed_at"] is None:
-        row = workspace_repo.update(row["id"], {"onboarding_completed_at": workspace_repo.utc_now()})
+        row = await workspace_repo.update(row["id"], {"onboarding_completed_at": workspace_repo.utc_now()})
         logger.info("workspace onboarding marked complete", user_id=user["id"], workspace_id=row["id"])
 
     return row, created

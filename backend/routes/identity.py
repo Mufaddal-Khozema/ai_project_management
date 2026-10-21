@@ -28,9 +28,9 @@ async def resolve_identity_handler(
     the user JWT — bots have no user session. 200 carries the servicing
     context, 404 means the Discord/external id is not linked yet.
     """
-    key_row = authenticate_service_key(request)
+    key_row = await authenticate_service_key(request)
     try:
-        result = identity_service.resolve_identity(
+        result = await identity_service.resolve_identity(
             provider=data.provider,
             external_id=data.external_id,
             guild_id=data.guild_id,

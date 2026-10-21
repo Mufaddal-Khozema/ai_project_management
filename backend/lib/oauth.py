@@ -333,7 +333,7 @@ async def taiga_authenticate(username: str, password: str) -> OAuth2Token:
 
 
 async def _taiga_refresh_token(refresh_token: str) -> OAuth2Token:
-    url = f"{settings.taiga_base_url}/api/v1/auth/token/refresh"
+    url = f"{settings.taiga_base_url}/api/v1/auth/refresh"
     async with httpx.AsyncClient() as http:
         resp = await http.post(url, json={"refresh": refresh_token})
         resp.raise_for_status()

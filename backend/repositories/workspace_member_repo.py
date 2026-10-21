@@ -8,25 +8,25 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def find_by_workspace_user(workspace_id: int, user_id: int) -> dict[str, Any] | None:
-    rows = (
+async def find_by_workspace_user(workspace_id: int, user_id: int) -> dict[str, Any] | None:
+    rows = await (
         WorkspaceMember.select()
         .where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id)
-        .run_sync()
+        .run()
     )
     return rows[0] if rows else None
 
 
-def add(
+async def add(
     workspace_id: int,
     user_id: int,
     role: str = "member",
     status: str = "pending",
 ) -> dict[str, Any]:
-    existing = find_by_workspace_user(workspace_id, user_id)
+    existing = await find_by_workspace_user(workspace_id, user_id)
     if existing:
         return existing
-    row = (
+    row = await (
         WorkspaceMember.insert(
             WorkspaceMember(
                 workspace_id=workspace_id,
@@ -38,23 +38,23 @@ def add(
             )
         )
         .returning(*WorkspaceMember.all_columns())
-        .run_sync()
+        .run()
     )
     return row[0]
 
 
-def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
-    return (
+async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
+    return await (
         WorkspaceMember.select()
         .where(WorkspaceMember.workspace_id == workspace_id)
-        .run_sync()
+        .run()
     )
 
 
-def remove(workspace_id: int, user_id: int) -> bool:
-    rows = (
+async def remove(workspace_id: int, user_id: int) -> bool:
+    rows = await (
         WorkspaceMember.delete()
         .where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id)
-        .run_sync()
+        .run()
     )
     return bool(rows)

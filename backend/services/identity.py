@@ -32,7 +32,7 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def resolve_identity(
+async def resolve_identity(
     provider: str,
     external_id: str,
     guild_id: str | None = None,
@@ -52,12 +52,12 @@ def resolve_identity(
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
     cache_key = identity_cache.make_identity_key(normalized, external_id)
-    cached = identity_cache.cache_get(cache_key)
+    cached = await identity_cache.cache_get(cache_key)
     if cached is not None:
         logger.info("identity resolve cache hit", provider=normalized)
         return ResolveIdentityResponse.model_validate(cached)
 
-    link = external_identity_repo.find_by_provider_external_id(normalized, external_id)
+    link = await external_identity_repo.find_by_provider_external_id(normalized, external_id)
     if link is None or link.get("user_id") is None:
         logger.info("identity resolve unlinked", provider=normalized)
         raise HTTPException(
@@ -65,12 +65,12 @@ def resolve_identity(
             detail="Identity not linked. Run !link in Discord, then enter the code under Settings → Discord.",
         )
 
-    user = user_repo.find_by_id(link["user_id"])
+    user = await user_repo.find_by_id(link["user_id"])
     if user is None:
         logger.warning("identity resolve link points at missing user", user_id=link["user_id"])
         raise HTTPException(status_code=404, detail="Identity not linked.")
 
-    workspace = workspace_repo.find_by_member_id(user.id)
+    workspace = await workspace_repo.find_by_member_id(user.id)
 
     integrations = (
         [
@@ -80,7 +80,7 @@ def resolve_identity(
                 status=row.get("status"),
                 token_encrypted=row.get("token_encrypted"),
             )
-            for row in integration_repo.list_by_workspace(workspace["id"])
+            for row in await integration_repo.list_by_workspace(workspace["id"])
         ]
         if workspace is not None
         else []
@@ -89,7 +89,7 @@ def resolve_identity(
     # The subscription belongs to the workspace owner — members are covered
     # by the owner's plan, so entitlement is checked against the owner's id.
     owner_id = workspace["user_id"] if workspace is not None else None
-    subscription = payment_repo.find_by_user_id(owner_id) if owner_id is not None else None
+    subscription = await payment_repo.find_by_user_id(owner_id) if owner_id is not None else None
     response = ResolveIdentityResponse(
         linked=True,
         user=IdentityUser(
@@ -115,7 +115,7 @@ def resolve_identity(
         cached_at=_utc_now(),
     )
 
-    identity_cache.cache_set(cache_key, response.model_dump(mode="json"))
+    await identity_cache.cache_set(cache_key, response.model_dump(mode="json"))
 
     logger.info(
         "identity resolved",
@@ -127,6 +127,6 @@ def resolve_identity(
     return response
 
 
-def invalidate_identity(provider: str, external_id: str) -> None:
+async def invalidate_identity(provider: str, external_id: str) -> None:
     """Drop the cached resolve response. Called by link/unlink (Phase 2)."""
-    identity_cache.cache_invalidate(provider.strip().lower(), external_id)
+    await identity_cache.cache_invalidate(provider.strip().lower(), external_id)

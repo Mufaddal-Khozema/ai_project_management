@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 import click
@@ -49,7 +50,9 @@ class TokenCliPlugin(CLIPluginProtocol):
 
             raw_key = generate_service_key()
             try:
-                service_api_key_repo.create(service_name, hash_service_key(raw_key))
+                asyncio.run(
+                    service_api_key_repo.create(service_name, hash_service_key(raw_key))
+                )
             except Exception as e:
                 raise click.ClickException(
                     f"Could not create a key for '{service_name}' "

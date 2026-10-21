@@ -65,14 +65,16 @@ def _payload():
 def client(monkeypatch):
     monkeypatch.setattr(main_module, "create_all_tables", lambda: None)
     monkeypatch.setattr(main_module, "start_background_tasks", lambda app: None)
+
+    async def fake_find_by_key_hash(key_hash):
+        if key_hash == hash_service_key(RAW_KEY):
+            return {"id": 1, "service_name": "discord-bot", "key_hash": key_hash}
+        return None
+
     monkeypatch.setattr(
         service_auth.service_api_key_repo,
         "find_by_key_hash",
-        lambda key_hash: (
-            {"id": 1, "service_name": "discord-bot", "key_hash": key_hash}
-            if key_hash == hash_service_key(RAW_KEY)
-            else None
-        ),
+        fake_find_by_key_hash,
     )
     app = main_module.create_app()
     with TestClient(app) as test_client:
@@ -84,7 +86,10 @@ def _body():
 
 
 def test_resolve_returns_servicing_context(client, monkeypatch):
-    monkeypatch.setattr(identity_service, "resolve_identity", lambda **kwargs: _payload())
+    async def fake_resolve(**kwargs):
+        return _payload()
+
+    monkeypatch.setattr(identity_service, "resolve_identity", fake_resolve)
     r = client.post("/api/identity/resolve", json=_body(), headers=_service_headers())
     assert r.status_code == 200, r.text
     body = r.json()
@@ -105,13 +110,16 @@ def test_resolve_rejects_unknown_key(client):
 
 
 def test_resolve_rejects_user_jwt_without_service_key(client, monkeypatch):
-    monkeypatch.setattr(identity_service, "resolve_identity", lambda **kwargs: _payload())
+    async def fake_resolve(**kwargs):
+        return _payload()
+
+    monkeypatch.setattr(identity_service, "resolve_identity", fake_resolve)
     r = client.post("/api/identity/resolve", json=_body(), headers=_user_jwt_headers())
     assert r.status_code == 401
 
 
 def test_resolve_unlinked_maps_to_404(client, monkeypatch):
-    def boom(**kwargs):
+    async def boom(**kwargs):
         raise HTTPException(status_code=404, detail="Identity not linked.")
 
     monkeypatch.setattr(identity_service, "resolve_identity", boom)

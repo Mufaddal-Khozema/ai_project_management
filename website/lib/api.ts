@@ -49,10 +49,15 @@ async function authFetch(
     if (input.method !== "GET" && input.method !== "HEAD") {
       body = await input.clone().text();
     }
-    requestInit = { method: input.method, headers, body };
+    requestInit = {
+      method: input.method,
+      headers,
+      body,
+      credentials: input.credentials === "omit" ? "omit" : "include",
+    };
   } else {
     url = input;
-    requestInit = init ?? {};
+    requestInit = { credentials: "include", ...init };
   }
 
   const response = await fetch(url, requestInit);
@@ -74,6 +79,24 @@ async function authFetch(
   }
 
   return response;
+}
+
+export async function establishSession(accessToken: string): Promise<void> {
+  try {
+    const res = await fetch(`${API_URL}/api/auth/session`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: accessToken }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.access_token) {
+      localStorage.setItem(StorageKeys.TOKEN, data.access_token);
+    }
+  } catch {
+    // Ignore: the access token is still usable even if the refresh cookie could not be set.
+  }
 }
 
 // ---------- client setup ----------

@@ -5,21 +5,21 @@ from typing import Any
 from lib.tables import EmailLog
 
 
-def exists(user_id: int, email_type: str, entity_id: int) -> bool:
-    rows = (
+async def exists(user_id: int, email_type: str, entity_id: int) -> bool:
+    rows = await (
         EmailLog.select(EmailLog.id)
         .where(
             EmailLog.user_id == user_id,
             EmailLog.email_type == email_type,
             EmailLog.entity_id == entity_id,
         )
-        .run_sync()
+        .run()
     )
     return bool(rows)
 
 
-def insert(user_id: int, email_type: str, entity_id: int, entity_type: str) -> dict[str, Any]:
-    row = (
+async def insert(user_id: int, email_type: str, entity_id: int, entity_type: str) -> dict[str, Any]:
+    row = await (
         EmailLog.insert(
             EmailLog(
                 user_id=user_id,
@@ -29,6 +29,6 @@ def insert(user_id: int, email_type: str, entity_id: int, entity_type: str) -> d
             )
         )
         .returning(*EmailLog.all_columns())
-        .run_sync()
+        .run()
     )
     return row[0]

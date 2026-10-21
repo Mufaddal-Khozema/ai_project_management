@@ -9,11 +9,13 @@ from litestar.response import Response
 from config import settings
 from lib.auth import (
     REFRESH_COOKIE_KEY,
+    decode_access_token,
     decode_refresh_token,
     jwt_auth,
     set_refresh_cookie,
 )
 from schemas.auth import (
+    CreateSessionRequest,
     RefreshResponse,
     SendOTPRequest,
     SendOTPResponse,
@@ -27,7 +29,7 @@ logger = structlog.get_logger(__name__)
 @post("/auth/email/send-otp", operation_id="sendOtp")
 async def send_otp_handler(data: SendOTPRequest, request: Request) -> SendOTPResponse:
     try:
-        result = send_otp(email=data.email, request=request)
+        result = await send_otp(email=data.email, request=request)
         return SendOTPResponse(**result)
     except HTTPException:
         raise
@@ -39,7 +41,7 @@ async def send_otp_handler(data: SendOTPRequest, request: Request) -> SendOTPRes
 @post("/auth/email/verify-otp", operation_id="verifyOtp")
 async def verify_otp_handler(data: VerifyOTPRequest) -> Response:
     try:
-        verified_email = verify_otp(email=data.email, otp=data.otp)
+        verified_email = await verify_otp(email=data.email, otp=data.otp)
         response = jwt_auth.login(
             identifier=verified_email,
             token_expiration=timedelta(minutes=settings.jwt_expire_minutes),
@@ -50,6 +52,31 @@ async def verify_otp_handler(data: VerifyOTPRequest) -> Response:
         raise
     except Exception:
         logger.exception("verify OTP handler failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@post("/auth/session", operation_id="createSession")
+async def create_session_handler(data: CreateSessionRequest) -> Response:
+    try:
+        payload = decode_access_token(data.access_token)
+        email = payload["sub"]
+        expires_in = settings.jwt_expire_minutes * 60
+        access_token = jwt_auth.create_token(
+            identifier=email,
+            token_expiration=timedelta(minutes=settings.jwt_expire_minutes),
+        )
+        response = Response(
+            content=RefreshResponse(
+                access_token=access_token,
+                token_type="bearer",
+                expires_in=expires_in,
+            ).model_dump()
+        )
+        return set_refresh_cookie(response, email)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("create session handler failed")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -83,6 +110,11 @@ async def refresh_handler(request: Request) -> RefreshResponse:
 
 router = Router(
     path="",
-    route_handlers=[send_otp_handler, verify_otp_handler, refresh_handler],
+    route_handlers=[
+        send_otp_handler,
+        verify_otp_handler,
+        create_session_handler,
+        refresh_handler,
+    ],
     tags=["auth"],
 )

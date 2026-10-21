@@ -57,12 +57,12 @@ def consume_oauth_state(state: str, provider: str) -> dict[str, Any] | None:
     return stored
 
 
-def _resolve_workspace_id(email: str) -> int | None:
-    user = user_repo.find_by_email(email)
+async def _resolve_workspace_id(email: str) -> int | None:
+    user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("user not found for integration", email=email)
         raise HTTPException(status_code=404, detail="User not found")
-    workspace = workspace_repo.find_by_user_id(user["id"])
+    workspace = await workspace_repo.find_by_user_id(user["id"])
     return workspace["id"] if workspace else None
 
 
@@ -128,7 +128,7 @@ def _to_response(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _upsert_row(
+async def _upsert_row(
     workspace_id: int,
     provider: str,
     token_encrypted: str,
@@ -137,9 +137,9 @@ def _upsert_row(
     status: str,
     expires_at: datetime | None,
 ) -> dict[str, Any]:
-    existing = integration_repo.find_by_workspace_provider(workspace_id, provider)
+    existing = await integration_repo.find_by_workspace_provider(workspace_id, provider)
     if existing:
-        return integration_repo.update_token(
+        return await integration_repo.update_token(
             existing["id"],
             token_encrypted,
             account_name,
@@ -147,7 +147,7 @@ def _upsert_row(
             status,
             existing.get("last_synced_at"),
         )
-    return integration_repo.create(
+    return await integration_repo.create(
         workspace_id, provider, token_encrypted, account_name, scopes, status, expires_at
     )
 
@@ -159,11 +159,11 @@ def _callback_redirect(provider: str, status: str, source: str) -> str:
     )
 
 
-def list_integrations(email: str) -> list[dict[str, Any]]:
-    workspace_id = _resolve_workspace_id(email)
+async def list_integrations(email: str) -> list[dict[str, Any]]:
+    workspace_id = await _resolve_workspace_id(email)
     if workspace_id is None:
         return []
-    rows = integration_repo.list_by_workspace(workspace_id)
+    rows = await integration_repo.list_by_workspace(workspace_id)
     return [_to_response(row) for row in rows]
 
 
@@ -175,14 +175,14 @@ async def initiate_auth(
     if not oauth.is_provider_configured(provider):
         raise HTTPException(status_code=400, detail=f"Provider not configured: {provider}")
 
-    user = user_repo.find_by_email(email)
+    user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("user not found for integration connect", email=email)
         raise HTTPException(status_code=404, detail="User not found")
 
-    workspace = workspace_repo.find_by_user_id(user["id"])
+    workspace = await workspace_repo.find_by_user_id(user["id"])
     if not workspace:
-        workspace = workspace_repo.create(user["id"], {"company_name": company_name or "My Workspace"})
+        workspace = await workspace_repo.create(user["id"], {"company_name": company_name or "My Workspace"})
         logger.info(
             "workspace auto-created during integration connect",
             user_id=user["id"],
@@ -222,7 +222,7 @@ async def handle_callback(provider: str, code: str, state: str, request: Request
     account_name = payload.get("account_name")
     scopes = _scopes_string(token)
     expires_at = _normalize_expiry(payload.get("expires_at"))
-    _upsert_row(
+    await _upsert_row(
         workspace_id,
         provider,
         token_encrypted,
@@ -237,14 +237,14 @@ async def handle_callback(provider: str, code: str, state: str, request: Request
 
 
 async def connect_taiga(email: str, username: str, password: str, request: Request) -> dict[str, Any]:
-    user = user_repo.find_by_email(email)
+    user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("user not found for taiga connect", email=email)
         raise HTTPException(status_code=404, detail="User not found")
 
-    workspace = workspace_repo.find_by_user_id(user["id"])
+    workspace = await workspace_repo.find_by_user_id(user["id"])
     if not workspace:
-        workspace = workspace_repo.create(user["id"], {"company_name": "My Workspace"})
+        workspace = await workspace_repo.create(user["id"], {"company_name": "My Workspace"})
 
     try:
         token = await oauth.taiga_authenticate(username, password)
@@ -260,7 +260,7 @@ async def connect_taiga(email: str, username: str, password: str, request: Reque
     account_name = payload.get("account_name")
     scopes = _scopes_string(token)
     expires_at = _normalize_expiry(payload.get("expires_at"))
-    row = _upsert_row(
+    row = await _upsert_row(
         workspace["id"],
         "taiga",
         token_encrypted,
@@ -275,11 +275,11 @@ async def connect_taiga(email: str, username: str, password: str, request: Reque
 
 
 async def disconnect(email: str, provider: str, request: Request) -> None:
-    workspace_id = _resolve_workspace_id(email)
+    workspace_id = await _resolve_workspace_id(email)
     if workspace_id is None:
         raise HTTPException(status_code=404, detail="Integration not connected")
 
-    row = integration_repo.find_by_workspace_provider(workspace_id, provider)
+    row = await integration_repo.find_by_workspace_provider(workspace_id, provider)
     if not row:
         raise HTTPException(status_code=404, detail="Integration not connected")
 
@@ -289,7 +289,7 @@ async def disconnect(email: str, provider: str, request: Request) -> None:
     except Exception:
         logger.warning("token revocation failed", provider=provider, workspace_id=workspace_id)
 
-    integration_repo.delete_by_workspace_provider(workspace_id, provider)
+    await integration_repo.delete_by_workspace_provider(workspace_id, provider)
     request.app.emit(Events.INTEGRATION_DISCONNECTED, provider=provider, workspace_id=workspace_id)
     logger.info("integration disconnected", provider=provider, workspace_id=workspace_id)
 
@@ -308,7 +308,7 @@ async def _refresh_row(row: dict[str, Any], app) -> dict[str, Any] | None:
         new_token = await oauth.refresh_access_token(provider, refresh_token)
     except Exception:
         logger.warning("token refresh failed", provider=provider, workspace_id=workspace_id)
-        updated = integration_repo.update_status(integration_id, IntegrationStatus.expired.value)
+        updated = await integration_repo.update_status(integration_id, IntegrationStatus.expired.value)
         app.emit(
             Events.INTEGRATION_TOKEN_REFRESHED,
             provider=provider,
@@ -327,7 +327,7 @@ async def _refresh_row(row: dict[str, Any], app) -> dict[str, Any] | None:
     account_name = new_payload.get("account_name") or row.get("account_name")
     scopes = _scopes_string(new_token) or row.get("scopes")
     expires_at = _normalize_expiry(new_payload.get("expires_at"))
-    updated = integration_repo.update_token(
+    updated = await integration_repo.update_token(
         integration_id,
         token_encrypted,
         account_name,
@@ -347,11 +347,11 @@ async def _refresh_row(row: dict[str, Any], app) -> dict[str, Any] | None:
 
 
 async def refresh_integration(email: str, provider: str, request: Request) -> dict[str, Any]:
-    workspace_id = _resolve_workspace_id(email)
+    workspace_id = await _resolve_workspace_id(email)
     if workspace_id is None:
         raise HTTPException(status_code=404, detail="Integration not found")
 
-    row = integration_repo.find_by_workspace_provider(workspace_id, provider)
+    row = await integration_repo.find_by_workspace_provider(workspace_id, provider)
     if not row:
         raise HTTPException(status_code=404, detail="Integration not found")
 
@@ -369,11 +369,11 @@ _SCOPE_PROVIDERS = {
 }
 
 
-def _scope_credentials(email: str, provider: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    workspace_id = _resolve_workspace_id(email)
+async def _scope_credentials(email: str, provider: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    workspace_id = await _resolve_workspace_id(email)
     if workspace_id is None:
         raise HTTPException(status_code=404, detail="Integration not connected")
-    row = integration_repo.find_by_workspace_provider(workspace_id, provider)
+    row = await integration_repo.find_by_workspace_provider(workspace_id, provider)
     if not row:
         raise HTTPException(status_code=404, detail="Integration not connected")
     return row, decrypt_token_payload(row["token_encrypted"])
@@ -393,7 +393,7 @@ async def _provider_call(provider: str, coro: Any) -> Any:
 async def list_projects(email: str, provider: str) -> dict[str, Any]:
     if provider not in _SCOPE_PROVIDERS["projects"]:
         raise HTTPException(status_code=400, detail=f"Projects not supported for provider: {provider}")
-    row, payload = _scope_credentials(email, provider)
+    row, payload = await _scope_credentials(email, provider)
     access_token = payload.get("access_token") or ""
     if provider == "taiga":
         scopes = await _provider_call(
@@ -408,7 +408,7 @@ async def list_projects(email: str, provider: str) -> dict[str, Any]:
 async def list_project_members(email: str, provider: str, project_id: str) -> dict[str, Any]:
     if provider not in _SCOPE_PROVIDERS["projects"]:
         raise HTTPException(status_code=400, detail=f"Projects not supported for provider: {provider}")
-    row, payload = _scope_credentials(email, provider)
+    row, payload = await _scope_credentials(email, provider)
     access_token = payload.get("access_token") or ""
     if provider == "taiga":
         members = await _provider_call(
@@ -423,7 +423,7 @@ async def list_project_members(email: str, provider: str, project_id: str) -> di
 async def list_channels(email: str, provider: str) -> dict[str, Any]:
     if provider not in _SCOPE_PROVIDERS["channels"]:
         raise HTTPException(status_code=400, detail=f"Channels not supported for provider: {provider}")
-    row, payload = _scope_credentials(email, provider)
+    row, payload = await _scope_credentials(email, provider)
     access_token = payload.get("access_token") or ""
     if provider == "discord":
         channels = await _provider_call(
@@ -446,7 +446,7 @@ async def list_channels(email: str, provider: str) -> dict[str, Any]:
 async def list_channel_members(email: str, provider: str, channel_id: str) -> dict[str, Any]:
     if provider not in _SCOPE_PROVIDERS["channels"]:
         raise HTTPException(status_code=400, detail=f"Channels not supported for provider: {provider}")
-    row, payload = _scope_credentials(email, provider)
+    row, payload = await _scope_credentials(email, provider)
     access_token = payload.get("access_token") or ""
     if provider == "discord":
         guild_id = await _provider_call(
@@ -472,11 +472,11 @@ async def list_members(email: str, provider: str) -> dict[str, Any]:
     if provider not in _MEMBER_PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Member sync not supported for provider: {provider}")
 
-    workspace_id = _resolve_workspace_id(email)
+    workspace_id = await _resolve_workspace_id(email)
     if workspace_id is None:
         raise HTTPException(status_code=404, detail="Integration not found")
 
-    row = integration_repo.find_by_workspace_provider(workspace_id, provider)
+    row = await integration_repo.find_by_workspace_provider(workspace_id, provider)
     if not row:
         raise HTTPException(status_code=404, detail="Integration not connected")
 

@@ -40,15 +40,28 @@ def decode_refresh_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
+def decode_access_token(token: str) -> dict:
+    try:
+        payload = pyjwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        if payload.get("type") == "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        return payload
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Access token expired")
+    except pyjwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid access token")
+
+
 def set_refresh_cookie(response: Response, email: str) -> Response:
     refresh_token = create_refresh_token(email)
     response.set_cookie(
         key=REFRESH_COOKIE_KEY,
         value=refresh_token,
         httponly=True,
-        samesite="lax",
+        samesite="none",
+        secure=True,
         max_age=settings.jwt_refresh_expire_days * 86400,
-        path="/api/auth/refresh",
+        path="/api/auth",
     )
     return response
 

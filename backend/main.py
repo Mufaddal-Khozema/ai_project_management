@@ -15,6 +15,7 @@ from litestar_granian import GranianPlugin
 from config import settings
 from lib.auth import jwt_auth
 from lib.cli import TokenCliPlugin
+from lib.db import close_db_pool
 from lib.tables import create_all_tables
 from lib.token_refresh import start_background_tasks
 from listeners.email import (
@@ -65,6 +66,7 @@ def create_app() -> Litestar:
         debug=settings.debug,
         on_app_init=[jwt_auth.on_app_init],
         on_startup=[create_all_tables, start_background_tasks],
+        on_shutdown=[close_db_pool],
         plugins=[
             TokenCliPlugin(),
             GranianPlugin(),

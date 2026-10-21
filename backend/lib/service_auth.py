@@ -35,7 +35,7 @@ def _bearer_token(conn: ASGIConnection) -> str | None:
     return token.strip()
 
 
-def authenticate_service_key(request: ASGIConnection) -> dict[str, Any]:
+async def authenticate_service_key(request: ASGIConnection) -> dict[str, Any]:
     """Validate the caller's service key. Returns the key row on success.
 
     Raises 401 when the key is missing or unknown. Uses a constant-time
@@ -47,7 +47,7 @@ def authenticate_service_key(request: ASGIConnection) -> dict[str, Any]:
         raise HTTPException(status_code=401, detail="Missing service key")
 
     candidate_hash = hash_service_key(raw_key)
-    row = service_api_key_repo.find_by_key_hash(candidate_hash)
+    row = await service_api_key_repo.find_by_key_hash(candidate_hash)
     if row is None or not hmac.compare_digest(row["key_hash"], candidate_hash):
         logger.warning("identity service auth rejected — unknown key")
         raise HTTPException(status_code=401, detail="Invalid service key")

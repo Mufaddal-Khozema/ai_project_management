@@ -4,13 +4,13 @@ from typing import Any
 from lib.tables import ServiceApiKey
 
 
-def find_by_key_hash(key_hash: str) -> dict[str, Any] | None:
-    rows = ServiceApiKey.select().where(ServiceApiKey.key_hash == key_hash).run_sync()
+async def find_by_key_hash(key_hash: str) -> dict[str, Any] | None:
+    rows = await ServiceApiKey.select().where(ServiceApiKey.key_hash == key_hash).run()
     return rows[0] if rows else None
 
 
-def create(service_name: str, key_hash: str) -> dict[str, Any]:
-    row = (
+async def create(service_name: str, key_hash: str) -> dict[str, Any]:
+    row = await (
         ServiceApiKey.insert(
             ServiceApiKey(
                 uuid=uuid_lib.uuid4(),
@@ -19,6 +19,6 @@ def create(service_name: str, key_hash: str) -> dict[str, Any]:
             )
         )
         .returning(*ServiceApiKey.all_columns())
-        .run_sync()
+        .run()
     )
     return row[0]

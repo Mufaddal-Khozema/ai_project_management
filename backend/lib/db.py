@@ -17,3 +17,8 @@ def _parse_db_url(url: str) -> dict[str, str]:
 
 
 DB = PostgresEngine(config=_parse_db_url(settings.database_url))
+
+
+async def close_db_pool() -> None:
+    if DB.pool:
+        await DB.close_connection_pool()

@@ -19,7 +19,7 @@ def _utc_now() -> datetime:
 
 async def refresh_due_tokens(app) -> int:
     refresh_before = _utc_now() + timedelta(minutes=settings.integration_token_refresh_lead_minutes)
-    rows = integration_repo.list_refreshable(refresh_before)
+    rows = await integration_repo.list_refreshable(refresh_before)
     processed = 0
     for row in rows:
         try:

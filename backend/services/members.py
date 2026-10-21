@@ -20,19 +20,19 @@ from repositories import (
 logger = structlog.get_logger(__name__)
 
 
-def _resolve_owner(email: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    user = user_repo.find_by_email(email)
+async def _resolve_owner(email: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("user not found for member import", email=email)
         raise HTTPException(status_code=404, detail="User not found")
-    workspace = workspace_repo.find_by_user_id(user["id"])
+    workspace = await workspace_repo.find_by_user_id(user["id"])
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
     return user, workspace
 
 
-def _scope_payload(workspace_id: int, provider: str) -> dict[str, Any]:
-    row = integration_repo.find_by_workspace_provider(workspace_id, provider)
+async def _scope_payload(workspace_id: int, provider: str) -> dict[str, Any]:
+    row = await integration_repo.find_by_workspace_provider(workspace_id, provider)
     if not row:
         raise HTTPException(status_code=404, detail=f"Integration not connected: {provider}")
     return decrypt_token_payload(row["token_encrypted"])
@@ -46,7 +46,7 @@ async def _fetch_scope_members(
     *,
     is_project: bool,
 ) -> list[dict[str, Any]]:
-    payload = _scope_payload(workspace_id, provider)
+    payload = await _scope_payload(workspace_id, provider)
     access_token = payload.get("access_token") or ""
 
     if provider == "taiga" and is_project:
@@ -77,15 +77,15 @@ def _identity_member(member: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _link_identity(
+async def _link_identity(
     user_id: int,
     provider: str,
     member: dict[str, Any],
 ) -> None:
-    existing = external_identity_repo.find_by_provider_external_id(provider, member["id"])
+    existing = await external_identity_repo.find_by_provider_external_id(provider, member["id"])
     if existing:
         return
-    external_identity_repo.create(
+    await external_identity_repo.create(
         user_id=user_id,
         provider=provider,
         external_id=member["id"],
@@ -93,7 +93,7 @@ def _link_identity(
     )
 
 
-def _resolve_or_create_user(
+async def _resolve_or_create_user(
     pm_provider: str,
     comm_provider: str,
     pm_member: dict[str, Any],
@@ -102,18 +102,18 @@ def _resolve_or_create_user(
     email = pm_member.get("email") or comm_member.get("email") or None
 
     for provider, member in ((pm_provider, pm_member), (comm_provider, comm_member)):
-        existing = external_identity_repo.find_by_provider_external_id(provider, member["id"])
+        existing = await external_identity_repo.find_by_provider_external_id(provider, member["id"])
         if existing and existing.get("user_id") is not None:
             return existing["user_id"]
 
     if email:
-        existing_user = user_repo.find_by_email(email)
+        existing_user = await user_repo.find_by_email(email)
         if existing_user:
             return existing_user["id"]
 
     name = pm_member.get("name") or comm_member.get("name") or None
     avatar = pm_member.get("avatar") or comm_member.get("avatar") or None
-    user = user_repo.create_pending_user(email=email, name=name, avatar=avatar)
+    user = await user_repo.create_pending_user(email=email, name=name, avatar=avatar)
     logger.info(
         "pending user created from onboarding match",
         user_id=user["id"],
@@ -138,12 +138,12 @@ async def create_matched_users(
     with each connected platform) are matched back to the existing user instead
     of creating a new pending user.
     """
-    owner, workspace = _resolve_owner(email)
+    owner, workspace = await _resolve_owner(email)
     owner_user_id = owner["id"]
     workspace_id = workspace["id"]
 
-    pm_payload = _scope_payload(workspace_id, pm_provider)
-    comm_payload = _scope_payload(workspace_id, comm_provider)
+    pm_payload = await _scope_payload(workspace_id, pm_provider)
+    comm_payload = await _scope_payload(workspace_id, comm_provider)
     pm_owner_external_id = str(pm_payload.get("user_id") or "")
     comm_owner_external_id = str(comm_payload.get("user_id") or "")
 
@@ -178,12 +178,12 @@ async def create_matched_users(
             role, status = "owner", "active"
             logger.info("matched member is the workspace owner", user_id=user_id)
         else:
-            user_id = _resolve_or_create_user(pm_provider, comm_provider, pm_member, comm_member)
+            user_id = await _resolve_or_create_user(pm_provider, comm_provider, pm_member, comm_member)
             role, status = "member", "pending"
 
-        _link_identity(user_id, pm_provider, pm_member)
-        _link_identity(user_id, comm_provider, comm_member)
-        workspace_member_repo.add(workspace_id, user_id, role=role, status=status)
+        await _link_identity(user_id, pm_provider, pm_member)
+        await _link_identity(user_id, comm_provider, comm_member)
+        await workspace_member_repo.add(workspace_id, user_id, role=role, status=status)
 
         created.append(
             {

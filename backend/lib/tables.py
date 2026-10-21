@@ -3,7 +3,6 @@ from enum import Enum
 from piccolo.columns import Boolean, ForeignKey, Integer, OnDelete, OnUpdate, Text, Timestamp, UUID, Varchar
 from piccolo.columns.defaults import TimestampNow, UUID4
 from piccolo.table import Table
-from piccolo.utils.sync import run_sync
 
 from lib.db import DB
 
@@ -212,37 +211,38 @@ END
 $$;
 """
 
-def create_user_account_status_type() -> None:
-    run_sync(DB.run_ddl(CREATE_USER_ACCOUNT_STATUS_DDL, in_pool=False))
+async def create_user_account_status_type() -> None:
+    await DB.run_ddl(CREATE_USER_ACCOUNT_STATUS_DDL, in_pool=False)
 
-def create_integrations_indexes() -> None:
-    run_sync(DB.run_ddl(CREATE_INTEGRATIONS_WORKSPACE_PROVIDER_UNIQUE_DDL, in_pool=False))
-
-
-def create_external_identities_indexes() -> None:
-    run_sync(DB.run_ddl(CREATE_EXTERNAL_IDENTITIES_PROVIDER_EXTERNAL_ID_UNIQUE_DDL, in_pool=False))
+async def create_integrations_indexes() -> None:
+    await DB.run_ddl(CREATE_INTEGRATIONS_WORKSPACE_PROVIDER_UNIQUE_DDL, in_pool=False)
 
 
-def create_workspace_members_index() -> None:
-    run_sync(DB.run_ddl(CREATE_WORKSPACE_MEMBERS_WORKSPACE_USER_UNIQUE_DDL, in_pool=False))
+async def create_external_identities_indexes() -> None:
+    await DB.run_ddl(CREATE_EXTERNAL_IDENTITIES_PROVIDER_EXTERNAL_ID_UNIQUE_DDL, in_pool=False)
 
 
-def create_email_log_index() -> None:
-    run_sync(DB.run_ddl(CREATE_EMAIL_LOG_USER_EMAIL_TYPE_ENTITY_UNIQUE_DDL, in_pool=False))
+async def create_workspace_members_index() -> None:
+    await DB.run_ddl(CREATE_WORKSPACE_MEMBERS_WORKSPACE_USER_UNIQUE_DDL, in_pool=False)
 
 
-def create_all_tables() -> None:
-    create_user_account_status_type()
-    User.create_table(if_not_exists=True).run_sync()
-    UserStatusHistory.create_table(if_not_exists=True).run_sync()
-    Workspace.create_table(if_not_exists=True).run_sync()
-    WorkspaceMember.create_table(if_not_exists=True).run_sync()
-    Integration.create_table(if_not_exists=True).run_sync()
-    ExternalIdentity.create_table(if_not_exists=True).run_sync()
-    Subscription.create_table(if_not_exists=True).run_sync()
-    EmailLog.create_table(if_not_exists=True).run_sync()
-    ServiceApiKey.create_table(if_not_exists=True).run_sync()
-    create_integrations_indexes()
-    create_external_identities_indexes()
-    create_workspace_members_index()
-    create_email_log_index()
+async def create_email_log_index() -> None:
+    await DB.run_ddl(CREATE_EMAIL_LOG_USER_EMAIL_TYPE_ENTITY_UNIQUE_DDL, in_pool=False)
+
+
+async def create_all_tables() -> None:
+    await create_user_account_status_type()
+    await User.create_table(if_not_exists=True).run()
+    await UserStatusHistory.create_table(if_not_exists=True).run()
+    await Workspace.create_table(if_not_exists=True).run()
+    await WorkspaceMember.create_table(if_not_exists=True).run()
+    await Integration.create_table(if_not_exists=True).run()
+    await ExternalIdentity.create_table(if_not_exists=True).run()
+    await Subscription.create_table(if_not_exists=True).run()
+    await EmailLog.create_table(if_not_exists=True).run()
+    await ServiceApiKey.create_table(if_not_exists=True).run()
+    await create_integrations_indexes()
+    await create_external_identities_indexes()
+    await create_workspace_members_index()
+    await create_email_log_index()
+    await DB.start_connection_pool()

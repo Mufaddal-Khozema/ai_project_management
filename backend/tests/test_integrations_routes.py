@@ -109,8 +109,14 @@ def test_oauth_callback_is_public(client):
 # ─── GET /api/integrations ────────────────────────────────────────────────────
 
 def test_list_integrations_returns_metadata_only(client, monkeypatch):
-    monkeypatch.setattr(integration_service.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", lambda uid: {"id": 5})
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return {"id": 5}
+
+    monkeypatch.setattr(integration_service.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", fake_find_by_user_id)
     row = {
         "uuid": TEST_UUID,
         "provider": "slack",
@@ -123,7 +129,10 @@ def test_list_integrations_returns_metadata_only(client, monkeypatch):
         "token_encrypted": "should-not-leak",
         "scopes": "should-not-leak",
     }
-    monkeypatch.setattr(integration_service.integration_repo, "list_by_workspace", lambda ws: [row])
+    async def fake_list_by_workspace(ws):
+        return [row]
+
+    monkeypatch.setattr(integration_service.integration_repo, "list_by_workspace", fake_list_by_workspace)
 
     r = client.get("/api/integrations", headers=_auth_headers())
     assert r.status_code == 200
@@ -138,8 +147,14 @@ def test_list_integrations_returns_metadata_only(client, monkeypatch):
 # ─── POST /api/integrations/{provider}/auth ───────────────────────────────────
 
 def test_initiate_auth_returns_authorization_url(client, monkeypatch):
-    monkeypatch.setattr(integration_service.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", lambda uid: {"id": 5})
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return {"id": 5}
+
+    monkeypatch.setattr(integration_service.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", fake_find_by_user_id)
 
     async def fake_get_authorization_url(provider, redirect_uri, state):
         return "https://auth.example/start"
@@ -167,8 +182,14 @@ def test_initiate_auth_unsupported_provider(client):
 # ─── POST /api/integrations/taiga/connect ─────────────────────────────────────
 
 def test_taiga_connect_success(client, monkeypatch):
-    monkeypatch.setattr(integration_service.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", lambda uid: {"id": 5})
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return {"id": 5}
+
+    monkeypatch.setattr(integration_service.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", fake_find_by_user_id)
 
     async def fake_authenticate(username, password):
         return {
@@ -179,12 +200,15 @@ def test_taiga_connect_success(client, monkeypatch):
         }
 
     monkeypatch.setattr(oauth, "taiga_authenticate", fake_authenticate)
+    async def fake_find_by_workspace_provider(ws, p):
+        return None
+
     monkeypatch.setattr(
-        integration_service.integration_repo, "find_by_workspace_provider", lambda ws, p: None
+        integration_service.integration_repo, "find_by_workspace_provider", fake_find_by_workspace_provider
     )
     captured = {}
 
-    def fake_create(ws, p, token_encrypted, account_name, scopes, status, expires_at=None):
+    async def fake_create(ws, p, token_encrypted, account_name, scopes, status, expires_at=None):
         captured.update(
             provider=p,
             token_encrypted=token_encrypted,
@@ -222,8 +246,14 @@ def test_taiga_connect_success(client, monkeypatch):
 
 
 def test_taiga_connect_invalid_credentials(client, monkeypatch):
-    monkeypatch.setattr(integration_service.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", lambda uid: {"id": 5})
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return {"id": 5}
+
+    monkeypatch.setattr(integration_service.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(integration_service.workspace_repo, "find_by_user_id", fake_find_by_user_id)
 
     async def fake_authenticate(username, password):
         raise oauth.TaigaAuthError("nope")
@@ -258,12 +288,15 @@ def test_oauth_callback_connects_provider(client, monkeypatch, provider):
         return token
 
     monkeypatch.setattr(oauth, "get_access_token", fake_get_access_token)
+    async def fake_find_by_workspace_provider(ws, p):
+        return None
+
     monkeypatch.setattr(
-        integration_service.integration_repo, "find_by_workspace_provider", lambda ws, p: None
+        integration_service.integration_repo, "find_by_workspace_provider", fake_find_by_workspace_provider
     )
     captured = {}
 
-    def fake_create(ws, p, token_encrypted, account_name, scopes, status, expires_at=None):
+    async def fake_create(ws, p, token_encrypted, account_name, scopes, status, expires_at=None):
         captured.update(
             provider=p,
             token_encrypted=token_encrypted,
@@ -324,14 +357,18 @@ def test_oauth_callback_overwrites_existing_row(client, monkeypatch):
 
     monkeypatch.setattr(oauth, "get_access_token", fake_get_access_token)
     existing = _row("slack", "old-tok", "rt")
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return existing
+
     monkeypatch.setattr(
         integration_service.integration_repo,
         "find_by_workspace_provider",
-        lambda ws, p: existing,
+        fake_find_by_workspace_provider,
     )
     updated = {}
 
-    def fake_update_token(iid, token_encrypted, account_name, expires_at, status, last_synced_at):
+    async def fake_update_token(iid, token_encrypted, account_name, expires_at, status, last_synced_at):
         updated["iid"] = iid
         updated["token_encrypted"] = token_encrypted
         return {
@@ -344,7 +381,7 @@ def test_oauth_callback_overwrites_existing_row(client, monkeypatch):
     monkeypatch.setattr(integration_service.integration_repo, "update_token", fake_update_token)
     created = {"called": False}
 
-    def fake_create(*args, **kwargs):
+    async def fake_create(*args, **kwargs):
         created["called"] = True
         return {}
 
@@ -365,15 +402,22 @@ def test_oauth_callback_overwrites_existing_row(client, monkeypatch):
 
 def test_disconnect_removes_row_and_second_returns_404(client, monkeypatch):
     holder = {"row": _row("slack", "tok", "rt")}
-    monkeypatch.setattr(integration_service, "_resolve_workspace_id", lambda email: 5)
+
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return holder["row"]
+
+    monkeypatch.setattr(integration_service, "_resolve_workspace_id", fake_resolve)
     monkeypatch.setattr(
         integration_service.integration_repo,
         "find_by_workspace_provider",
-        lambda ws, p: holder["row"],
+        fake_find_by_workspace_provider,
     )
     deleted = {"count": 0}
 
-    def fake_delete(ws, p):
+    async def fake_delete(ws, p):
         deleted["count"] += 1
         return True
 
@@ -399,11 +443,18 @@ def test_disconnect_removes_row_and_second_returns_404(client, monkeypatch):
 def test_refresh_success_updates_token(client, monkeypatch):
     row = _row("clickup", "old-tok", "rt")
     holder = {"row": row}
-    monkeypatch.setattr(integration_service, "_resolve_workspace_id", lambda email: 5)
+
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return holder["row"]
+
+    monkeypatch.setattr(integration_service, "_resolve_workspace_id", fake_resolve)
     monkeypatch.setattr(
         integration_service.integration_repo,
         "find_by_workspace_provider",
-        lambda ws, p: holder["row"],
+        fake_find_by_workspace_provider,
     )
 
     async def fake_refresh(provider, refresh_token):
@@ -417,7 +468,7 @@ def test_refresh_success_updates_token(client, monkeypatch):
     monkeypatch.setattr(oauth, "refresh_access_token", fake_refresh)
     updated = {}
 
-    def fake_update_token(iid, token_encrypted, account_name, expires_at, status, last_synced_at):
+    async def fake_update_token(iid, token_encrypted, account_name, expires_at, status, last_synced_at):
         updated["token_encrypted"] = token_encrypted
         updated["expires_at"] = expires_at
         return {
@@ -440,11 +491,18 @@ def test_refresh_success_updates_token(client, monkeypatch):
 
 def test_refresh_failure_marks_expired(client, monkeypatch):
     row = _row("clickup", "old-tok", "rt")
-    monkeypatch.setattr(integration_service, "_resolve_workspace_id", lambda email: 5)
+
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return row
+
+    monkeypatch.setattr(integration_service, "_resolve_workspace_id", fake_resolve)
     monkeypatch.setattr(
         integration_service.integration_repo,
         "find_by_workspace_provider",
-        lambda ws, p: row,
+        fake_find_by_workspace_provider,
     )
 
     async def fake_refresh(provider, refresh_token):
@@ -452,7 +510,7 @@ def test_refresh_failure_marks_expired(client, monkeypatch):
 
     monkeypatch.setattr(oauth, "refresh_access_token", fake_refresh)
 
-    def fake_update_status(iid, status):
+    async def fake_update_status(iid, status):
         return {**row, "status": status}
 
     monkeypatch.setattr(integration_service.integration_repo, "update_status", fake_update_status)
@@ -465,9 +523,15 @@ def test_refresh_failure_marks_expired(client, monkeypatch):
 # ─── GET /api/integrations/{provider}/members ─────────────────────────────────
 
 def test_list_members_requires_connected_integration(client, monkeypatch):
-    monkeypatch.setattr(integration_service, "_resolve_workspace_id", lambda email: 5)
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return None
+
+    monkeypatch.setattr(integration_service, "_resolve_workspace_id", fake_resolve)
     monkeypatch.setattr(
-        integration_service.integration_repo, "find_by_workspace_provider", lambda ws, p: None
+        integration_service.integration_repo, "find_by_workspace_provider", fake_find_by_workspace_provider
     )
 
     r = client.get("/api/integrations/taiga/members", headers=_auth_headers())
@@ -475,11 +539,17 @@ def test_list_members_requires_connected_integration(client, monkeypatch):
 
 
 def test_list_members_unsupported_provider(client, monkeypatch):
-    monkeypatch.setattr(integration_service, "_resolve_workspace_id", lambda email: 5)
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return _row("slack", "tok", "rt")
+
+    monkeypatch.setattr(integration_service, "_resolve_workspace_id", fake_resolve)
     monkeypatch.setattr(
         integration_service.integration_repo,
         "find_by_workspace_provider",
-        lambda ws, p: _row("slack", "tok", "rt"),
+        fake_find_by_workspace_provider,
     )
 
     r = client.get("/api/integrations/slack/members", headers=_auth_headers())
@@ -488,9 +558,16 @@ def test_list_members_unsupported_provider(client, monkeypatch):
 
 def test_list_members_returns_provider_members(client, monkeypatch):
     row = _row("taiga", "taiga-tok", "rt")
-    monkeypatch.setattr(integration_service, "_resolve_workspace_id", lambda email: 5)
+
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return row
+
+    monkeypatch.setattr(integration_service, "_resolve_workspace_id", fake_resolve)
     monkeypatch.setattr(
-        integration_service.integration_repo, "find_by_workspace_provider", lambda ws, p: row
+        integration_service.integration_repo, "find_by_workspace_provider", fake_find_by_workspace_provider
     )
 
     captured = {}

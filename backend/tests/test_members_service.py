@@ -49,32 +49,42 @@ def stub_fetchers(monkeypatch):
 
 @pytest.fixture
 def stub_credentials(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", lambda uid: {"id": 5})
-    monkeypatch.setattr(
-        svc.integration_repo, "find_by_workspace_provider", lambda ws, p: _row(p)
-    )
-    monkeypatch.setattr(svc.workspace_member_repo, "add", lambda *a, **k: {"id": 1})
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return {"id": 5}
+
+    async def fake_find_by_workspace_provider(ws, p):
+        return _row(p)
+
+    async def fake_add(*a, **k):
+        return {"id": 1}
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", fake_find_by_user_id)
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find_by_workspace_provider)
+    monkeypatch.setattr(svc.workspace_member_repo, "add", fake_add)
 
 
 async def test_create_matched_users_creates_pending_user(stub_fetchers, stub_credentials, monkeypatch):
     created_users = []
 
-    def fake_create_pending_user(email, name=None, avatar=None):
+    async def fake_create_pending_user(email, name=None, avatar=None):
         created_users.append({"email": email, "name": name, "avatar": avatar})
         return {"id": 42, "email": email}
 
-    def fake_find_identity(provider, external_id):
+    async def fake_find_identity(provider, external_id):
         return None
 
-    def fake_find_user_by_email(email):
+    async def fake_find_user_by_email(email):
         if email == "ada@example.com":
             return None
         return {"id": 1}
 
     identities = []
 
-    def fake_create_identity(user_id, provider, external_id, email, name, username, avatar):
+    async def fake_create_identity(user_id, provider, external_id, email, name, username, avatar):
         identities.append((provider, external_id, user_id))
         return {"id": 1}
 
@@ -103,16 +113,16 @@ async def test_create_matched_users_creates_pending_user(stub_fetchers, stub_cre
 async def test_create_matched_users_reuses_existing_identity(stub_fetchers, stub_credentials, monkeypatch):
     called = {"create_pending": False, "create_identity": 0}
 
-    def fake_find_identity(provider, external_id):
+    async def fake_find_identity(provider, external_id):
         if provider == "taiga":
             return {"id": 1, "user_id": 7}
         return None
 
-    def fake_create_pending_user(email, name=None, avatar=None):
+    async def fake_create_pending_user(email, name=None, avatar=None):
         called["create_pending"] = True
         return {"id": 999}
 
-    def fake_create_identity(user_id, provider, external_id, email, name, username, avatar):
+    async def fake_create_identity(user_id, provider, external_id, email, name, username, avatar):
         called["create_identity"] += 1
         return {"id": 1}
 
@@ -154,21 +164,27 @@ async def test_create_matched_users_recognizes_owner(
     members = []
     pending = {"called": False}
 
-    def fake_add(workspace_id, user_id, role="member", status="pending"):
+    async def fake_add(workspace_id, user_id, role="member", status="pending"):
         members.append({"user_id": user_id, "role": role, "status": status})
         return {"id": 1}
 
-    def fake_create_pending_user(email, name=None, avatar=None):
+    async def fake_create_pending_user(email, name=None, avatar=None):
         pending["called"] = True
         return {"id": 999, "email": email}
 
-    def fake_scope_payload(workspace_id, provider):
+    async def fake_scope_payload(workspace_id, provider):
         return {"user_id": "1" if provider == "taiga" else "100"}
+
+    async def fake_find_identity(p, e):
+        return None
+
+    async def fake_create_identity(*a, **k):
+        return {"id": 1}
 
     monkeypatch.setattr(svc.workspace_member_repo, "add", fake_add)
     monkeypatch.setattr(svc.user_repo, "create_pending_user", fake_create_pending_user)
-    monkeypatch.setattr(svc.external_identity_repo, "find_by_provider_external_id", lambda p, e: None)
-    monkeypatch.setattr(svc.external_identity_repo, "create", lambda *a, **k: {"id": 1})
+    monkeypatch.setattr(svc.external_identity_repo, "find_by_provider_external_id", fake_find_identity)
+    monkeypatch.setattr(svc.external_identity_repo, "create", fake_create_identity)
     monkeypatch.setattr(svc, "_scope_payload", fake_scope_payload)
 
     result = await svc.create_matched_users(
@@ -190,15 +206,27 @@ async def test_create_matched_users_links_workspace_member(
 ):
     members = []
 
-    def fake_add(workspace_id, user_id, role="member", status="pending"):
+    async def fake_add(workspace_id, user_id, role="member", status="pending"):
         members.append({"workspace_id": workspace_id, "user_id": user_id, "role": role, "status": status})
         return {"id": 1}
 
+    async def fake_create_pending_user(email, name=None, avatar=None):
+        return {"id": 42, "email": email}
+
+    async def fake_find_identity(p, e):
+        return None
+
+    async def fake_find_by_email(email):
+        return None if email == "ada@example.com" else {"id": 1}
+
+    async def fake_create_identity(*a, **k):
+        return {"id": 1}
+
     monkeypatch.setattr(svc.workspace_member_repo, "add", fake_add)
-    monkeypatch.setattr(svc.user_repo, "create_pending_user", lambda email, name=None, avatar=None: {"id": 42, "email": email})
-    monkeypatch.setattr(svc.external_identity_repo, "find_by_provider_external_id", lambda p, e: None)
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: None if email == "ada@example.com" else {"id": 1})
-    monkeypatch.setattr(svc.external_identity_repo, "create", lambda *a, **k: {"id": 1})
+    monkeypatch.setattr(svc.user_repo, "create_pending_user", fake_create_pending_user)
+    monkeypatch.setattr(svc.external_identity_repo, "find_by_provider_external_id", fake_find_identity)
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.external_identity_repo, "create", fake_create_identity)
 
     await svc.create_matched_users(
         email="owner@example.com",
@@ -215,9 +243,10 @@ async def test_create_matched_users_links_workspace_member(
 
 
 async def test_fetch_scope_members_requires_connected(stub_credentials, monkeypatch):
-    monkeypatch.setattr(
-        svc.integration_repo, "find_by_workspace_provider", lambda ws, p: None
-    )
+    async def fake_find(ws, p):
+        return None
+
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find)
     with pytest.raises(HTTPException) as exc:
         await svc._fetch_scope_members(
             5, "owner@example.com", "taiga", "10", is_project=True

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 
 from litestar.exceptions import HTTPException
@@ -75,23 +76,24 @@ def get_plans() -> list[dict]:
     return PLANS
 
 
-def create_setup_intent(name: str | None, email: str, price_id: str) -> dict:
+async def create_setup_intent(name: str | None, email: str, price_id: str) -> dict:
     try:
         customer_data = {"email": email}
         if name:
             customer_data["name"] = name
-        existing_customers = stripe.Customer.list(email=email, limit=1)
+        existing_customers = await asyncio.to_thread(stripe.Customer.list, email=email, limit=1)
         if existing_customers.data:
             customer = existing_customers.data[0]
-            stripe.Customer.modify(customer.id, **customer_data)
+            await asyncio.to_thread(stripe.Customer.modify, customer.id, **customer_data)
         else:
-            customer = stripe.Customer.create(**customer_data)
+            customer = await asyncio.to_thread(stripe.Customer.create, **customer_data)
 
         metadata = {"price_id": price_id, "email": email}
         if name:
             metadata["name"] = name
 
-        setup_intent = stripe.SetupIntent.create(
+        setup_intent = await asyncio.to_thread(
+            stripe.SetupIntent.create,
             customer=customer.id,
             metadata=metadata,
             payment_method_types=["card"],
@@ -107,7 +109,7 @@ def create_setup_intent(name: str | None, email: str, price_id: str) -> dict:
         raise
 
 
-def handle_webhook(payload: bytes, sig_header: str) -> dict:
+async def handle_webhook(payload: bytes, sig_header: str) -> dict:
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.stripe_webhook_secret
@@ -120,13 +122,13 @@ def handle_webhook(payload: bytes, sig_header: str) -> dict:
     data = event.data.object
 
     if event_type == "setup_intent.succeeded":
-        _handle_setup_succeeded(data)
+        await _handle_setup_succeeded(data)
     elif event_type == "setup_intent.setup_failed":
         _handle_setup_failed(data)
     elif event_type in ("customer.subscription.created", "customer.subscription.updated"):
-        _handle_subscription_upsert(data)
+        await _handle_subscription_upsert(data)
     elif event_type == "customer.subscription.deleted":
-        _handle_subscription_deleted(data)
+        await _handle_subscription_deleted(data)
     elif event_type in ("invoice.paid", "invoice.payment_failed"):
         logger.info(
             "invoice event received",
@@ -183,12 +185,12 @@ def _price_id_from_subscription(subscription: stripe.Subscription) -> str:
     return getattr(price, "id", None) or ""
 
 
-def get_current_subscription(email: str) -> dict:
-    user = user_repo.find_by_email(email)
+async def get_current_subscription(email: str) -> dict:
+    user = await user_repo.find_by_email(email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    sub = payment_repo.find_by_user_id(user["id"])
+    sub = await payment_repo.find_by_user_id(user["id"])
     if not sub:
         return {
             "plan_id": "free",
@@ -203,7 +205,9 @@ def get_current_subscription(email: str) -> dict:
         }
 
     try:
-        stripe_sub = stripe.Subscription.retrieve(sub["stripe_subscription_id"])
+        stripe_sub = await asyncio.to_thread(
+            stripe.Subscription.retrieve, sub["stripe_subscription_id"]
+        )
     except stripe.StripeError as e:
         logger.error("stripe retrieve subscription failed", error=str(e))
         raise HTTPException(status_code=502, detail="Stripe error")
@@ -236,12 +240,12 @@ def get_current_subscription(email: str) -> dict:
     }
 
 
-def cancel_subscription(email: str) -> dict:
-    user = user_repo.find_by_email(email)
+async def cancel_subscription(email: str) -> dict:
+    user = await user_repo.find_by_email(email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    sub = payment_repo.find_by_user_id(user["id"])
+    sub = await payment_repo.find_by_user_id(user["id"])
     if not sub:
         raise HTTPException(status_code=404, detail="No active subscription")
 
@@ -249,7 +253,8 @@ def cancel_subscription(email: str) -> dict:
         raise HTTPException(status_code=409, detail="Subscription already cancelled")
 
     try:
-        stripe_sub = stripe.Subscription.modify(
+        stripe_sub = await asyncio.to_thread(
+            stripe.Subscription.modify,
             sub["stripe_subscription_id"],
             cancel_at_period_end=True,
         )
@@ -257,7 +262,7 @@ def cancel_subscription(email: str) -> dict:
         logger.error("stripe cancel subscription failed", error=str(e))
         raise HTTPException(status_code=502, detail=str(e))
 
-    payment_repo.update(
+    await payment_repo.update(
         sub["stripe_subscription_id"],
         {
             "status": "canceled",
@@ -273,17 +278,18 @@ def cancel_subscription(email: str) -> dict:
     }
 
 
-def list_invoices(email: str) -> list[dict]:
-    user = user_repo.find_by_email(email)
+async def list_invoices(email: str) -> list[dict]:
+    user = await user_repo.find_by_email(email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    sub = payment_repo.find_by_user_id(user["id"])
+    sub = await payment_repo.find_by_user_id(user["id"])
     if not sub:
         raise HTTPException(status_code=404, detail="No subscription")
 
     try:
-        invoices = stripe.Invoice.list(
+        invoices = await asyncio.to_thread(
+            stripe.Invoice.list,
             customer=sub["stripe_customer_id"],
             limit=24,
         )
@@ -309,7 +315,7 @@ def list_invoices(email: str) -> list[dict]:
     return result
 
 
-def _handle_subscription_upsert(subscription: stripe.Subscription) -> None:
+async def _handle_subscription_upsert(subscription: stripe.Subscription) -> None:
     email = subscription.metadata.get("email")
     if not email:
         email = getattr(subscription.customer_details, "email", None)
@@ -317,7 +323,7 @@ def _handle_subscription_upsert(subscription: stripe.Subscription) -> None:
         logger.warning("no email in subscription metadata", subscription_id=subscription.id)
         return
 
-    user = user_repo.find_by_email(email)
+    user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("no user found for subscription email", email=email)
         return
@@ -326,7 +332,7 @@ def _handle_subscription_upsert(subscription: stripe.Subscription) -> None:
     plan_id, _, _ = _derive_plan_from_price(price_id)
     billing_interval = _derive_interval_from_price(price_id)
 
-    payment_repo.upsert(
+    await payment_repo.upsert(
         user["id"],
         {
             "stripe_customer_id": subscription.customer,
@@ -341,12 +347,12 @@ def _handle_subscription_upsert(subscription: stripe.Subscription) -> None:
     logger.info("subscription upserted", user_id=user["id"], subscription_id=subscription.id)
 
 
-def _handle_subscription_deleted(subscription: stripe.Subscription) -> None:
-    existing = payment_repo.find_by_subscription_id(subscription.id)
+async def _handle_subscription_deleted(subscription: stripe.Subscription) -> None:
+    existing = await payment_repo.find_by_subscription_id(subscription.id)
     if not existing:
         logger.warning("deleted subscription not found locally", subscription_id=subscription.id)
         return
-    payment_repo.update(
+    await payment_repo.update(
         subscription.id,
         {
             "status": "canceled",
@@ -356,7 +362,7 @@ def _handle_subscription_deleted(subscription: stripe.Subscription) -> None:
     logger.info("subscription marked canceled", subscription_id=subscription.id)
 
 
-def _handle_setup_succeeded(setup_intent: stripe.SetupIntent) -> None:
+async def _handle_setup_succeeded(setup_intent: stripe.SetupIntent) -> None:
     customer_id = setup_intent.customer
     payment_method = setup_intent.payment_method
     price_id = setup_intent.metadata.get("price_id")
@@ -368,7 +374,8 @@ def _handle_setup_succeeded(setup_intent: stripe.SetupIntent) -> None:
         return
 
     try:
-        stripe.Subscription.create(
+        await asyncio.to_thread(
+            stripe.Subscription.create,
             customer=customer_id,
             items=[{"price": price_id}],
             default_payment_method=payment_method,

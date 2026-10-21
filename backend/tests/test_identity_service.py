@@ -13,15 +13,18 @@ from services import identity as identity_service
 def no_cache(monkeypatch):
     store = {}
 
-    monkeypatch.setattr(identity_cache, "cache_get", store.get)
-    monkeypatch.setattr(
-        identity_cache, "cache_set", lambda key, value, ttl_seconds=None: store.__setitem__(key, value)
-    )
-    monkeypatch.setattr(
-        identity_cache, "cache_invalidate", lambda provider, external_id: store.pop(
-            identity_cache.make_identity_key(provider, external_id), None
-        ),
-    )
+    async def fake_get(key):
+        return store.get(key)
+
+    async def fake_set(key, value, ttl_seconds=None):
+        store[key] = value
+
+    async def fake_invalidate(provider, external_id):
+        store.pop(identity_cache.make_identity_key(provider, external_id), None)
+
+    monkeypatch.setattr(identity_cache, "cache_get", fake_get)
+    monkeypatch.setattr(identity_cache, "cache_set", fake_set)
+    monkeypatch.setattr(identity_cache, "cache_invalidate", fake_invalidate)
     return store
 
 
@@ -54,28 +57,35 @@ def _wire(
             "onboarding_completed_at": datetime(2024, 1, 1),
         }
 
-    def fake_link(provider, external_id):
+    async def fake_link(provider, external_id):
         calls["link"] += 1
         return link
 
+    async def fake_user(uid):
+        return SimpleNamespace(**user) if user is not None else None
+
+    async def fake_workspace_by_user(uid):
+        return workspace
+
+    async def fake_workspace_by_member(uid):
+        return workspace
+
+    async def fake_integrations(ws):
+        return integrations or []
+
+    async def fake_subscription(uid):
+        return subscription
+
     monkeypatch.setattr(identity_service.external_identity_repo, "find_by_provider_external_id", fake_link)
-    monkeypatch.setattr(
-        identity_service.user_repo,
-        "find_by_id",
-        lambda uid: SimpleNamespace(**user) if user is not None else None,
-    )
-    monkeypatch.setattr(identity_service.workspace_repo, "find_by_user_id", lambda uid: workspace)
-    monkeypatch.setattr(
-        identity_service.workspace_repo, "find_by_member_id", lambda uid: workspace
-    )
-    monkeypatch.setattr(
-        identity_service.integration_repo, "list_by_workspace", lambda ws: integrations or []
-    )
-    monkeypatch.setattr(identity_service.payment_repo, "find_by_user_id", lambda uid: subscription)
+    monkeypatch.setattr(identity_service.user_repo, "find_by_id", fake_user)
+    monkeypatch.setattr(identity_service.workspace_repo, "find_by_user_id", fake_workspace_by_user)
+    monkeypatch.setattr(identity_service.workspace_repo, "find_by_member_id", fake_workspace_by_member)
+    monkeypatch.setattr(identity_service.integration_repo, "list_by_workspace", fake_integrations)
+    monkeypatch.setattr(identity_service.payment_repo, "find_by_user_id", fake_subscription)
     return calls
 
 
-def test_resolve_happy_path(monkeypatch):
+async def test_resolve_happy_path(monkeypatch):
     calls = _wire(
         monkeypatch,
         integrations=[
@@ -88,7 +98,7 @@ def test_resolve_happy_path(monkeypatch):
         ],
         subscription={"id": 9},
     )
-    result = identity_service.resolve_identity("discord", "123", guild_id="g1", channel_id="c1")
+    result = await identity_service.resolve_identity("discord", "123", guild_id="g1", channel_id="c1")
     assert isinstance(result, ResolveIdentityResponse)
     assert result.linked is True
     assert result.user.email == "ada@example.com"
@@ -100,54 +110,54 @@ def test_resolve_happy_path(monkeypatch):
     assert calls["link"] == 1
 
 
-def test_resolve_second_call_served_from_cache(monkeypatch, no_cache):
+async def test_resolve_second_call_served_from_cache(monkeypatch, no_cache):
     calls = _wire(monkeypatch)
-    first = identity_service.resolve_identity("discord", "123")
-    second = identity_service.resolve_identity("discord", "123")
+    first = await identity_service.resolve_identity("discord", "123")
+    second = await identity_service.resolve_identity("discord", "123")
     assert calls["link"] == 1
     assert second == first
 
 
-def test_resolve_without_workspace(monkeypatch):
+async def test_resolve_without_workspace(monkeypatch):
     _wire(monkeypatch, workspace=None)
-    result = identity_service.resolve_identity("discord", "123")
+    result = await identity_service.resolve_identity("discord", "123")
     assert result.workspace is None
     assert result.entitlements.has_subscription is False
     assert result.entitlements.onboarding_completed is False
     assert result.integrations == []
 
 
-def test_resolve_unlinked_raises_404(monkeypatch):
+async def test_resolve_unlinked_raises_404(monkeypatch):
     _wire(monkeypatch, link=None)
     with pytest.raises(HTTPException) as exc:
-        identity_service.resolve_identity("discord", "999")
+        await identity_service.resolve_identity("discord", "999")
     assert exc.value.status_code == 404
 
 
-def test_resolve_null_user_id_raises_404(monkeypatch):
+async def test_resolve_null_user_id_raises_404(monkeypatch):
     _wire(monkeypatch, link={"id": 1, "user_id": None})
     with pytest.raises(HTTPException) as exc:
-        identity_service.resolve_identity("discord", "999")
+        await identity_service.resolve_identity("discord", "999")
     assert exc.value.status_code == 404
 
 
-def test_resolve_missing_user_raises_404(monkeypatch):
+async def test_resolve_missing_user_raises_404(monkeypatch):
     _wire(monkeypatch, user=None)
     with pytest.raises(HTTPException) as exc:
-        identity_service.resolve_identity("discord", "123")
+        await identity_service.resolve_identity("discord", "123")
     assert exc.value.status_code == 404
 
 
-def test_resolve_unsupported_provider_raises_400(monkeypatch):
+async def test_resolve_unsupported_provider_raises_400(monkeypatch):
     _wire(monkeypatch)
     with pytest.raises(HTTPException) as exc:
-        identity_service.resolve_identity("carrier-pigeon", "123")
+        await identity_service.resolve_identity("carrier-pigeon", "123")
     assert exc.value.status_code == 400
 
 
-def test_invalidate_identity_drops_cache(monkeypatch, no_cache):
+async def test_invalidate_identity_drops_cache(monkeypatch, no_cache):
     calls = _wire(monkeypatch)
-    identity_service.resolve_identity("discord", "123")
-    identity_service.invalidate_identity("discord", "123")
-    identity_service.resolve_identity("discord", "123")
+    await identity_service.resolve_identity("discord", "123")
+    await identity_service.invalidate_identity("discord", "123")
+    await identity_service.resolve_identity("discord", "123")
     assert calls["link"] == 2

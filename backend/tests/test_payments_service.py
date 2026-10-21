@@ -125,28 +125,43 @@ def test_price_id_from_subscription_empty_items():
 
 # ─── get_current_subscription ─────────────────────────────────────────────────
 
-def test_current_free_plan_when_no_row(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: None)
-    result = svc.get_current_subscription("a@b.com")
+async def test_current_free_plan_when_no_row(monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return None
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
+    result = await svc.get_current_subscription("a@b.com")
     assert result["plan_id"] == "free"
     assert result["plan_name"] == "Free"
     assert result["status"] == "free"
     assert result["price"] == 0
 
 
-def test_current_user_not_found(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: None)
+async def test_current_user_not_found(monkeypatch):
+    async def fake_find_by_email(email):
+        return None
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
     with pytest.raises(HTTPException) as exc:
-        svc.get_current_subscription("ghost@b.com")
+        await svc.get_current_subscription("ghost@b.com")
     assert exc.value.status_code == 404
 
 
-def test_current_maps_active_subscription(plans, monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+async def test_current_maps_active_subscription(plans, monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.stripe.Subscription, "retrieve", lambda sid: _stripe_sub())
-    result = svc.get_current_subscription("a@b.com")
+    result = await svc.get_current_subscription("a@b.com")
     assert result["plan_id"] == "professional"
     assert result["status"] == "active"
     assert result["price"] == 14900
@@ -154,55 +169,85 @@ def test_current_maps_active_subscription(plans, monkeypatch):
     assert result["current_period_end"] == datetime.fromtimestamp(2000000000)
 
 
-def test_current_trialing(monkeypatch):
+async def test_current_trialing(monkeypatch):
     sub = _stripe_sub(status="trialing", trial_end=2100000000)
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.stripe.Subscription, "retrieve", lambda sid: sub)
-    result = svc.get_current_subscription("a@b.com")
+    result = await svc.get_current_subscription("a@b.com")
     assert result["status"] == "trialing"
     assert result["trial_end"] == datetime.fromtimestamp(2100000000)
 
 
-def test_current_active_with_cancel_at_period_end_is_canceled(monkeypatch):
+async def test_current_active_with_cancel_at_period_end_is_canceled(monkeypatch):
     sub = _stripe_sub(cancel_at_period_end=True)
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.stripe.Subscription, "retrieve", lambda sid: sub)
-    result = svc.get_current_subscription("a@b.com")
+    result = await svc.get_current_subscription("a@b.com")
     assert result["status"] == "canceled"
     assert result["cancel_at_period_end"] is True
 
 
-def test_current_stripe_error_502(monkeypatch):
+async def test_current_stripe_error_502(monkeypatch):
     class _StripeError(stripe.StripeError):
         pass
 
     def boom(sid):
         raise _StripeError("down")
 
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.stripe.Subscription, "retrieve", boom)
     with pytest.raises(HTTPException) as exc:
-        svc.get_current_subscription("a@b.com")
+        await svc.get_current_subscription("a@b.com")
     assert exc.value.status_code == 502
 
 
 # ─── cancel_subscription ──────────────────────────────────────────────────────
 
-def test_cancel_happy_path(monkeypatch):
+async def test_cancel_happy_path(monkeypatch):
     modified = _stripe_sub(cancel_at_period_end=True)
     updated = {}
 
     def fake_modify(sid, cancel_at_period_end):
         return modified
 
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    async def fake_update(sid, values):
+        updated.update(values)
+        return {}
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.stripe.Subscription, "modify", fake_modify)
-    monkeypatch.setattr(svc.payment_repo, "update", lambda sid, values: updated.update(values) or {})
-    result = svc.cancel_subscription("a@b.com")
+    monkeypatch.setattr(svc.payment_repo, "update", fake_update)
+    result = await svc.cancel_subscription("a@b.com")
     assert result["status"] == "canceled"
     assert result["cancel_at_period_end"] is True
     assert result["effective_end"] == datetime.fromtimestamp(2000000000)
@@ -210,34 +255,52 @@ def test_cancel_happy_path(monkeypatch):
     assert updated["cancel_at_period_end"] is True
 
 
-def test_cancel_no_subscription_404(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: None)
+async def test_cancel_no_subscription_404(monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return None
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     with pytest.raises(HTTPException) as exc:
-        svc.cancel_subscription("a@b.com")
+        await svc.cancel_subscription("a@b.com")
     assert exc.value.status_code == 404
 
 
-def test_cancel_already_cancelled_409(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row(cancel_at_period_end=True))
+async def test_cancel_already_cancelled_409(monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row(cancel_at_period_end=True)
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     with pytest.raises(HTTPException) as exc:
-        svc.cancel_subscription("a@b.com")
+        await svc.cancel_subscription("a@b.com")
     assert exc.value.status_code == 409
 
 
-def test_cancel_stripe_error_502(monkeypatch):
+async def test_cancel_stripe_error_502(monkeypatch):
     class _StripeError(stripe.StripeError):
         pass
 
     def boom(sid, cancel_at_period_end):
         raise _StripeError("down")
 
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.stripe.Subscription, "modify", boom)
     with pytest.raises(HTTPException) as exc:
-        svc.cancel_subscription("a@b.com")
+        await svc.cancel_subscription("a@b.com")
     assert exc.value.status_code == 502
 
 
@@ -259,9 +322,15 @@ def _stripe_invoice(**overrides):
     return inv
 
 
-def test_list_invoices_maps_and_sorts_desc(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+async def test_list_invoices_maps_and_sorts_desc(monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(
         svc.stripe.Invoice,
         "list",
@@ -269,15 +338,21 @@ def test_list_invoices_maps_and_sorts_desc(monkeypatch):
             data=[_stripe_invoice(id="in_old", created=1000000000), _stripe_invoice(id="in_new", created=2000000000)]
         ),
     )
-    result = svc.list_invoices("a@b.com")
+    result = await svc.list_invoices("a@b.com")
     assert [i["id"] for i in result] == ["in_new", "in_old"]
     assert result[0]["amount"] == 14900
     assert result[0]["hosted_invoice_url"] == "https://stripe.com/hosted"
 
 
-def test_list_invoices_zero_amount_without_pdf(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: _sub_row())
+async def test_list_invoices_zero_amount_without_pdf(monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return _sub_row()
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(
         svc.stripe.Invoice,
         "list",
@@ -285,61 +360,73 @@ def test_list_invoices_zero_amount_without_pdf(monkeypatch):
             data=[_stripe_invoice(amount_paid=0, invoice_pdf=None, hosted_invoice_url=None, status="open")]
         ),
     )
-    result = svc.list_invoices("a@b.com")
+    result = await svc.list_invoices("a@b.com")
     assert result[0]["amount"] == 0
     assert result[0]["invoice_pdf"] is None
 
 
-def test_list_invoices_no_subscription_404(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
-    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", lambda uid: None)
+async def test_list_invoices_no_subscription_404(monkeypatch):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_find_by_user_id(uid):
+        return None
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.payment_repo, "find_by_user_id", fake_find_by_user_id)
     with pytest.raises(HTTPException) as exc:
-        svc.list_invoices("a@b.com")
+        await svc.list_invoices("a@b.com")
     assert exc.value.status_code == 404
 
 
 # ─── webhook subscription handlers ────────────────────────────────────────────
 
-def test_handle_subscription_upsert(plans, monkeypatch):
+async def test_handle_subscription_upsert(plans, monkeypatch):
     upserted = {}
 
-    def fake_upsert(uid, values):
+    async def fake_find_by_email(email):
+        return _user()
+
+    async def fake_upsert(uid, values):
         upserted["uid"], upserted["values"] = uid, values
 
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: _user())
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
     monkeypatch.setattr(svc.payment_repo, "upsert", fake_upsert)
-    svc._handle_subscription_upsert(_stripe_sub())
+    await svc._handle_subscription_upsert(_stripe_sub())
     assert upserted["uid"] == 1
     assert upserted["values"]["stripe_subscription_id"] == "sub_123"
     assert upserted["values"]["stripe_customer_id"] == "cus_1"
     assert upserted["values"]["plan_id"] == "professional"
 
 
-def test_handle_subscription_upsert_no_user_skips(monkeypatch):
+async def test_handle_subscription_upsert_no_user_skips(monkeypatch):
     called = {"upsert": False}
 
-    def fake_upsert(uid, values):
+    async def fake_find_by_email(email):
+        return None
+
+    async def fake_upsert(uid, values):
         called["upsert"] = True
 
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: None)
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
     monkeypatch.setattr(svc.payment_repo, "upsert", fake_upsert)
-    svc._handle_subscription_upsert(_stripe_sub())
+    await svc._handle_subscription_upsert(_stripe_sub())
     assert called["upsert"] is False
 
 
-def test_handle_subscription_deleted(monkeypatch):
+async def test_handle_subscription_deleted(monkeypatch):
     updated = {}
 
-    def fake_find(sid):
+    async def fake_find(sid):
         return _sub_row()
 
-    def fake_update(sid, values):
+    async def fake_update(sid, values):
         updated["sid"], updated["values"] = sid, values
         return {}
 
     monkeypatch.setattr(svc.payment_repo, "find_by_subscription_id", fake_find)
     monkeypatch.setattr(svc.payment_repo, "update", fake_update)
-    svc._handle_subscription_deleted(_stripe_sub())
+    await svc._handle_subscription_deleted(_stripe_sub())
     assert updated["sid"] == "sub_123"
     assert updated["values"]["status"] == "canceled"
     assert updated["values"]["cancel_at_period_end"] is True

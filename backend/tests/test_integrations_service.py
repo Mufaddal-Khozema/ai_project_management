@@ -111,7 +111,10 @@ async def test_initiate_auth_provider_not_configured(monkeypatch):
 
 
 async def test_initiate_auth_user_not_found(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: None)
+    async def fake_find_by_email(email):
+        return None
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
     with pytest.raises(HTTPException) as exc:
         await svc.initiate_auth("ghost@b.com", "slack", "settings")
     assert exc.value.status_code == 404
@@ -120,14 +123,21 @@ async def test_initiate_auth_user_not_found(monkeypatch):
 async def test_initiate_auth_workspace_auto_create(monkeypatch):
     user = {"id": 1}
     workspace = {"id": 9, "company_name": "My Workspace"}
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: user)
-    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", lambda uid: None)
+
+    async def fake_find_by_email(email):
+        return user
+
+    async def fake_find_by_user_id(uid):
+        return None
+
     created = {}
 
-    def fake_create(uid, data):
+    async def fake_create(uid, data):
         created["uid"], created["data"] = uid, data
         return workspace
 
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.workspace_repo, "create", fake_create)
 
     async def fake_authorization_url(provider, redirect_uri, state):
@@ -143,14 +153,21 @@ async def test_initiate_auth_workspace_auto_create(monkeypatch):
 async def test_initiate_auth_reuses_workspace(monkeypatch):
     user = {"id": 1}
     workspace = {"id": 5}
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: user)
-    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", lambda uid: workspace)
+
+    async def fake_find_by_email(email):
+        return user
+
+    async def fake_find_by_user_id(uid):
+        return workspace
+
     called = {"create": False}
 
-    def fake_create(uid, data):
+    async def fake_create(uid, data):
         called["create"] = True
         return {}
 
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", fake_find_by_user_id)
     monkeypatch.setattr(svc.workspace_repo, "create", fake_create)
 
     async def fake_authorization_url(provider, redirect_uri, state):
@@ -166,14 +183,26 @@ async def test_initiate_auth_reuses_workspace(monkeypatch):
 # ─── list_integrations ────────────────────────────────────────────────────────
 
 async def test_list_integrations_empty_without_workspace(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", lambda uid: None)
-    assert svc.list_integrations("a@b.com") == []
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return None
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", fake_find_by_user_id)
+    assert await svc.list_integrations("a@b.com") == []
 
 
 async def test_list_integrations_maps_rows(monkeypatch):
-    monkeypatch.setattr(svc.user_repo, "find_by_email", lambda email: {"id": 1})
-    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", lambda uid: {"id": 5})
+    async def fake_find_by_email(email):
+        return {"id": 1}
+
+    async def fake_find_by_user_id(uid):
+        return {"id": 5}
+
+    monkeypatch.setattr(svc.user_repo, "find_by_email", fake_find_by_email)
+    monkeypatch.setattr(svc.workspace_repo, "find_by_user_id", fake_find_by_user_id)
     row = {
         "uuid": "u-1",
         "provider": "slack",
@@ -186,8 +215,12 @@ async def test_list_integrations_maps_rows(monkeypatch):
         "token_encrypted": "should-not-leak",
         "scopes": "should-not-leak",
     }
-    monkeypatch.setattr(svc.integration_repo, "list_by_workspace", lambda ws: [row])
-    result = svc.list_integrations("a@b.com")
+
+    async def fake_list_by_workspace(ws):
+        return [row]
+
+    monkeypatch.setattr(svc.integration_repo, "list_by_workspace", fake_list_by_workspace)
+    result = await svc.list_integrations("a@b.com")
     assert result == [
         {
             "uuid": "u-1",
@@ -226,8 +259,14 @@ def _row(provider="slack", access_token="tok", refresh_token="rt"):
 
 
 async def test_disconnect_revokes_and_deletes(monkeypatch):
-    monkeypatch.setattr(svc, "_resolve_workspace_id", lambda email: 5)
-    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", lambda ws, p: _row())
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find(ws, p):
+        return _row()
+
+    monkeypatch.setattr(svc, "_resolve_workspace_id", fake_resolve)
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find)
     revoked = {}
 
     async def fake_revoke(provider, access_token):
@@ -236,7 +275,7 @@ async def test_disconnect_revokes_and_deletes(monkeypatch):
     monkeypatch.setattr(oauth, "revoke_access_token", fake_revoke)
     deleted = {"called": False}
 
-    def fake_delete(ws, p):
+    async def fake_delete(ws, p):
         deleted["called"] = True
         return True
 
@@ -249,8 +288,14 @@ async def test_disconnect_revokes_and_deletes(monkeypatch):
 
 
 async def test_disconnect_revoke_failure_tolerated(monkeypatch):
-    monkeypatch.setattr(svc, "_resolve_workspace_id", lambda email: 5)
-    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", lambda ws, p: _row())
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find(ws, p):
+        return _row()
+
+    monkeypatch.setattr(svc, "_resolve_workspace_id", fake_resolve)
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find)
 
     async def fake_revoke(provider, access_token):
         raise RuntimeError("revoke failed")
@@ -258,7 +303,7 @@ async def test_disconnect_revoke_failure_tolerated(monkeypatch):
     monkeypatch.setattr(oauth, "revoke_access_token", fake_revoke)
     deleted = {"called": False}
 
-    def fake_delete(ws, p):
+    async def fake_delete(ws, p):
         deleted["called"] = True
         return True
 
@@ -270,7 +315,10 @@ async def test_disconnect_revoke_failure_tolerated(monkeypatch):
 
 
 async def test_disconnect_no_workspace(monkeypatch):
-    monkeypatch.setattr(svc, "_resolve_workspace_id", lambda email: None)
+    async def fake_resolve(email):
+        return None
+
+    monkeypatch.setattr(svc, "_resolve_workspace_id", fake_resolve)
     app, _ = _app()
     with pytest.raises(HTTPException) as exc:
         await svc.disconnect("a@b.com", "slack", _request(app))
@@ -278,8 +326,14 @@ async def test_disconnect_no_workspace(monkeypatch):
 
 
 async def test_disconnect_not_connected(monkeypatch):
-    monkeypatch.setattr(svc, "_resolve_workspace_id", lambda email: 5)
-    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", lambda ws, p: None)
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find(ws, p):
+        return None
+
+    monkeypatch.setattr(svc, "_resolve_workspace_id", fake_resolve)
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find)
     app, _ = _app()
     with pytest.raises(HTTPException) as exc:
         await svc.disconnect("a@b.com", "slack", _request(app))
@@ -316,7 +370,10 @@ async def test_refresh_row_success(monkeypatch):
         )
         return {**row, "status": status, "expires_at": expires_at}
 
-    monkeypatch.setattr(svc.integration_repo, "update_token", fake_update_token)
+    async def fake_update_token_async(*a, **k):
+        return fake_update_token(*a, **k)
+
+    monkeypatch.setattr(svc.integration_repo, "update_token", fake_update_token_async)
     app, emitted = _app()
     result = await svc._refresh_row(row, app)
     assert updated_args["iid"] == 1
@@ -349,7 +406,10 @@ async def test_refresh_row_failure_marks_expired(monkeypatch):
         updated_status["iid"], updated_status["status"] = iid, status
         return {**row, "status": status}
 
-    monkeypatch.setattr(svc.integration_repo, "update_status", fake_update_status)
+    async def fake_update_status_async(*a, **k):
+        return fake_update_status(*a, **k)
+
+    monkeypatch.setattr(svc.integration_repo, "update_status", fake_update_status_async)
     app, emitted = _app()
     result = await svc._refresh_row(row, app)
     assert updated_status == {"iid": 1, "status": IntegrationStatus.expired.value}
@@ -373,8 +433,15 @@ async def test_refresh_row_no_refresh_token(monkeypatch):
 async def test_refresh_integration_no_refresh_token(monkeypatch):
     row = _row()
     row["token_encrypted"] = encrypt_token_payload({"access_token": "tok"})
-    monkeypatch.setattr(svc, "_resolve_workspace_id", lambda email: 5)
-    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", lambda ws, p: row)
+
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find(ws, p):
+        return row
+
+    monkeypatch.setattr(svc, "_resolve_workspace_id", fake_resolve)
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find)
     app, _ = _app()
     with pytest.raises(HTTPException) as exc:
         await svc.refresh_integration("a@b.com", "slack", _request(app))
@@ -383,8 +450,14 @@ async def test_refresh_integration_no_refresh_token(monkeypatch):
 
 
 async def test_refresh_integration_not_found(monkeypatch):
-    monkeypatch.setattr(svc, "_resolve_workspace_id", lambda email: 5)
-    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", lambda ws, p: None)
+    async def fake_resolve(email):
+        return 5
+
+    async def fake_find(ws, p):
+        return None
+
+    monkeypatch.setattr(svc, "_resolve_workspace_id", fake_resolve)
+    monkeypatch.setattr(svc.integration_repo, "find_by_workspace_provider", fake_find)
     app, _ = _app()
     with pytest.raises(HTTPException) as exc:
         await svc.refresh_integration("a@b.com", "slack", _request(app))

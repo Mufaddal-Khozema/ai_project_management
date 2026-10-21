@@ -8,20 +8,20 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def find_by_workspace_provider(workspace_id: int, provider: str) -> dict[str, Any] | None:
-    rows = (
+async def find_by_workspace_provider(workspace_id: int, provider: str) -> dict[str, Any] | None:
+    rows = await (
         Integration.select()
         .where(Integration.workspace_id == workspace_id, Integration.provider == provider)
-        .run_sync()
+        .run()
     )
     return rows[0] if rows else None
 
 
-def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
-    return Integration.select().where(Integration.workspace_id == workspace_id).run_sync()
+async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
+    return await Integration.select().where(Integration.workspace_id == workspace_id).run()
 
 
-def create(
+async def create(
     workspace_id: int,
     provider: str,
     token_encrypted: str,
@@ -30,7 +30,7 @@ def create(
     status: str,
     expires_at: datetime | None = None,
 ) -> dict[str, Any]:
-    row = (
+    row = await (
         Integration.insert(
             Integration(
                 workspace_id=workspace_id,
@@ -45,12 +45,12 @@ def create(
             )
         )
         .returning(*Integration.all_columns())
-        .run_sync()
+        .run()
     )
     return row[0]
 
 
-def update_token(
+async def update_token(
     integration_id: int,
     token_encrypted: str,
     account_name: str | None,
@@ -58,7 +58,7 @@ def update_token(
     status: str,
     last_synced_at: datetime | None,
 ) -> dict[str, Any]:
-    row = (
+    row = await (
         Integration.update(
             {
                 Integration.token_encrypted: token_encrypted,
@@ -71,13 +71,13 @@ def update_token(
         )
         .where(Integration.id == integration_id)
         .returning(*Integration.all_columns())
-        .run_sync()
+        .run()
     )
     return row[0]
 
 
-def update_status(integration_id: int, status: str) -> dict[str, Any]:
-    row = (
+async def update_status(integration_id: int, status: str) -> dict[str, Any]:
+    row = await (
         Integration.update(
             {
                 Integration.status: status,
@@ -86,26 +86,26 @@ def update_status(integration_id: int, status: str) -> dict[str, Any]:
         )
         .where(Integration.id == integration_id)
         .returning(*Integration.all_columns())
-        .run_sync()
+        .run()
     )
     return row[0]
 
 
-def delete_by_workspace_provider(workspace_id: int, provider: str) -> bool:
-    rows = (
+async def delete_by_workspace_provider(workspace_id: int, provider: str) -> bool:
+    rows = await (
         Integration.delete()
         .where(Integration.workspace_id == workspace_id, Integration.provider == provider)
-        .run_sync()
+        .run()
     )
     return bool(rows)
 
 
-def list_refreshable(refresh_before: datetime) -> list[dict[str, Any]]:
-    return (
+async def list_refreshable(refresh_before: datetime) -> list[dict[str, Any]]:
+    return await (
         Integration.select()
         .where(
             Integration.expires_at <= refresh_before,
             Integration.status != "error",
         )
-        .run_sync()
+        .run()
     )

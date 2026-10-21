@@ -24,37 +24,42 @@ def test_key_hash_round_trip():
     assert len(hash_service_key(raw)) == 64
 
 
-def test_authenticate_ok(monkeypatch):
+async def test_authenticate_ok(monkeypatch):
     raw = generate_service_key()
     digest = hash_service_key(raw)
     row = {"id": 1, "service_name": "discord-bot", "key_hash": digest}
-    monkeypatch.setattr(
-        service_auth.service_api_key_repo, "find_by_key_hash", lambda h: row
-    )
-    assert authenticate_service_key(_Conn(f"Bearer {raw}")) is row
+
+    async def fake_find(h):
+        return row
+
+    monkeypatch.setattr(service_auth.service_api_key_repo, "find_by_key_hash", fake_find)
+    assert await authenticate_service_key(_Conn(f"Bearer {raw}")) is row
 
 
-def test_authenticate_missing_key():
+async def test_authenticate_missing_key():
     with pytest.raises(HTTPException) as exc:
-        authenticate_service_key(_Conn())
+        await authenticate_service_key(_Conn())
     assert exc.value.status_code == 401
 
 
-def test_authenticate_unknown_key(monkeypatch):
-    monkeypatch.setattr(service_auth.service_api_key_repo, "find_by_key_hash", lambda h: None)
+async def test_authenticate_unknown_key(monkeypatch):
+    async def fake_find(h):
+        return None
+
+    monkeypatch.setattr(service_auth.service_api_key_repo, "find_by_key_hash", fake_find)
     with pytest.raises(HTTPException) as exc:
-        authenticate_service_key(_Conn("Bearer svc_unknown"))
+        await authenticate_service_key(_Conn("Bearer svc_unknown"))
     assert exc.value.status_code == 401
 
 
-def test_authenticate_tampered_key_rejected(monkeypatch):
+async def test_authenticate_tampered_key_rejected(monkeypatch):
     raw = generate_service_key()
     digest = hash_service_key(raw)
-    monkeypatch.setattr(
-        service_auth.service_api_key_repo,
-        "find_by_key_hash",
-        lambda h: {"id": 1, "service_name": "x", "key_hash": digest},
-    )
+
+    async def fake_find(h):
+        return {"id": 1, "service_name": "x", "key_hash": digest}
+
+    monkeypatch.setattr(service_auth.service_api_key_repo, "find_by_key_hash", fake_find)
     with pytest.raises(HTTPException) as exc:
-        authenticate_service_key(_Conn("Bearer svc_something-else-entirely"))
+        await authenticate_service_key(_Conn("Bearer svc_something-else-entirely"))
     assert exc.value.status_code == 401

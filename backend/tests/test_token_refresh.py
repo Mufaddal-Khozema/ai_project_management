@@ -28,7 +28,11 @@ def _app():
 
 async def test_refresh_due_tokens_refreshes_due(monkeypatch):
     rows = [_row(1), _row(2)]
-    monkeypatch.setattr(token_refresh.integration_repo, "list_refreshable", lambda cutoff: rows)
+
+    async def fake_list_refreshable(cutoff):
+        return rows
+
+    monkeypatch.setattr(token_refresh.integration_repo, "list_refreshable", fake_list_refreshable)
     called = []
 
     async def fake_refresh_row(row, app):
@@ -43,7 +47,11 @@ async def test_refresh_due_tokens_refreshes_due(monkeypatch):
 
 async def test_refresh_due_tokens_skips_rows_without_refresh_token(monkeypatch):
     rows = [_row(1), _row(2)]
-    monkeypatch.setattr(token_refresh.integration_repo, "list_refreshable", lambda cutoff: rows)
+
+    async def fake_list_refreshable(cutoff):
+        return rows
+
+    monkeypatch.setattr(token_refresh.integration_repo, "list_refreshable", fake_list_refreshable)
     called = []
 
     async def fake_refresh_row(row, app):
@@ -58,7 +66,11 @@ async def test_refresh_due_tokens_skips_rows_without_refresh_token(monkeypatch):
 
 async def test_refresh_due_tokens_counts_only_successes(monkeypatch):
     rows = [_row(1), _row(2)]
-    monkeypatch.setattr(token_refresh.integration_repo, "list_refreshable", lambda cutoff: rows)
+
+    async def fake_list_refreshable(cutoff):
+        return rows
+
+    monkeypatch.setattr(token_refresh.integration_repo, "list_refreshable", fake_list_refreshable)
 
     async def fake_refresh_row(row, app):
         if row["id"] == 1:
@@ -73,7 +85,7 @@ async def test_refresh_due_tokens_counts_only_successes(monkeypatch):
 async def test_refresh_due_tokens_queries_with_lead_time(monkeypatch):
     captured = {}
 
-    def fake_list_refreshable(cutoff):
+    async def fake_list_refreshable(cutoff):
         captured["cutoff"] = cutoff
         return []
 

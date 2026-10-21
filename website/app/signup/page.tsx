@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSendOtpMutation, useVerifyOtpMutation } from "@/lib/api/@tanstack/react-query.gen";
 import { getCurrentUser } from "@/lib/api/sdk.gen";
+import { establishSession } from "@/lib/api";
 import { API_URL, StorageKeys } from "@/constants";
 
 const btnCls =
@@ -52,6 +53,7 @@ export default function SignupPage() {
     if (token) {
       setOauthLoading(true);
       localStorage.setItem(StorageKeys.TOKEN, token);
+      void establishSession(token);
       window.history.replaceState(null, "", "/signup");
       setTimeout(() => {
         setOauthLoading(false);

@@ -30,7 +30,7 @@ def _validate_provider(provider: str) -> None:
 @get("/integrations", sync_to_thread=False, operation_id="listIntegrations")
 async def list_integrations(request: Request) -> IntegrationsListResponse:
     email = request.user.sub
-    items = integration_service.list_integrations(email)
+    items = await integration_service.list_integrations(email)
     return IntegrationsListResponse(
         integrations=[IntegrationResponse(**item) for item in items]
     )

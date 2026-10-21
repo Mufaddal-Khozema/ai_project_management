@@ -41,7 +41,7 @@ async def plans_handler() -> PlansResponse:
 @post("/payments/setup-intent", operation_id="setupIntent")
 async def setup_intent_handler(data: SetupIntentRequest) -> SetupIntentResponse:
     try:
-        result = create_setup_intent(
+        result = await create_setup_intent(
             name=data.name,
             email=data.email,
             price_id=data.price_id,
@@ -60,7 +60,7 @@ async def webhook_handler(request: Request) -> Response:
     sig_header = request.headers.get("stripe-signature", "")
 
     try:
-        result = handle_webhook(payload, sig_header)
+        result = await handle_webhook(payload, sig_header)
         return Response(content=result, media_type=MediaType.JSON)
     except Exception as e:
         logger.exception("webhook handler failed")
@@ -74,7 +74,7 @@ async def webhook_handler(request: Request) -> Response:
 @get("/payments/current", operation_id="getCurrentSubscription")
 async def current_subscription_handler(request: Request) -> SubscriptionResponse:
     try:
-        result = get_current_subscription(request.user.sub)
+        result = await get_current_subscription(request.user.sub)
         return SubscriptionResponse(**result)
     except HTTPException:
         raise
@@ -86,7 +86,7 @@ async def current_subscription_handler(request: Request) -> SubscriptionResponse
 @post("/payments/cancel", operation_id="cancelSubscription")
 async def cancel_subscription_handler(request: Request) -> CancelSubscriptionResponse:
     try:
-        result = cancel_subscription(request.user.sub)
+        result = await cancel_subscription(request.user.sub)
         return CancelSubscriptionResponse(**result)
     except HTTPException:
         raise
@@ -98,7 +98,7 @@ async def cancel_subscription_handler(request: Request) -> CancelSubscriptionRes
 @get("/payments/invoices", operation_id="getInvoices")
 async def list_invoices_handler(request: Request) -> InvoicesResponse:
     try:
-        result = list_invoices(request.user.sub)
+        result = await list_invoices(request.user.sub)
         return InvoicesResponse(
             invoices=[InvoiceResponse(**invoice) for invoice in result]
         )

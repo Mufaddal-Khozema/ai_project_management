@@ -22,6 +22,10 @@ class VerifyOTPResponse(BaseModel):
     expires_in: int
 
 
+class CreateSessionRequest(BaseModel):
+    access_token: str
+
+
 class RefreshResponse(BaseModel):
     access_token: str
     token_type: str

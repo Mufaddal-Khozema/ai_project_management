@@ -15,7 +15,7 @@ logger = structlog.get_logger(__name__)
 async def list_workspace_users(request: Request) -> WorkspaceMembersResponse:
     try:
         email = request.user.sub
-        members = user_service.list_workspace_members(email)
+        members = await user_service.list_workspace_members(email)
         return WorkspaceMembersResponse(
             members=[WorkspaceMemberResponse(**m) for m in members]
         )
@@ -30,7 +30,7 @@ async def list_workspace_users(request: Request) -> WorkspaceMembersResponse:
 async def get_current_user(request: Request) -> UserResponse:
     try:
         email = request.user.sub
-        return user_service.get_profile(email)
+        return await user_service.get_profile(email)
     except HTTPException:
         raise
     except Exception:
@@ -45,7 +45,7 @@ async def update_current_user(
 ) -> UserResponse:
     try:
         email = request.user.sub
-        return user_service.update_profile(email, data)
+        return await user_service.update_profile(email, data)
     except HTTPException:
         raise
     except Exception:

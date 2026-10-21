@@ -66,11 +66,11 @@ async def social_callback(provider: str, request: Request) -> Redirect:
         name = user_info.get("name", "")
         sub = user_info["sub"]
 
-        user = user_repo.find_by_email(email)
+        user = await user_repo.find_by_email(email)
         if user:
-            user_repo.update_social_login(user["id"], provider, sub, name, current_status=user["status"])
+            await user_repo.update_social_login(user["id"], provider, sub, name, current_status=user["status"])
         else:
-            user_repo.create_social_user(email, name, provider, sub)
+            await user_repo.create_social_user(email, name, provider, sub)
 
         jwt_token = jwt_auth.create_token(
             identifier=email,
