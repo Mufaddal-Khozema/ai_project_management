@@ -33,15 +33,15 @@ export default function registerDiscordMeetingRoutes(
 
   // ── Start a standup in a specific server + voice channel ─────────────────────
   fastify.post('/integrations/discord/meetings/start', { preHandler: requireAuth }, async (req: FastifyRequest, reply) => {
-    const { guildId, channelId, durationMs } = (req.body ?? {}) as {
-      guildId?: string; channelId?: string; durationMs?: number;
+    const { guildId, channelId, textChannelId, durationMs, projectSlug } = (req.body ?? {}) as {
+      guildId?: string; channelId?: string; textChannelId?: string; durationMs?: number; projectSlug?: string;
     };
     if (!guildId || !channelId) return reply.code(400).send({ error: 'guildId and channelId are required' });
 
     try {
       const botToken = await getBotToken(req.orgId!);
       const client = await getDiscordClient(botToken);
-      await startDiscordMeeting(client, guildId, channelId, durationMs);
+      await startDiscordMeeting(client, guildId, channelId, durationMs, textChannelId, projectSlug);
       return { started: true, guildId, channelId };
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : 'Failed to start the meeting' });

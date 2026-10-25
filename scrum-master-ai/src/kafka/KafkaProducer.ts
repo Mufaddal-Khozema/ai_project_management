@@ -12,8 +12,8 @@ import type { AnyBridgeEvent } from './events.js';
 export interface KafkaProducerConfig {
   brokers: string[];          // e.g. ['localhost:9092']
   clientId: string;
-  ssl?: boolean;
-  sasl?: { mechanism: 'plain'; username: string; password: string };
+  ssl?: boolean | { rejectUnauthorized?: boolean };
+  sasl?: { mechanism: 'plain' | 'scram-sha-256' | 'scram-sha-512'; username: string; password: string };
 }
 
 export class KafkaBridgeProducer {
@@ -26,7 +26,7 @@ export class KafkaBridgeProducer {
       clientId: cfg.clientId,
       brokers: cfg.brokers,
       ssl: cfg.ssl,
-      sasl: cfg.sasl,
+      sasl: cfg.sasl as any,
       logLevel: logLevel.WARN,
       retry: { retries: 5, initialRetryTime: 300 },
     });

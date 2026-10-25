@@ -1008,16 +1008,26 @@ class DualMemoryStore(MemoryStore):
             return False
 
     def start_voice_meeting(
-        self, guild_id: str, channel_id: str, org_id: str = "default", duration_ms: int = 1800000
+        self,
+        guild_id: str,
+        channel_id: str,
+        org_id: str = "default",
+        duration_ms: int = 1800000,
+        project_slug: str | None = None,
+        text_channel_id: str | None = None,
     ) -> dict[str, Any]:
         """Trigger an on-demand voice meeting via the voice service API."""
         voice_url = os.environ.get("SCRUM_MASTER_AI_URL", "http://localhost:3001")
         endpoint = f"{voice_url.rstrip('/')}/integrations/discord/meetings/start"
-        payload = json.dumps({
+        body: dict[str, Any] = {
             "guildId": str(guild_id),
             "channelId": str(channel_id),
+            "textChannelId": str(text_channel_id or channel_id),
             "durationMs": duration_ms,
-        }).encode("utf-8")
+        }
+        if project_slug:
+            body["projectSlug"] = str(project_slug)
+        payload = json.dumps(body).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
             "x-org-id": org_id,
@@ -1208,15 +1218,15 @@ class AgentBridge:
                             f"Discord User ID: `{incoming.author_id}`"
                         ),
                     )
-                if not id_result.has_subscription:
-                    return OutgoingMessage(
-                        channel_id=incoming.channel_id,
-                        content=(
-                            "⚠️ **Active Subscription Required**\n"
-                            f"Workspace **{id_result.company_name or 'Default'}** does not have an active subscription.\n"
-                            "Please activate or upgrade your plan in the CoordinaAI dashboard."
-                        ),
-                    )
+                # if not id_result.has_subscription:
+                #     return OutgoingMessage(
+                #         channel_id=incoming.channel_id,
+                #         content=(
+                #             "⚠️ **Active Subscription Required**\n"
+                #             f"Workspace **{id_result.company_name or 'Default'}** does not have an active subscription.\n"
+                #             "Please activate or upgrade your plan in the CoordinaAI dashboard."
+                #         ),
+                #     )
             except Exception as e:
                 logger.error("Identity resolution check failed: %s", e)
                 if self.strict_identity:
@@ -1269,8 +1279,19 @@ class AgentBridge:
                 )
 
         # ── 1. Resolve project ───────────────────────────────────────────────
-        project_key = self.comm.resolve_project_key(
-            incoming.server_id, incoming.channel_id)
+        project_key = None
+        if id_result and id_result.project_slug:
+            project_key = id_result.project_slug
+            logger.info("Dynamically resolved project slug '%s' from root backend identity", project_key)
+        elif self._identity_client and id_result:
+            discovered = self._identity_client.discover_active_project(id_result)
+            if discovered:
+                project_key = discovered.get("project_slug") or discovered.get("project_id")
+                logger.info("Dynamically discovered Taiga project '%s' via Taiga API", project_key)
+
+        if not project_key:
+            project_key = self.comm.resolve_project_key(
+                incoming.server_id, incoming.channel_id)
         if not project_key:
             return OutgoingMessage(
                 channel_id=incoming.channel_id,

@@ -70,25 +70,113 @@ class DiscordPlatform(CommunicationPlatform):
         if not self._client:
             return
         try:
-            channel = self._client.get_channel(int(msg.channel_id))
-            if channel is None:
-                logger.error("Channel %s not found", msg.channel_id)
+            target = self._client.get_channel(int(msg.channel_id))
+            if target is None:
+                # Target may be a user snowflake (DM)
+                try:
+                    user = self._client.get_user(int(msg.channel_id)) or await self._client.fetch_user(int(msg.channel_id))
+                    target = user.dm_channel or await user.create_dm()
+                except Exception:
+                    pass
+
+            if target is None:
+                logger.error("Channel or user %s not found", msg.channel_id)
                 return
             from core.base import extract_text_content
             content = extract_text_content(msg.content)
             if len(content) <= 2000:
-                await channel.send(content)
+                await target.send(content)
             else:
                 # Send in chunks
                 for i in range(0, len(content), 1900):
-                    await channel.send(content[i:i+1900])
+                    await target.send(content[i:i+1900])
         except Exception as e:
             logger.error("send_message failed: %s", e)
+
+    async def send_dm_to_username(self, username: str, content: str, guild_id: str | None = None) -> bool:
+        """
+        Attempt to find a guild member matching username or display name, and send them a DM.
+        Returns True if DM was delivered successfully, False otherwise.
+        """
+        if not self._client or not username:
+            return False
+        clean_user = username.lower().strip().lstrip("@")
+        target_member = None
+
+        guilds = []
+        if guild_id:
+            try:
+                g = self._client.get_guild(int(guild_id))
+                if g:
+                    guilds.append(g)
+            except Exception:
+                pass
+        if not guilds:
+            guilds = list(self._client.guilds)
+
+        for g in guilds:
+            # Check cached members first
+            for m in getattr(g, "members", []):
+                m_name = m.name.lower()
+                m_disp = m.display_name.lower()
+                m_glob = getattr(m, "global_name", "") or ""
+                m_glob = m_glob.lower()
+
+                # Exact match
+                if clean_user in (m_name, m_disp, m_glob):
+                    target_member = m
+                    break
+                # Normalized match (ignoring dashes and underscores)
+                norm_clean = clean_user.replace("_", "").replace("-", "").replace(" ", "")
+                norm_m_name = m_name.replace("_", "").replace("-", "").replace(" ", "")
+                norm_m_disp = m_disp.replace("_", "").replace("-", "").replace(" ", "")
+                if norm_clean and norm_clean in (norm_m_name, norm_m_disp):
+                    target_member = m
+                    break
+            if target_member:
+                break
+
+            # If not in cache, try query_members
+            if hasattr(g, "query_members"):
+                try:
+                    matches = await g.query_members(query=clean_user, limit=5)
+                    if matches:
+                        target_member = matches[0]
+                        break
+                except Exception:
+                    pass
+
+        if not target_member:
+            logger.warning("Could not find Discord member matching Taiga username '%s'", username)
+            return False
+
+        try:
+            from core.base import extract_text_content
+            text = extract_text_content(content)
+            dm_channel = target_member.dm_channel or await target_member.create_dm()
+            if len(text) <= 2000:
+                await dm_channel.send(text)
+            else:
+                for i in range(0, len(text), 1900):
+                    await dm_channel.send(text[i:i+1900])
+            logger.info("Successfully delivered personal DM to @%s (%s)", username, target_member.id)
+            return True
+        except Exception as e:
+            logger.warning("Failed to send personal DM to @%s (%s): %s", username, target_member.id, e)
+            return False
 
     def resolve_project_key(self, server_id: str, channel_id: str) -> str | None:
         channel_map: dict = self._config.get("channel_map", {})
         guild_map = channel_map.get(str(server_id), {})
-        return guild_map.get(str(channel_id))
+        hit = guild_map.get(str(channel_id))
+        if hit:
+            return hit
+        # In a DM or unmapped direct interaction, default to the active project if configured
+        if not server_id or server_id == "dm":
+            all_slugs = [slug for g in channel_map.values() if isinstance(g, dict) for slug in g.values() if slug]
+            if all_slugs:
+                return all_slugs[0]
+        return None
 
     def get_permission_tier(self, author_roles: list[str]) -> str:
         role_perms: dict = {
@@ -182,7 +270,8 @@ class DiscordPlatform(CommunicationPlatform):
         role_triggered = any(r in trigger_roles for r in author_roles)
         role_mentioned = any(r in trigger_roles for r in mentioned_roles) or bot_role_mentioned
 
-        if not bot_mentioned and not role_triggered and not role_mentioned:
+        is_dm = message.guild is None
+        if not is_dm and not bot_mentioned and not role_triggered and not role_mentioned:
             logger.info(
                 "Recorded message (no mention): bot_mentioned=%s role_triggered=%s role_mentioned=%s",
                 bot_mentioned,
@@ -205,7 +294,16 @@ class DiscordPlatform(CommunicationPlatform):
 
         guild_id = str(message.guild.id) if message.guild else ""
         channel_id = str(message.channel.id)
-        author_roles = [r.name for r in getattr(message.author, "roles", [])]
+        if message.guild:
+            author_roles = [r.name for r in getattr(message.author, "roles", [])]
+        else:
+            author_roles = []
+            for g in self._client.guilds:
+                m = g.get_member(message.author.id)
+                if m:
+                    author_roles.extend([r.name for r in getattr(m, "roles", [])])
+            if not author_roles:
+                author_roles = ["Developer"]
 
         incoming = IncomingMessage(
             platform            = self.platform_id,

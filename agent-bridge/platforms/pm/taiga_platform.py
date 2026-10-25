@@ -4,6 +4,7 @@ platforms/pm/taiga_platform.py — Full Taiga REST API adapter.
 from __future__ import annotations
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 import requests
 from core.base import ProjectManagementPlatform, ProjectContext, ProjectItem
@@ -274,3 +275,110 @@ class TaigaPlatform(ProjectManagementPlatform):
         raw = self._http.request("POST", f"/epics/{epic_id}/related_userstories",
             json={"user_story": int(item_id)})
         return _to_item(raw, "userstories", self._http.base_url)
+
+    def get_due_items(self, project_id: str, days_ahead: int = 2) -> list[dict]:
+        """
+        Retrieve open tasks, user stories, and issues with due_date on or before today + days_ahead,
+        including overdue items.
+        """
+        threshold = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+        results = []
+        for resource in ("tasks", "userstories", "issues"):
+            try:
+                raw_list = self._http.request(
+                    "GET", f"/{resource}",
+                    params={"project": project_id, "status__is_closed": "false"}
+                ) or []
+                for raw in raw_list:
+                    due = raw.get("due_date")
+                    if due and str(due) <= threshold:
+                        ref = raw.get("ref", raw.get("id", ""))
+                        slug = raw.get("project_extra_info", {}).get("slug", "")
+                        resource_singular = resource.rstrip("s").replace("userstorie", "us")
+                        url = f"{self._http.base_url.replace('/api/v1','')}/project/{slug}/{resource_singular}/{ref}" if slug else None
+                        assignee = None
+                        if raw.get("assigned_to_extra_info"):
+                            assignee = raw["assigned_to_extra_info"].get("username")
+
+                        results.append({
+                            "id": str(raw.get("id", "")),
+                            "ref": str(ref),
+                            "type": resource,
+                            "subject": raw.get("subject", ""),
+                            "description": raw.get("description", "") or "",
+                            "due_date": str(due),
+                            "due_date_reason": raw.get("due_date_reason") or "",
+                            "due_date_status": raw.get("due_date_status") or "",
+                            "assigned_to": assignee,
+                            "assigned_to_id": raw.get("assigned_to"),
+                            "watchers": raw.get("watchers", []) or [],
+                            "version": raw.get("version", 1),
+                            "url": url,
+                        })
+            except Exception as e:
+                logger.warning("get_due_items failed for %s: %s", resource, e)
+        return results
+
+    def extend_due_date(self, project_id: str, item_id: str, new_date: str, reason: str = "") -> dict:
+        """
+        Extend or change the due date of a task, user story, or issue with version-checked optimistic concurrency.
+        Returns details of the updated item and watchers.
+        """
+        for resource in ("tasks", "userstories", "issues"):
+            try:
+                raw = self._http.request("GET", f"/{resource}/{item_id}")
+                version = raw.get("version", 1)
+                patch_payload = {
+                    "due_date": new_date,
+                    "version": version,
+                }
+                if reason:
+                    patch_payload["due_date_reason"] = reason
+
+                updated = self._http.request("PATCH", f"/{resource}/{item_id}", json=patch_payload)
+
+                ref = updated.get("ref", updated.get("id", item_id))
+                slug = updated.get("project_extra_info", {}).get("slug", "")
+                resource_singular = resource.rstrip("s").replace("userstorie", "us")
+                url = f"{self._http.base_url.replace('/api/v1','')}/project/{slug}/{resource_singular}/{ref}" if slug else None
+                assignee = None
+                if updated.get("assigned_to_extra_info"):
+                    assignee = updated["assigned_to_extra_info"].get("username")
+
+                return {
+                    "item_id": str(updated.get("id", item_id)),
+                    "ref": str(ref),
+                    "type": resource,
+                    "subject": updated.get("subject", ""),
+                    "old_due_date": raw.get("due_date"),
+                    "new_due_date": new_date,
+                    "reason": reason,
+                    "assignee": assignee,
+                    "watchers": updated.get("watchers", []) or raw.get("watchers", []) or [],
+                    "version": updated.get("version", version + 1),
+                    "url": url,
+                }
+            except Exception:
+                continue
+        raise ValueError(f"Item #{item_id} not found in any resource type")
+
+    def get_watchers_info(self, project_id: str, watcher_ids: list[int | str]) -> list[dict]:
+        """
+        Resolve watcher IDs into full user and role details via project memberships.
+        """
+        if not watcher_ids:
+            return []
+        members = self.list_members(project_id)
+        member_by_id = {m["id"]: m for m in members if m.get("id") is not None}
+
+        info = []
+        for wid in watcher_ids:
+            try:
+                num_id = int(wid)
+            except (ValueError, TypeError):
+                num_id = wid
+            if num_id in member_by_id:
+                info.append(member_by_id[num_id])
+            else:
+                info.append({"id": num_id, "username": f"user_{num_id}", "full_name": "", "role": ""})
+        return info

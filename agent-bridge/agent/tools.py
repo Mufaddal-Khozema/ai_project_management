@@ -215,7 +215,26 @@ def build_tools(
             logger.error("get_sprint_info error: %s", e)
             return f"Error fetching sprint info: {e}"
 
-    read_tools = [list_items, get_item, search_items, get_project_summary, list_members, get_sprint_info]
+    @tool
+    def get_upcoming_due_items(days_ahead: int = 3) -> str:
+        """
+        List open tasks, stories, and issues that are approaching their due date or are overdue.
+        days_ahead: number of days ahead to inspect (default: 3)
+        """
+        try:
+            items = pm.get_due_items(project_id, days_ahead=days_ahead)
+            if not items:
+                return f"No open items found with due dates within the next {days_ahead} day(s)."
+            lines = [f"Found {len(items)} item(s) due soon or overdue:"]
+            for item in items:
+                assignee = f" → @{item['assigned_to']}" if item.get("assigned_to") else " → Unassigned"
+                lines.append(f"  • #{item['ref']} [{item['type']}] {item['subject']} (Due: **{item['due_date']}**){assignee}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.error("get_upcoming_due_items error: %s", e)
+            return f"Error fetching due items: {e}"
+
+    read_tools = [list_items, get_item, search_items, get_project_summary, list_members, get_sprint_info, get_upcoming_due_items]
 
     # ── Memory & Meeting Tools (available if MemoryStore configured) ────
 
@@ -528,7 +547,50 @@ def build_tools(
         except Exception as e:
             return f"❌ Error linking story to epic: {e}"
 
-    write_tools = [create_item, close_item, update_item, create_epic, link_story_to_epic]
+    @tool
+    def extend_due_date(item_id: str, new_due_date: str, reason: str = "") -> str:
+        """
+        Extend or update the due date of a work item (task, user story, issue) and notify all watchers/stakeholders.
+        item_id: numeric ID of the item (e.g. '42')
+        new_due_date: new due date in YYYY-MM-DD format (e.g. '2026-10-30')
+        reason: explanation for why the due date was extended (shared with stakeholders)
+        """
+        try:
+            res = pm.extend_due_date(project_id, item_id, new_due_date, reason)
+            subject = res.get("subject", f"Item #{item_id}")
+            ref = res.get("ref", item_id)
+            res_type = res.get("type", "item")
+            old_date = res.get("old_due_date") or "none"
+            watchers_ids = res.get("watchers", [])
+            watchers_info = pm.get_watchers_info(project_id, watchers_ids) if watchers_ids else []
+
+            watcher_mentions = []
+            for w in watchers_info:
+                uname = w.get("username")
+                if uname:
+                    watcher_mentions.append(f"@{uname}")
+
+            lines = [
+                f"✅ **Due Date Extended** for {res_type} **#{ref}** (*{subject}*)",
+                f"📅 **Deadline**: `{old_date}` ➔ `{new_due_date}`",
+            ]
+            if reason:
+                lines.append(f"📝 **Reason**: {reason}")
+
+            if watcher_mentions:
+                lines.append(f"📢 **Stakeholders / Watchers Notified**: {', '.join(watcher_mentions)}")
+            else:
+                lines.append("ℹ️ *No watchers currently registered on this item.*")
+
+            if res.get("url"):
+                lines.append(f"🔗 {res['url']}")
+
+            return "\n".join(lines)
+        except Exception as e:
+            logger.error("extend_due_date error: %s", e)
+            return f"❌ Error extending due date for #{item_id}: {e}"
+
+    write_tools = [create_item, close_item, update_item, extend_due_date, create_epic, link_story_to_epic]
 
     # ── Meeting Scheduling & Voice Control Tools ─────────────────────────
 
@@ -651,6 +713,8 @@ def build_tools(
                     channel_id=target_ch,
                     org_id=org_id,
                     duration_ms=duration_minutes * 60 * 1000,
+                    project_slug=project_key,
+                    text_channel_id=channel_id,
                 )
                 if res.get("started"):
                     return f"🎙️ **Voice Meeting Started!**\n  • Server: `{guild_id}`\n  • Channel: #{target_ch_name} (`{target_ch}`)\n  • Duration: {duration_minutes} min\n  • The Scrum Master bot is joining the voice room now."

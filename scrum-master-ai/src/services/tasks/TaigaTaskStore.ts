@@ -15,9 +15,11 @@ import type { TaskStore, Task, TaskInput, TaskChanges, TaskStorePmSurface } from
 export interface TaigaStoreConfig {
   /** Taiga API base, e.g. "https://api.taiga.io/api/v1" */
   url: string;
-  username: string;
-  password: string;
-  projectSlug: string;
+  username?: string;
+  password?: string;
+  token?: string;
+  projectSlug?: string;
+  projectId?: string;
 }
 
 /** Type alias (not interface) so assignments to Record<string, ...> keep
@@ -51,11 +53,22 @@ class TaigaHttp {
 
   constructor(
     private readonly baseUrl: string,
-    private readonly username: string,
-    private readonly password: string
-  ) {}
+    private readonly username?: string,
+    private readonly password?: string,
+    token?: string
+  ) {
+    if (token) this.token = token;
+  }
+
+  setToken(token: string): void {
+    this.token = token;
+  }
 
   async login(): Promise<void> {
+    if (this.token) return;
+    if (!this.username || !this.password) {
+      throw new Error('Taiga authentication failed: neither token nor username/password provided.');
+    }
     const res = await fetch(`${this.baseUrl}/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -116,13 +129,24 @@ export class TaigaTaskStore implements TaskStore, TaskStorePmSurface {
   private members: TaigaMember[] | null = null;
 
   constructor(private readonly config: TaigaStoreConfig) {
-    this.http = new TaigaHttp(config.url, config.username, config.password);
+    this.http = new TaigaHttp(config.url, config.username, config.password, config.token);
+    if (config.projectId) {
+      this.projectId = String(config.projectId);
+    }
   }
 
   // ── PM helpers ────────────────────────────────────────────────────────
 
   private async resolveProjectId(): Promise<string> {
     if (this.projectId) return this.projectId;
+    if (!this.config.projectSlug) {
+      const userProjects = await this.http.request<Array<{ id: number; slug: string }>>('GET', '/projects');
+      if (userProjects && userProjects.length > 0) {
+        this.projectId = String(userProjects[0].id);
+        return this.projectId;
+      }
+      throw new Error('No Taiga project slug provided and no accessible projects found.');
+    }
     const data = await this.http.request<{ id: number }>('GET', '/projects/by_slug', { slug: this.config.projectSlug });
     this.projectId = String(data.id);
     return this.projectId;
