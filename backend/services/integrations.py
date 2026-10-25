@@ -16,7 +16,7 @@ from lib import oauth
 from lib.crypto import decrypt_token_payload, encrypt_token_payload
 from lib.events import Events
 from lib.oauth import OAuth2Token
-from lib.tables import IntegrationStatus
+from lib.tables import Integration, IntegrationStatus
 from repositories import integration_repo, user_repo, workspace_repo
 
 logger = structlog.get_logger(__name__)
@@ -66,10 +66,14 @@ async def _resolve_workspace_id(email: str) -> int | None:
     return workspace["id"] if workspace else None
 
 
-def _effective_status(row: dict[str, Any]) -> str:
-    status = row.get("status")
+def _value(row: Integration | dict[str, Any], key: str) -> Any:
+    return row.get(key) if isinstance(row, dict) else getattr(row, key)
+
+
+def _effective_status(row: Integration | dict[str, Any]) -> str:
+    status = _value(row, "status")
     if status == IntegrationStatus.connected.value:
-        expires_at = row.get("expires_at")
+        expires_at = _value(row, "expires_at")
         if expires_at is not None and expires_at < _utc_now():
             return IntegrationStatus.expired.value
     return status
@@ -115,16 +119,16 @@ def _as_utc(value: Any) -> datetime | None:
     return value
 
 
-def _to_response(row: dict[str, Any]) -> dict[str, Any]:
+def _to_response(row: Integration | dict[str, Any]) -> dict[str, Any]:
     return {
-        "uuid": row["uuid"],
-        "provider": row["provider"],
-        "account_name": row.get("account_name"),
+        "uuid": _value(row, "uuid"),
+        "provider": _value(row, "provider"),
+        "account_name": _value(row, "account_name"),
         "status": _effective_status(row),
-        "expires_at": _as_utc(row.get("expires_at")),
-        "last_synced_at": _as_utc(row.get("last_synced_at")),
-        "created_on": _as_utc(row["created_on"]),
-        "updated_on": _as_utc(row["updated_on"]),
+        "expires_at": _as_utc(_value(row, "expires_at")),
+        "last_synced_at": _as_utc(_value(row, "last_synced_at")),
+        "created_on": _as_utc(_value(row, "created_on")),
+        "updated_on": _as_utc(_value(row, "updated_on")),
     }
 
 

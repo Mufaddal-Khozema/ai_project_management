@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import time
 
@@ -29,6 +30,11 @@ class FakeRedis:
     async def delete(self, key):
         self.store.pop(key, None)
 
+    async def scan_iter(self, match=None):
+        for key in list(self.store):
+            if match is None or fnmatch.fnmatch(key, match):
+                yield key
+
 
 @pytest.fixture()
 def fake_redis(monkeypatch):
@@ -52,9 +58,12 @@ async def test_cache_key_namespaces_provider_and_id(fake_redis):
 
 async def test_cache_invalidate(fake_redis):
     key = identity_cache.make_identity_key("discord", "123")
+    channel_key = identity_cache.make_identity_key("discord", "123", "g1", "c1")
     await identity_cache.cache_set(key, {"linked": True})
+    await identity_cache.cache_set(channel_key, {"linked": True})
     await identity_cache.cache_invalidate("discord", "123")
     assert await identity_cache.cache_get(key) is None
+    assert await identity_cache.cache_get(channel_key) is None
 
 
 async def test_cache_expiry(fake_redis):

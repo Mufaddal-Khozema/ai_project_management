@@ -413,7 +413,11 @@ async def list_taiga_projects(
         resp.raise_for_status()
         projects = resp.json()
     return [
-        {"id": str(p.get("id")), "name": p.get("name") or ""}
+        {
+            "id": str(p.get("id")),
+            "name": p.get("name") or "",
+            "slug": p.get("slug") or None,
+        }
         for p in projects
         if p.get("id") is not None
     ]

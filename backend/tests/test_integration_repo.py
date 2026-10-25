@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 from piccolo.query.base import Query
+from piccolo.query.methods.objects import Objects
 
 from repositories import integration_repo
 
@@ -16,6 +17,7 @@ def capture_run(monkeypatch):
         return captured.get("result", [])
 
     monkeypatch.setattr(Query, "run", fake_run)
+    monkeypatch.setattr(Objects, "run", fake_run)
     return captured
 
 

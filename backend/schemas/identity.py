@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ResolveIdentityRequest(BaseModel):
@@ -24,6 +24,18 @@ class IdentityWorkspace(BaseModel):
     company_name: str
 
 
+class IdentityProject(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    provider: str = Field(validation_alias=AliasChoices("provider", "pm_provider"))
+    project_id: str
+    project_name: str | None = None
+    project_slug: str | None = None
+    comm_provider: str = "discord"
+    guild_id: str | None = None
+    channel_id: str
+
+
 class IdentityEntitlements(BaseModel):
     has_subscription: bool = False
     onboarding_completed: bool = False
@@ -43,6 +55,7 @@ class ResolveIdentityResponse(BaseModel):
     linked: bool = True
     user: IdentityUser
     workspace: IdentityWorkspace | None
+    project: IdentityProject | None = None
     entitlements: IdentityEntitlements
     integrations: list[IdentityIntegration]
     cached_at: datetime | None = None

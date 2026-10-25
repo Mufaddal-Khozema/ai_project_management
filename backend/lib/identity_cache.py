@@ -15,8 +15,16 @@ CACHE_PREFIX = "identity:resolve"
 _redis_client: redis.Redis | None = None
 
 
-def make_identity_key(provider: str, external_id: str) -> str:
-    return f"{CACHE_PREFIX}:{provider}:{external_id}"
+def make_identity_key(
+    provider: str,
+    external_id: str,
+    guild_id: str | None = None,
+    channel_id: str | None = None,
+) -> str:
+    key = f"{CACHE_PREFIX}:{provider}:{external_id}"
+    if channel_id:
+        key = f"{key}:{guild_id or '-'}:{channel_id}"
+    return key
 
 
 async def _get_redis() -> redis.Redis | None:
@@ -77,11 +85,13 @@ async def cache_set(key: str, value: dict[str, Any], ttl_seconds: int | None = N
 
 
 async def cache_invalidate(provider: str, external_id: str) -> None:
-    """Drop a cached resolve response (call after link/unlink in Phase 2)."""
+    """Drop cached resolve responses for this identity, across channel variants."""
     client = await _get_redis()
     if client is None:
         return
     try:
-        await client.delete(make_identity_key(provider, external_id))
+        pattern = f"{make_identity_key(provider, external_id)}*"
+        async for key in client.scan_iter(match=pattern):
+            await client.delete(key)
     except redis.RedisError:
         logger.warning("redis delete failed")

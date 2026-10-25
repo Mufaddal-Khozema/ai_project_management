@@ -2,6 +2,7 @@ import pytest
 from litestar.exceptions import HTTPException
 
 from lib.crypto import encrypt_token_payload
+from lib.tables import ExternalIdentity
 from services import members as svc
 
 PM_MEMBER = {
@@ -115,7 +116,7 @@ async def test_create_matched_users_reuses_existing_identity(stub_fetchers, stub
 
     async def fake_find_identity(provider, external_id):
         if provider == "taiga":
-            return {"id": 1, "user_id": 7}
+            return ExternalIdentity(id=1, user_id=7)
         return None
 
     async def fake_create_pending_user(email, name=None, avatar=None):

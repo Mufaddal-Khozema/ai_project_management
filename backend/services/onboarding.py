@@ -9,6 +9,7 @@ from litestar.exceptions import HTTPException
 from repositories import user_repo, workspace_member_repo, workspace_repo
 from schemas.workspace import OnboardingRequest
 from services import members as members_service
+from services import projects as project_service
 
 logger = structlog.get_logger(__name__)
 
@@ -39,6 +40,24 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         if field in workspace_fields and (value := _normalize(getattr(data, field))) is not None
     }
 
+    pm_provider = _normalize(data.pm_platform)
+    comm_provider = _normalize(data.comm_platform)
+    project_id = _normalize(data.project_id)
+    channel_id = _normalize(data.channel_id)
+
+    if bool(project_id) != bool(channel_id):
+        raise HTTPException(
+            status_code=400,
+            detail="project_id and channel_id must be supplied together",
+        )
+    if project_id and channel_id:
+        if not pm_provider or not comm_provider:
+            raise HTTPException(
+                status_code=400,
+                detail="Both platforms are required to map a project to a channel",
+            )
+        project_service.validate_provider_pair(pm_provider, comm_provider)
+
     existing = await workspace_repo.find_by_user_id(user["id"])
     if not existing:
         row = await workspace_repo.create(user["id"], provided)
@@ -64,19 +83,33 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         status="active",
     )
 
+    if project_id and channel_id:
+        await project_service.save_mapping(
+            workspace_id=row["id"],
+            pm_provider=pm_provider,
+            project_id=project_id,
+            comm_provider=comm_provider,
+            channel_id=channel_id,
+        )
+        logger.info(
+            "onboarding saved project channel mapping",
+            user_id=user["id"],
+            workspace_id=row["id"],
+            project_id=project_id,
+            channel_id=channel_id,
+        )
+
     if data.matches:
-        pm_provider = _normalize(data.pm_platform)
-        comm_provider = _normalize(data.comm_platform)
         if not pm_provider or not comm_provider:
             raise HTTPException(status_code=400, detail="Both platforms are required to match members")
-        if not data.project_id or not data.channel_id:
+        if not project_id or not channel_id:
             raise HTTPException(status_code=400, detail="Project and channel are required to match members")
         await members_service.create_matched_users(
             email=email,
             pm_provider=pm_provider,
             comm_provider=comm_provider,
-            project_id=data.project_id,
-            channel_id=data.channel_id,
+            project_id=project_id,
+            channel_id=channel_id,
             matches=[m.model_dump() for m in data.matches],
         )
 

@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from piccolo.query.base import Query
 
+from lib.tables import ExternalIdentity
 from repositories import external_identity_repo
 
 
@@ -23,9 +24,10 @@ def _sql(captured) -> str:
 
 
 async def test_find_by_provider_external_id_filters(capture_run):
-    capture_run["result"] = [{"id": 1, "user_id": 5}]
+    capture_run["result"] = [ExternalIdentity(id=1, user_id=5)]
     row = await external_identity_repo.find_by_provider_external_id("taiga", "42")
-    assert row == {"id": 1, "user_id": 5}
+    assert row.id == 1
+    assert row.user_id == 5
     sql = _sql(capture_run)
     assert "FROM \"external_identities\"" in sql
     assert "\"provider\" = 'taiga'" in sql
@@ -38,12 +40,12 @@ async def test_find_by_provider_external_id_missing_returns_none(capture_run):
 
 
 async def test_find_user_id_returns_id_when_present(capture_run):
-    capture_run["result"] = [{"id": 1, "user_id": 5}]
+    capture_run["result"] = [ExternalIdentity(id=1, user_id=5)]
     assert await external_identity_repo.find_user_id_by_provider_external_id("taiga", "42") == 5
 
 
 async def test_find_user_id_returns_none_when_unlinked(capture_run):
-    capture_run["result"] = [{"id": 1, "user_id": None}]
+    capture_run["result"] = [ExternalIdentity(id=1, user_id=None)]
     assert await external_identity_repo.find_user_id_by_provider_external_id("taiga", "42") is None
 
 
