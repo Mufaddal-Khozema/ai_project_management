@@ -109,7 +109,7 @@ def test_resolve_discord_identity_with_project(identity_client):
     mock_resp.json.return_value = {
         "linked": True,
         "user": {"name": "Ghulam Hasnain"},
-        "workspace": {"company_name": "Acme"},
+        "workspace": {"company_name": "Acme", "uuid": "889effbc-56c8-41f8-b28e-1f5666bbec67"},
         "project": {
             "provider": "taiga",
             "project_id": "1786016",
@@ -136,6 +136,8 @@ def test_resolve_discord_identity_with_project(identity_client):
         assert result.project["project_name"] == "AI Project Management Tool"
         assert result.project_slug == "maheennaseem-ai-project-management-tool"
         assert result.project["channel_id"] == "1489127884319625279"
+        assert result.workspace_uuid == "889effbc-56c8-41f8-b28e-1f5666bbec67"
+        assert result.org_id == "889effbc-56c8-41f8-b28e-1f5666bbec67"
 
 
 def test_discover_active_project_via_taiga_api(identity_client):

@@ -6,7 +6,7 @@
  * all events for the same channel always land on the same partition,
  * preserving strict ordering without requiring a global transaction.
  */
-import { Kafka, Producer, CompressionTypes, logLevel } from 'kafkajs';
+import { Kafka, Producer, CompressionTypes, logLevel, Partitioners } from 'kafkajs';
 import type { AnyBridgeEvent } from './events.js';
 
 export interface KafkaProducerConfig {
@@ -32,6 +32,7 @@ export class KafkaBridgeProducer {
     });
     this.producer = this.kafka.producer({
       allowAutoTopicCreation: true,
+      createPartitioner: Partitioners.LegacyPartitioner,
       transactionTimeout: 30_000,
     });
   }

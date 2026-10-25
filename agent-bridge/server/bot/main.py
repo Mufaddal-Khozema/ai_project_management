@@ -41,11 +41,7 @@ import platforms.pm.linear_platform              # noqa: F401
 
 from core.registry import PlatformRegistry
 from agent.agent import AgentBridge, DualMemoryStore, ChannelMemoryStore
-from core.auth_service_client import AuthServiceClient
 from core.identity_client import IdentityClient
-from platforms.communication.discord_platform_manager import DiscordPlatformManager
-from core.config_events import build_config_consumer_from_env
-from core.tool_config_consumer import setup_config_consumer
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config.json"
@@ -182,27 +178,6 @@ def _build_memory_store(cfg: dict):
 async def main(config_path: str) -> None:
     cfg = load_config(config_path)
 
-    # ── Optional: overlay Discord/Taiga credentials from auth-service ───────
-    # Off by default (fully backward compatible with the existing
-    # env-var/config.json flow). Set AUTH_SERVICE_URL to opt in — see
-    # core/auth_service_client.py. This only overlays cfg before validation
-    # runs below; everything downstream of this block is unchanged.
-    auth_service_url = os.environ.get("AUTH_SERVICE_URL", "")
-    if auth_service_url:
-        from core.auth_service_client import AuthServiceClient, overlay_auth_service_credentials
-
-        internal_key = os.environ.get("AUTH_SERVICE_INTERNAL_KEY", "")
-        org_id = os.environ.get("ORG_ID", "default")
-        if not internal_key:
-            logger.error("AUTH_SERVICE_URL is set but AUTH_SERVICE_INTERNAL_KEY is missing — cannot fetch credentials.")
-            sys.exit(1)
-        cache_ttl = float(os.environ.get("AUTH_SERVICE_CACHE_TTL_SECONDS", "30"))
-        client = AuthServiceClient(auth_service_url, internal_key, cache_ttl)
-        try:
-            overlay_auth_service_credentials(cfg, org_id, client)
-        except Exception as e:
-            logger.warning("auth-service credential overlay skipped: %s (using local/backend configuration)", e)
-
     # ── Validate required keys ───────────────────────────────────────────────
     bot_token = os.environ.get("DISCORD_BOT_TOKEN") or cfg.get("discord", {}).get("bot_token", "")
     trigger_role = os.environ.get("DISCORD_TRIGGER_ROLE") or cfg.get("discord", {}).get("trigger_role", "CoordinaAI, FYP")
@@ -302,7 +277,7 @@ async def main(config_path: str) -> None:
     # ── Wire the message callback (single-org legacy path) ──────────────────
     comm.set_message_callback(bridge.handle)
     if hasattr(comm, "set_chat_record_callback") and hasattr(memory_store, "save_chat_message"):
-        comm.set_chat_record_callback(memory_store.save_chat_message)
+        comm.set_chat_record_callback(bridge.record_chat_message)
 
     # ── Multi-org Discord connection manager ─────────────────────────────
     # IMPORTANT: set_message_callback(bridge.handle) MUST happen before
@@ -324,34 +299,6 @@ async def main(config_path: str) -> None:
         except Exception as e:
             logger.warning("Redis unavailable (%s) — using in-memory fallbacks", e)
             status_redis = None
-
-    auth_service_url = os.environ.get("AUTH_SERVICE_URL", "")
-    internal_key = os.environ.get("AUTH_SERVICE_INTERNAL_KEY", "")
-    if auth_service_url and internal_key:
-        cache_ttl = float(os.environ.get("AUTH_SERVICE_CACHE_TTL_SECONDS", "30"))
-        auth_client = AuthServiceClient(auth_service_url, internal_key, cache_ttl)
-
-        discord_manager = DiscordPlatformManager(auth_client, status_redis=status_redis)
-        discord_manager.set_message_callback(bridge.handle)
-        if hasattr(memory_store, "save_chat_message"):
-            discord_manager.set_chat_record_callback(memory_store.save_chat_message)
-
-        try:
-            await discord_manager.discover_and_connect()
-            logger.info("DiscordPlatformManager: %d org(s) connected", len(discord_manager.get_status()))
-        except Exception as e:
-            logger.warning("DiscordPlatformManager discovery failed: %s", e)
-
-        # Wire config event consumer for live add/remove updates
-        if os.environ.get("KAFKA_BROKERS"):
-            config_consumer = build_config_consumer_from_env()
-            if config_consumer:
-                setup_config_consumer(config_consumer, discord_manager, asyncio.get_running_loop())
-                config_consumer.start()
-                logger.info("Config event consumer started")
-    else:
-        discord_manager = None
-        logger.info("AUTH_SERVICE_URL not set — multi-org discovery disabled, using single-org fallback")
 
     # ── Kafka bridge (voice bot → Taiga sync + meeting memory) ──────────────
     # Runs the python-consumer in-process so it shares bridge._memory: meeting
@@ -414,14 +361,7 @@ async def main(config_path: str) -> None:
 
     # ── Start the bot (blocks until disconnected) ────────────────────────────
     try:
-        if discord_manager:
-            # Multi-org mode: DiscordPlatformManager owns the lifecycle of all org bot connections
-            logger.info("DiscordPlatformManager active — managing multi-org bot lifecycle")
-            while True:
-                await asyncio.sleep(3600)
-        else:
-            # Single-org standalone fallback
-            await comm.start()
+        await comm.start()
     except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Shutting down...")
     finally:
@@ -429,11 +369,7 @@ async def main(config_path: str) -> None:
         reminder_task.cancel()
         if kafka_consumer:
             kafka_consumer.stop()
-        if discord_manager:
-            for org_id in list(discord_manager._platforms.keys()):
-                await discord_manager.remove_org(org_id)
-        else:
-            await comm.stop()
+        await comm.stop()
 
 
 if __name__ == "__main__":

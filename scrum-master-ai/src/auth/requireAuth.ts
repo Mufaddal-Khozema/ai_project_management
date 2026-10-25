@@ -50,14 +50,7 @@ export function isAuthEnforced(): boolean {
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   if (!authServiceUrl) {
-    if (!warnedOnce) {
-      console.warn(
-        `[auth] AUTH_SERVICE_URL not set — running in single-org fallback mode (orgId="${defaultOrgId}", ` +
-        'no real authentication). Set AUTH_SERVICE_URL to require real login and scope data per org.'
-      );
-      warnedOnce = true;
-    }
-    request.orgId = defaultOrgId;
+    request.orgId = (request.headers['x-org-id'] as string) || defaultOrgId;
     request.userId = 'system';
     request.role = 'owner';
     return;

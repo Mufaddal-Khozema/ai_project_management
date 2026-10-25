@@ -5,13 +5,13 @@ import { allProviderFactories } from './adapters/factories.js';
 import { TokenCipher } from './crypto/TokenCipher.js';
 import type { IntegrationStore } from './store/IntegrationStore.js';
 import type { CredentialsStore } from './store/CredentialsStore.js';
-import { FileIntegrationStore } from './store/FileIntegrationStore.js';
-import { FileCredentialsStore } from './store/FileCredentialsStore.js';
+
+
 import { connectMongo } from './store/mongo/connection.js';
 import { MongoIntegrationStore } from './store/mongo/MongoIntegrationStore.js';
 import { MongoCredentialsStore } from './store/mongo/MongoCredentialsStore.js';
-import { AuthServiceClient } from './store/AuthServiceClient.js';
-import { AuthServiceCredentialsStore } from './store/AuthServiceCredentialsStore.js';
+
+
 import { OAuthService } from './OAuthService.js';
 import registerIntegrationRoutes from './routes/integrations.js';
 import registerDiscordMeetingRoutes from './routes/discordMeetings.js';
@@ -50,44 +50,9 @@ function requireEnv(name: string): string {
  * in routes.ts, OAuthService, or the adapters needs to change.
  */
 async function createStores(cipher: TokenCipher): Promise<{ store: IntegrationStore; credentialsStore: CredentialsStore }> {
-  const driver = (process.env.INTEGRATIONS_STORAGE_DRIVER ?? 'mongo').toLowerCase();
-  const credentialsDriver = (process.env.CREDENTIALS_STORE_DRIVER ?? driver).toLowerCase();
-
-  let mongoConnected = false;
-  const ensureMongo = async () => {
-    if (!mongoConnected) {
-      await connectMongo(requireEnv('MONGODB_URI'));
-      mongoConnected = true;
-    }
-  };
-
-  let store: IntegrationStore;
-  if (driver === 'mongo') {
-    await ensureMongo();
-    store = new MongoIntegrationStore(cipher);
-  } else if (driver === 'file') {
-    const dataDir = process.env.INTEGRATIONS_DATA_DIR ?? path.join(process.cwd(), 'data');
-    store = new FileIntegrationStore(cipher, path.join(dataDir, 'integration-connections.enc.json'));
-  } else {
-    throw new Error(`Unknown INTEGRATIONS_STORAGE_DRIVER "${driver}" — expected "mongo" or "file"`);
-  }
-
-  let credentialsStore: CredentialsStore;
-  if (credentialsDriver === 'auth-service') {
-    const baseUrl = requireEnv('AUTH_SERVICE_URL');
-    const internalKey = requireEnv('AUTH_SERVICE_INTERNAL_KEY');
-    const cacheTtlMs = Number(process.env.AUTH_SERVICE_CACHE_TTL_MS ?? 30_000);
-    credentialsStore = new AuthServiceCredentialsStore(new AuthServiceClient(baseUrl, internalKey, cacheTtlMs));
-  } else if (credentialsDriver === 'mongo') {
-    await ensureMongo();
-    credentialsStore = new MongoCredentialsStore(cipher);
-  } else if (credentialsDriver === 'file') {
-    const dataDir = process.env.INTEGRATIONS_DATA_DIR ?? path.join(process.cwd(), 'data');
-    credentialsStore = new FileCredentialsStore(cipher, path.join(dataDir, 'integration-credentials.enc.json'));
-  } else {
-    throw new Error(`Unknown CREDENTIALS_STORE_DRIVER "${credentialsDriver}" — expected "mongo", "file", or "auth-service"`);
-  }
-
+  await connectMongo(requireEnv('MONGODB_URI'));
+  const store = new MongoIntegrationStore(cipher);
+  const credentialsStore = new MongoCredentialsStore(cipher);
   return { store, credentialsStore };
 }
 

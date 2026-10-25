@@ -45,6 +45,16 @@ class IdentityResult:
         return self.workspace.get("company_name", "") if self.workspace else ""
 
     @property
+    def workspace_uuid(self) -> str | None:
+        if self.workspace and "uuid" in self.workspace:
+            return str(self.workspace["uuid"])
+        return None
+
+    @property
+    def org_id(self) -> str | None:
+        return self.workspace_uuid
+
+    @property
     def project_slug(self) -> str | None:
         if self.project:
             return self.project.get("project_slug") or self.project.get("project_id")

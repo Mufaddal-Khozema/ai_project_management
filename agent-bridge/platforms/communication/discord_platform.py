@@ -234,6 +234,7 @@ class DiscordPlatform(CommunicationPlatform):
                     "channel_id": channel_id,
                     "channel_name": getattr(message.channel, "name", "unknown"),
                     "project_key": project_key,
+                    "org_id": getattr(self, "_org_id", "") or "default",
                     "author_id": str(message.author.id),
                     "author_name": str(getattr(message.author, "display_name", message.author.name)),
                     "author_roles": [r.name for r in getattr(message.author, "roles", [])],

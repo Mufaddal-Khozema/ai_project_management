@@ -134,6 +134,48 @@ class TestDualMemoryStoreChat(unittest.TestCase):
         self.assertEqual(inserted_chunk["embedding"], [0.1, 0.2, 0.3])
         mock_mongo.channel_messages.update_one.assert_called_once()
 
+    def test_record_chat_message_enriches_org_id_with_workspace_uuid(self):
+        from agent.agent import AgentBridge
+        from core.identity_client import IdentityResult
+
+        mock_comm = MagicMock()
+        mock_comm._org_id = "default"
+        mock_pm = MagicMock()
+        mock_memory = MagicMock()
+        mock_id_client = MagicMock()
+        mock_id_client.is_configured.return_value = True
+
+        mock_id_res = IdentityResult(
+            linked=True,
+            user={"name": "Ghulam Hasnain"},
+            workspace={"company_name": "Acme", "uuid": "889effbc-56c8-41f8-b28e-1f5666bbec67"},
+            project={"project_slug": "maheennaseem-ai-project-management-tool"},
+        )
+        mock_id_client.resolve_discord_identity.return_value = mock_id_res
+
+        from unittest.mock import patch
+        with patch("agent.agent.ChatGoogleGenerativeAI"):
+            bridge = AgentBridge(
+                comm_platform=mock_comm,
+                pm_platform=mock_pm,
+                gemini_api_key="fake-key",
+                memory_store=mock_memory,
+                identity_client=mock_id_client,
+            )
+
+            raw_doc = {
+                "message_id": "1563911987203674144",
+                "channel_id": "1489127884319625279",
+                "author_id": "1319579537012424797",
+                "content": "What are current tasks in due",
+            }
+            bridge.record_chat_message(raw_doc)
+
+            mock_memory.save_chat_message.assert_called_once()
+            saved_doc = mock_memory.save_chat_message.call_args[0][0]
+            self.assertEqual(saved_doc["org_id"], "889effbc-56c8-41f8-b28e-1f5666bbec67")
+            self.assertEqual(saved_doc["project_key"], "maheennaseem-ai-project-management-tool")
+
     def test_get_recent_channel_messages(self):
         from agent.agent import DualMemoryStore
 

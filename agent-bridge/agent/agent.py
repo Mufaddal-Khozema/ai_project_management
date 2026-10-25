@@ -837,7 +837,7 @@ class DualMemoryStore(MemoryStore):
                             "channel_id": message_doc.get("channel_id", ""),
                             "channel_name": ch_name,
                             "project_key": message_doc.get("project_key", ""),
-                            "org_id": message_doc.get("org_id", ""),
+                            "org_id": message_doc.get("org_id") or "default",
                             "author_name": author,
                             "text": formatted_text,
                             "embedding": vector,
@@ -1195,6 +1195,35 @@ class AgentBridge:
 
         self._project_id_cache: dict[str, str] = {}
 
+    def record_chat_message(self, message_doc: dict[str, Any]) -> None:
+        """Enrich incoming raw chat message with identity (workspace uuid as org_id) and persist."""
+        if not message_doc or not self._memory:
+            return
+
+        author_id = message_doc.get("author_id")
+        guild_id = message_doc.get("guild_id")
+        channel_id = message_doc.get("channel_id")
+
+        if self._identity_client and self._identity_client.is_configured() and author_id:
+            try:
+                id_res = self._identity_client.resolve_discord_identity(
+                    external_id=author_id,
+                    guild_id=guild_id,
+                    channel_id=channel_id,
+                )
+                if id_res and id_res.org_id:
+                    message_doc["org_id"] = id_res.org_id
+                if id_res and id_res.project_slug and not message_doc.get("project_key"):
+                    message_doc["project_key"] = id_res.project_slug
+            except Exception as e:
+                logger.debug("Could not resolve author identity for chat record: %s", e)
+
+        if not message_doc.get("org_id"):
+            message_doc["org_id"] = getattr(self.comm, "_org_id", "") or "default"
+
+        if hasattr(self._memory, "save_chat_message"):
+            self._memory.save_chat_message(message_doc)
+
     async def handle(self, incoming: IncomingMessage) -> OutgoingMessage:
         logger.info("[%s] %s: %s",
                     incoming.channel_id, incoming.author_name, incoming.content[:100])
@@ -1344,7 +1373,11 @@ class AgentBridge:
                 logger.warning("Could not fetch project context: %s", e)
 
         # ── 5. Build tools and LLM ───────────────────────────────────────────
-        org_id = (incoming.metadata.get("org_id") or "default") if incoming.metadata else "default"
+        org_id = (
+            (id_result.org_id if id_result else None)
+            or (incoming.metadata.get("org_id") if incoming.metadata else None)
+            or "default"
+        )
         tools = build_tools(
             self.pm,
             project_id,

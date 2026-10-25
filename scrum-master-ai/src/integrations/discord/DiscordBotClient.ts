@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, ChannelType } from 'discord.js';
+import { Client, GatewayIntentBits, ChannelType, Events } from 'discord.js';
 
 /**
  * One logged-in discord.js Client per bot token, reused across every
@@ -26,7 +26,7 @@ export async function getDiscordClient(botToken: string): Promise<Client> {
   await client.login(botToken);
   if (!client.isReady()) {
     await new Promise<void>((resolve, reject) => {
-      client.once('ready', () => resolve());
+      client.once(Events.ClientReady, () => resolve());
       client.once('error', reject);
     });
   }
