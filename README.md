@@ -1,361 +1,149 @@
-# 🔐 Auth Service
+# 🤖 AI Project Management & Scrum Master System
 
-Production-ready authentication microservice built with:
-
-- **Falcon** (WSGI framework)
-- **PostgreSQL** + **SQLAlchemy 2** (ORM)
-- **JWT** access tokens + rotating **refresh tokens**
-- **Apache Kafka** event streaming
-- **bcrypt** password hashing
-- **Swagger UI** / OpenAPI 3 docs
-- **Docker** + **docker-compose**
+An event-driven AI project management ecosystem featuring an **autonomous Discord AI Text Agent**, a **real-time AI Voice Scrum Master (Gemini Live)**, a **unified Litestar Backend**, and a **Next.js 15 Web Application**.
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Architecture & Component Overview
 
 ```
-auth_service/
-├── app/
-│   ├── __init__.py            # Falcon app factory
-│   ├── core/
-│   │   ├── config.py          # Pydantic-settings config
-│   │   ├── database.py        # SQLAlchemy engine + session
-│   │   └── security.py        # JWT, bcrypt, token helpers
-│   ├── models/
-│   │   └── user.py            # User, Role, UserRole, RefreshToken ORM models
-│   ├── schemas/
-│   │   └── auth.py            # Pydantic request/response schemas
-│   ├── services/
-│   │   └── auth_service.py    # Business logic (register / login / refresh)
-│   ├── resources/
-│   │   ├── auth_resource.py   # Falcon route handlers
-│   │   └── docs_resource.py   # Swagger UI + OpenAPI spec endpoints
-│   ├── middleware/
-│   │   └── auth_middleware.py # JWT middleware + rate limiter
-│   ├── kafka/
-│   │   └── producer.py        # Kafka producer + event helpers
-│   └── openapi/
-│       └── spec.py            # OpenAPI 3 JSON spec + Swagger UI HTML
-├── migrations/
-│   └── env.py                 # Alembic migration environment
-├── scripts/
-│   └── seed_db.py             # Create tables + seed default roles
-├── tests/
-│   └── test_auth_service.py   # Unit tests (9 tests, mocked DB)
-├── .env.example
-├── alembic.ini
-├── Dockerfile
-├── docker-compose.yml
-├── main.py
-└── requirements.txt
+                                  ┌───────────────────────────┐
+                                  │      Discord Server       │
+                                  │  - Text Channels (#chat)  │
+                                  │  - Voice Channels (🔊)    │
+                                  └─────────────┬─────────────┘
+                                                │
+                     ┌──────────────────────────┴──────────────────────────┐
+                     │ (Text Gateway)                         (Voice Gateway)
+                     ▼                                                     ▼
+        ┌─────────────────────────┐                           ┌─────────────────────────┐
+        │      agent-bridge       │   HTTP Start / Stop       │     scrum-master-ai     │
+        │  (Python Discord Bot)   ├──────────────────────────►│  (Node.js / Fastify:3001) │
+        │  - LangChain + Gemini   │                           │  - @discordjs/voice     │
+        │  - Taiga PM Toolset     │◄──────────────────────────┤  - Gemini Live WS API   │
+        └────────────┬────────────┘   Kafka: meeting-events   └────────────┬────────────┘
+                     │                                                     │
+                     │ POST /api/identity/resolve                          │ POST /api/identity/resolve
+                     │ (Bearer SERVICE_API_KEY)                            │ (Bearer SERVICE_API_KEY)
+                     ▼                                                     ▼
+        ┌───────────────────────────────────────────────────────────────────────────────┐
+        │                                  backend/                                     │
+        │                           (Litestar ASGI — Port 8000)                         │
+        │  - Piccolo ORM + PostgreSQL (Neon)                                            │
+        │  - Authentication (JWT), Organizations, Workspaces & Permissions              │
+        │  - Identity Resolution & Fernet Token Decryption                              │
+        │  - OAuth Integrations (Discord, Slack, Jira, Taiga, Google, GitHub)           │
+        └───────────────────────────────────────▲───────────────────────────────────────┘
+                                                │ REST API / Auth
+                                                ▼
+                                  ┌───────────────────────────┐
+                                  │         website/          │
+                                  │   (Next.js 15 — Port 3000)│
+                                  │  - Workspace Dashboard    │
+                                  │  - Team & PM Management   │
+                                  │  - Tool Integrations UI   │
+                                  └───────────────────────────┘
 ```
 
 ---
 
-## 🚀 Quick Start (Docker — recommended)
+## 📁 Folder Structure & Responsibilities
 
-### 1. Copy and configure environment
-
-```bash
-cp .env.example .env
-# Edit .env — at minimum change JWT_SECRET_KEY
-```
-
-### 2. Start all services
-
-```bash
-docker-compose up --build
-```
-
-This starts:
-- PostgreSQL on `:5432`
-- Redpanda (Kafka API) on `:9092`
-- Redpanda Console on `:8081`
-- API Gateway on `:8000`
-- Auth Service on `:8001`
-
-### 3. Seed the database
-
-```bash
-docker-compose exec auth-service python scripts/seed_db.py
-```
-
-### 4. Open Swagger UI
-
-```
-http://localhost:8000/docs
-```
+| Directory | Language / Stack | Port | Purpose |
+|---|---|---|---|
+| **[`backend/`](backend/)** | Python 3.11+ / Litestar / Piccolo ORM | `8000` | Canonical central backend. Manages users, workspaces, permissions, auth, OAuth flows, and identity resolution. |
+| **[`website/`](website/)** | Next.js 15 / React 19 / TypeScript / Tailwind | `3000` | Canonical web application. User dashboard, organization settings, team permissions, and third-party tool connections. |
+| **[`agent-bridge/`](agent-bridge/)** | Python 3.11+ / Discord.py / LangChain / Gemini | `8003` | Autonomous Discord text bot. Listens to mentions (`@FYP`), parses intent, interacts with Taiga PM, manages memory, and triggers meetings. |
+| **[`scrum-master-ai/`](scrum-master-ai/)** | Node.js 20+ / Fastify / `@discordjs/voice` | `3001` | Real-time voice meeting room. Connects Discord voice to Google Gemini Multimodal Live API over WebSockets for voice standups. |
+| **[`docker/`](docker/)** | Docker Compose / KRaft | `9092, 27017, 6379` | Core event-driven infrastructure: Kafka (event broker), MongoDB (durable memory), Redis (fast context cache). |
+| **[`scripts/`](scripts/)** | Bash / Shell | — | Operational scripts for Kafka topic creation, migrations, and health checks. |
+| **[`docs/`](docs/)** | Markdown / Architecture specs | — | Architecture specifications, event schemas, and operational runbooks. |
+| **[`discord-bot/`](discord-bot/)** | Python | — | Preserved prototype Discord bot for reference. |
 
 ---
 
-## 🛠 Local Development (without Docker)
+## 🔄 Inter-Service Communication Flow
 
-### Prerequisites
+### 1. Identity & Permissions Resolution
+When a user speaks in voice or mentions the bot in text:
+1. `agent-bridge` or `scrum-master-ai` calls `POST http://127.0.0.1:8000/api/identity/resolve`.
+2. Request headers include `Authorization: Bearer <SERVICE_API_KEY>`.
+3. The root `backend` resolves the Discord user ID against workspace members, checks active subscription status, decrypts workspace PM tokens (e.g. Taiga credentials) via Fernet, and returns the verified profile.
+4. If unlinked, the bot informs the user to link their account via the `website/` portal.
 
-- Python 3.12+
-- PostgreSQL running locally
-- (Optional) Redpanda/Kafka API running locally
+### 2. On-Demand Standup Meeting Flow
+1. User types `@FYP start standup` in Discord text chat (`#general`).
+2. `agent-bridge` calls `POST http://localhost:3001/integrations/discord/meetings/start` on `scrum-master-ai`.
+3. `scrum-master-ai` auto-detects active humans in voice channels (`🔊 General`), resolves participant names via `backend`, and joins the channel via `@discordjs/voice`.
+4. `scrum-master-ai` establishes a bidirectional WebSocket connection to Google's Gemini Multimodal Live API.
+5. Inbound user audio (48kHz stereo Opus) is decoded and resampled to 16kHz mono PCM for Gemini.
+6. Outbound Gemini speech (24kHz mono PCM) is resampled to 48kHz stereo Opus and played aloud to participants in real time.
 
-### 1. Create virtual environment
+### 3. Kafka Event Streaming & Durable Memory Sync
+1. During the voice standup, `scrum-master-ai` publishes transcript chunks and action items to Kafka topic `agent-bridge.meeting-events`.
+2. `agent-bridge`'s Kafka consumer receives the events and stores them in Redis (session buffer) and MongoDB (long-term memory).
+3. Team members can subsequently ask `@FYP what was discussed in the standup?` or `@FYP what tasks were assigned?` in text chat, and `agent-bridge` retrieves the information via semantic vector search.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+---
+
+## 🚀 Getting Started
+
+### 1. Environment Configuration
+Copy `.env.example` or configure the root `.env` file:
+```powershell
+# Core Settings
+BACKEND_URL=http://127.0.0.1:8000
+SERVICE_API_KEY=svc_6Q22890ts96ox-oc0pavSc_OSWQZyueE8-J8AY5ytlo
+DISCORD_BOT_TOKEN=your_discord_bot_token
+GEMINI_API_KEY=your_gemini_api_key
+MONGODB_URI=mongodb://127.0.0.1:27017/scrum-master-ai
+REDIS_URL=redis://localhost:6379/0
+KAFKA_BROKERS=localhost:9092
 ```
 
-### 2. Install dependencies
-
-```bash
-pip install -r requirements.txt
+### 2. Start Infrastructure (Docker)
+```powershell
+docker compose -f docker/docker-compose.yml up -d kafka mongo redis
 ```
 
-### 3. Configure environment
-
-```bash
-cp .env.example .env
-# Edit DATABASE_URL, JWT_SECRET_KEY, etc.
-```
-
-### 4. Set up PostgreSQL
-
-```sql
--- Run in psql as superuser
-CREATE USER auth_user WITH PASSWORD 'auth_pass';
-CREATE DATABASE auth_db OWNER auth_user;
-GRANT ALL PRIVILEGES ON DATABASE auth_db TO auth_user;
-```
-
-### 5. Create tables and seed roles
-
-```bash
-python scripts/seed_db.py
-```
-
-Or use Alembic for migration-based setup:
-
-```bash
-alembic revision --autogenerate -m "initial"
-alembic upgrade head
-```
-
-### 6. (Optional) Set up Redpanda
-
-```bash
-# Start only Redpanda + Console locally:
-docker-compose up -d redpanda console
-```
-
-> **Note:** The service degrades gracefully if Redpanda/Kafka is unavailable — events are logged to stdout instead.
-
-### 7. Start the server
-
-```bash
-# Development
+### 3. Start Root Backend (Litestar)
+```powershell
+cd backend
 python main.py
-
-# Production (Gunicorn + Uvicorn worker)
-gunicorn main:application --bind 0.0.0.0:8000 --worker-class uvicorn.workers.UvicornWorker --workers 4
 ```
+*API available at `http://127.0.0.1:8000` (Docs: `http://127.0.0.1:8000/schema/swagger`)*
 
-### Run Auth service locally with Uvicorn
+### 4. Start Web Application (Next.js)
+```powershell
+cd website
+pnpm dev # or npm run dev
+```
+*Frontend running at `http://localhost:3000`*
 
-If you want to run the auth service directly with `uvicorn` during development, run this from the repository root:
+### 5. Start Voice Scrum Master (`scrum-master-ai`)
+```powershell
+cd scrum-master-ai
+npm run dev
+```
+*Voice service running at `http://localhost:3001`*
+
+### 6. Start AI Text Agent (`agent-bridge`)
+```powershell
+cd agent-bridge
+python main.py
+```
+*Discord bot logged in and listening for `@FYP` mentions.*
+
+---
+
+## 🧪 Testing
 
 ```powershell
-uvicorn app.auth.main:app --reload
+# Voice Service Unit Tests (36 tests)
+cd scrum-master-ai
+npm test
+
+# AI Text Agent Unit Tests
+cd agent-bridge
+pytest tests/
 ```
-
-If you prefer to run `uvicorn` from the `app/auth` directory, set `PYTHONPATH` to the repo root first (PowerShell):
-
-```powershell
-$env:PYTHONPATH = (Get-Item ..).FullName
-uvicorn main:app --reload
-```
-
----
-
-## 📡 API Endpoints
-
-| Method | Path         | Auth required | Description              |
-|--------|-------------|---------------|--------------------------|
-| POST   | /register   | No            | Create a new user        |
-| POST   | /login      | No            | Authenticate, get tokens |
-| POST   | /refresh    | No            | Rotate refresh token     |
-| GET    | /health     | No            | Liveness probe           |
-| GET    | /docs       | No            | Swagger UI               |
-| GET    | /openapi.json | No          | Raw OpenAPI 3 spec       |
-
-### Register
-
-```bash
-curl -X POST http://localhost:8000/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "alice@example.com",
-    "password": "Str0ng!Pass",
-    "username": "alice"
-  }'
-```
-
-### Login
-
-```bash
-curl -X POST http://localhost:8000/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "alice@example.com",
-    "password": "Str0ng!Pass"
-  }'
-```
-
-### Refresh Token
-
-```bash
-curl -X POST http://localhost:8000/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "<your-refresh-token>"}'
-```
-
-### Protected endpoint (example)
-
-```bash
-curl -H "Authorization: Bearer <access_token>" \
-     http://localhost:8000/some-protected-route
-```
-
----
-
-## 🔑 JWT Token Claims
-
-```json
-{
-  "sub": "<user-uuid>",
-  "roles": ["user"],
-  "org_id": "<org-uuid-or-null>",
-  "iat": 1714000000,
-  "exp": 1714000900,
-  "jti": "<unique-token-id>"
-}
-```
-
----
-
-## 📨 Kafka Events
-
-| Topic                     | Trigger                     |
-|--------------------------|-----------------------------|
-| `auth.user.created`      | Successful registration     |
-| `auth.user.login.success`| Successful login            |
-| `auth.user.login.failed` | Failed login attempt        |
-| `auth.token.refreshed`   | Successful token rotation   |
-
-All messages use a CloudEvents-style envelope:
-
-```json
-{
-  "id": "<uuid>",
-  "type": "auth.user.created",
-  "source": "auth-service",
-  "time": "2024-05-01T12:00:00Z",
-  "data": { "user_id": "...", "email": "..." }
-}
-```
-
----
-
-## 🧪 Running Tests
-
-```bash
-pytest tests/ -v
-```
-
-Expected output: **9 passed**
-
----
-
-## 🔒 Security Notes
-
-- Passwords are hashed with **bcrypt** (cost factor 12)
-- Refresh tokens are **SHA-256 hashed** before DB storage
-- Access tokens expire in **15 minutes** (configurable)
-- Refresh tokens expire in **30 days** (configurable)
-- Refresh tokens are **rotated** on every use (old token revoked)
-- Rate limiting: **10 req / 60s** per IP (in-memory; swap with Redis for multi-process)
-- All secrets loaded from **environment variables** — never hard-coded
-
----
-
-## ⚙️ Configuration Reference
-
-| Variable                          | Default                  | Description                        |
-|-----------------------------------|--------------------------|------------------------------------|
-| `DATABASE_URL`                    | postgresql://...         | PostgreSQL connection string       |
-| `JWT_SECRET_KEY`                  | *required*               | HS256 signing key (min 32 chars)   |
-| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | 15                       | Access token TTL                   |
-| `JWT_REFRESH_TOKEN_EXPIRE_DAYS`   | 30                       | Refresh token TTL                  |
-| `KAFKA_BOOTSTRAP_SERVERS`         | localhost:9092           | Kafka/Redpanda broker address      |
-| `REDPANDA_BROKERS`                | redpanda:9092            | Alternative broker env alias       |
-| `RATE_LIMIT_REQUESTS`             | 10                       | Max requests per window            |
-| `RATE_LIMIT_WINDOW_SECONDS`       | 60                       | Rate limit window                  |
-| `DEFAULT_ROLE`                    | user                     | Role assigned at registration      |
-
----
-
-## 🔌 Integrations (OAuth Connection Flows)
-
-CoordinaAI lets workspaces connect Slack, MS Teams, Discord, Jira, ClickUp, and
-Taiga. Each provider requires its own OAuth app. Follow the steps below per
-provider, then copy `.env.example` → `.env` and fill in the client ID/secret.
-
-### 1. Set `APP_URL` and `FRONTEND_URL`
-
-The backend builds the provider redirect URI from `APP_URL`:
-
-```
-{APP_URL}/api/integrations/oauth/{provider}/callback
-```
-
-`FRONTEND_URL` is where the user lands after the provider redirects back
-(`{FRONTEND_URL}/integrations/callback?provider=...&status=...&source=...`).
-
-### 2. Register an OAuth app per provider
-
-| Provider  | Where to register                    | Redirect URI (add to app)                |
-|-----------|--------------------------------------|------------------------------------------|
-| Slack     | api.slack.com → Your apps → OAuth & Permissions | `{APP_URL}/api/integrations/oauth/slack/callback` |
-| MS Teams  | Azure portal → Entra ID → App registrations | `{APP_URL}/api/integrations/oauth/teams/callback` |
-| Discord   | discord.com/developers → Applications | `{APP_URL}/api/integrations/oauth/discord/callback` |
-| Jira      | developer.atlassian.com → My apps    | `{APP_URL}/api/integrations/oauth/jira/callback` |
-| ClickUp   | app.clickup.com → Settings → OAuth Apps | `{APP_URL}/api/integrations/oauth/clickup/callback` |
-| Taiga      | n/a — no OAuth app needed (uses your Taiga account credentials) | `{TAIGA_BASE_URL}/api/v1/auth/token` (default `https://tree.taiga.io`) |
-
-### 3. Scopes
-
-The backend requests the scopes it needs automatically (see
-`backend/lib/oauth.py`). Grant the same scopes on the app so token exchange
-succeeds:
-
-- **Slack** — `channels:read`, `channels:history`, `groups:read`, `users:read`, `team:read`, `chat:write`
-- **MS Teams** — `offline_access`, `User.Read`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Send`
-- **Discord** — `identify`, `guilds`
-- **Jira** — `read:jira-user`, `read:jira-work`, `write:jira-work`, `offline_access`
-- **ClickUp** — `tasks:read`, `tasks:write`, `spaces:read`, `folders:read`, `lists:read`, `teams:read`
-- **Taiga** — no OAuth scopes. Taiga 6 exposes no OAuth2 server, so connecting
-  asks for the user's Taiga credentials and exchanges them against
-  `POST {TAIGA_BASE_URL}/api/v1/auth/token` for a token (+ refresh via
-  `/api/v1/auth/token/refresh`). Set `TAIGA_BASE_URL` to your instance
-  (self-hosted or cloud; defaults to `https://tree.taiga.io`).
-
-### 4. Token encryption key
-
-Access tokens are encrypted at rest with a Fernet key. Generate one and set
-`INTEGRATION_TOKEN_ENCRYPTION_KEY`:
-
-```bash
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-`INTEGRATION_TOKEN_REFRESH_ENABLED` (default `true`) runs a background loop that
-refreshes expiring tokens via the provider's refresh-token grant. Set it to
-`false` to disable the loop (e.g. in tests).
