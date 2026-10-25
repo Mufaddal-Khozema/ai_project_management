@@ -37,14 +37,24 @@ class BridgeConsumer:
         auto_offset_reset: str = "latest",
         sasl_username: str | None = None,
         sasl_password: str | None = None,
+        sasl_mechanism: str = "PLAIN",
         ssl: bool = False,
+        ssl_cafile: str | None = None,
+        ssl_certfile: str | None = None,
+        ssl_keyfile: str | None = None,
+        ssl_verify: bool = True,
     ):
         self._brokers  = brokers
         self._group_id = group_id
         self._auto_offset_reset = auto_offset_reset
         self._sasl_username = sasl_username
         self._sasl_password = sasl_password
+        self._sasl_mechanism = sasl_mechanism
         self._ssl = ssl
+        self._ssl_cafile = ssl_cafile
+        self._ssl_certfile = ssl_certfile
+        self._ssl_keyfile = ssl_keyfile
+        self._ssl_verify = ssl_verify
         self._handlers: dict[str, list[Callable[[dict], None]]] = {}
         self._running   = False
         self._thread: threading.Thread | None = None
@@ -67,6 +77,58 @@ class BridgeConsumer:
         if self._thread:
             self._thread.join(timeout=5)
 
+    def _build_admin_kwargs(self) -> dict[str, Any]:
+        kwargs: dict[str, Any] = dict(
+            bootstrap_servers=self._brokers,
+            client_id=f"{self._group_id}-admin",
+            reconnect_backoff_ms=500,
+            reconnect_backoff_max_ms=10_000,
+        )
+        if self._ssl:
+            kwargs["security_protocol"] = "SASL_SSL" if self._sasl_username else "SSL"
+            if not self._ssl_verify:
+                import ssl as _ssl_mod
+                ctx = _ssl_mod.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = _ssl_mod.CERT_NONE
+                kwargs["ssl_context"] = ctx
+            elif self._ssl_cafile:
+                kwargs["ssl_cafile"] = self._ssl_cafile
+            if self._ssl_certfile:
+                kwargs["ssl_certfile"] = self._ssl_certfile
+            if self._ssl_keyfile:
+                kwargs["ssl_keyfile"] = self._ssl_keyfile
+        if self._sasl_username:
+            kwargs["sasl_mechanism"]       = (self._sasl_mechanism or "PLAIN").upper()
+            kwargs["sasl_plain_username"]  = self._sasl_username
+            kwargs["sasl_plain_password"]  = self._sasl_password
+            if not self._ssl:
+                kwargs["security_protocol"] = "SASL_PLAINTEXT"
+        return kwargs
+
+    def _ensure_topics(self) -> None:
+        try:
+            from kafka.admin import KafkaAdminClient, NewTopic
+            admin_kwargs = self._build_admin_kwargs()
+            admin = KafkaAdminClient(**admin_kwargs)
+            try:
+                existing = set(admin.list_topics())
+                needed = [t for t in TOPICS.values() if t not in existing]
+                if needed:
+                    logger.info("Creating missing Kafka topics on cluster: %s", needed)
+                    for rf in (2, 1):
+                        try:
+                            new_topics = [NewTopic(name=t, num_partitions=1, replication_factor=rf) for t in needed]
+                            admin.create_topics(new_topics=new_topics, validate_only=False)
+                            logger.info("Successfully created Kafka topics (rf=%d): %s", rf, needed)
+                            break
+                        except Exception as e:
+                            logger.debug("Failed creating topics with rf=%d: %s", rf, e)
+            finally:
+                admin.close()
+        except Exception as e:
+            logger.warning("Could not auto-create Kafka topics: %s", e)
+
     def _build_consumer(self) -> KafkaConsumer:
         kwargs: dict[str, Any] = dict(
             bootstrap_servers=self._brokers,
@@ -81,8 +143,20 @@ class BridgeConsumer:
         )
         if self._ssl:
             kwargs["security_protocol"] = "SASL_SSL" if self._sasl_username else "SSL"
+            if not self._ssl_verify:
+                import ssl as _ssl_mod
+                ctx = _ssl_mod.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = _ssl_mod.CERT_NONE
+                kwargs["ssl_context"] = ctx
+            elif self._ssl_cafile:
+                kwargs["ssl_cafile"] = self._ssl_cafile
+            if self._ssl_certfile:
+                kwargs["ssl_certfile"] = self._ssl_certfile
+            if self._ssl_keyfile:
+                kwargs["ssl_keyfile"] = self._ssl_keyfile
         if self._sasl_username:
-            kwargs["sasl_mechanism"]       = "PLAIN"
+            kwargs["sasl_mechanism"]       = (self._sasl_mechanism or "PLAIN").upper()
             kwargs["sasl_plain_username"]  = self._sasl_username
             kwargs["sasl_plain_password"]  = self._sasl_password
             if not self._ssl:
@@ -94,6 +168,7 @@ class BridgeConsumer:
         )
 
     def _consume_loop(self) -> None:
+        self._ensure_topics()
         consumer: KafkaConsumer | None = None
         while self._running:
             try:
@@ -147,11 +222,35 @@ def build_consumer_from_env() -> BridgeConsumer | None:
         logger.warning("KAFKA_BROKERS not set — Kafka consumer disabled")
         return None
     brokers = [b.strip() for b in brokers_raw.split(",") if b.strip()]
+    invalid = [b for b in brokers if "://" in b or "/" in b]
+    if invalid:
+        logger.error(
+            "Invalid KAFKA_BROKERS format: %s. Brokers must be 'host:port' (e.g. localhost:9092), not database connection URLs. Kafka consumer disabled.",
+            invalid,
+        )
+        return None
+    ssl_flag = os.environ.get("KAFKA_SSL", "").lower() == "true"
+    if not ssl_flag and any("aivencloud.com" in b or "upstash.io" in b for b in brokers):
+        logger.info("Cloud Kafka broker detected — automatically enabling SSL")
+        ssl_flag = True
+
+    ssl_cafile = os.environ.get("KAFKA_SSL_CAFILE")
+    ssl_verify_raw = os.environ.get("KAFKA_SSL_VERIFY", "")
+    if ssl_verify_raw:
+        ssl_verify = ssl_verify_raw.lower() not in ("false", "0", "no")
+    else:
+        ssl_verify = bool(ssl_cafile)
+
     return BridgeConsumer(
         brokers=brokers,
         group_id=os.environ.get("KAFKA_GROUP_ID", "agent-bridge-consumer"),
         auto_offset_reset=os.environ.get("KAFKA_AUTO_OFFSET_RESET", "latest"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
         sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
-        ssl=os.environ.get("KAFKA_SSL", "false").lower() == "true",
+        sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM", "PLAIN"),
+        ssl=ssl_flag,
+        ssl_cafile=ssl_cafile,
+        ssl_certfile=os.environ.get("KAFKA_SSL_CERTFILE"),
+        ssl_keyfile=os.environ.get("KAFKA_SSL_KEYFILE"),
+        ssl_verify=ssl_verify,
     )

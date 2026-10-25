@@ -308,26 +308,23 @@ async def main(config_path: str) -> None:
     # before `bridge` even existed, which meant every multi-org connection
     # ran with no message callback at all — bots would join Discord and
     # receive messages but never respond to any of them.
+    # ── Shared Redis instance for status & reminders ─────────────────────
+    status_redis = None
+    redis_url = os.environ.get("REDIS_URL", cfg.get("redis", {}).get("url", ""))
+    if redis_url:
+        try:
+            import redis
+            status_redis = redis.Redis.from_url(redis_url, decode_responses=True)
+            status_redis.ping()
+        except Exception as e:
+            logger.warning("Redis unavailable (%s) — using in-memory fallbacks", e)
+            status_redis = None
+
     auth_service_url = os.environ.get("AUTH_SERVICE_URL", "")
     internal_key = os.environ.get("AUTH_SERVICE_INTERNAL_KEY", "")
     if auth_service_url and internal_key:
         cache_ttl = float(os.environ.get("AUTH_SERVICE_CACHE_TTL_SECONDS", "30"))
         auth_client = AuthServiceClient(auth_service_url, internal_key, cache_ttl)
-
-        # Status is mirrored to Redis so the (separate-process) FastAPI
-        # config API can read it back — see routers/discord_connections.py.
-        # Best-effort: if Redis isn't reachable, the manager still works
-        # fine, it just has no cross-process status visibility.
-        status_redis = None
-        redis_url = os.environ.get("REDIS_URL", cfg.get("redis", {}).get("url", ""))
-        if redis_url:
-            try:
-                import redis
-                status_redis = redis.Redis.from_url(redis_url, decode_responses=True)
-                status_redis.ping()
-            except Exception as e:
-                logger.warning("Discord connection status Redis unavailable (%s) — status won't be visible via the API", e)
-                status_redis = None
 
         discord_manager = DiscordPlatformManager(auth_client, status_redis=status_redis)
         discord_manager.set_message_callback(bridge.handle)
@@ -396,6 +393,20 @@ async def main(config_path: str) -> None:
     logger.info("  Memory store  : %s", memory_type)
     logger.info("=" * 60)
 
+    # ── Proactive Due Date Reminder Service ──────────────────────────────────
+    from services.reminder_service import DueDateReminderService
+    reminder_interval = int(os.environ.get("DUE_REMINDER_INTERVAL_SECONDS", "1800"))
+    reminder_days_ahead = int(os.environ.get("DUE_REMINDER_DAYS_AHEAD", "2"))
+    reminder_service = DueDateReminderService(
+        comm=comm,
+        pm=pm,
+        channel_map=channel_map,
+        redis_client=status_redis,
+        interval_seconds=reminder_interval,
+        days_ahead=reminder_days_ahead,
+    )
+    reminder_task = asyncio.create_task(reminder_service.run())
+
     # ── Start the bot (blocks until disconnected) ────────────────────────────
     try:
         if discord_manager:
@@ -409,6 +420,8 @@ async def main(config_path: str) -> None:
     except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Shutting down...")
     finally:
+        reminder_service.stop()
+        reminder_task.cancel()
         if kafka_consumer:
             kafka_consumer.stop()
         if discord_manager:

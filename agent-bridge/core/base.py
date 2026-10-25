@@ -168,6 +168,18 @@ class ProjectManagementPlatform(ABC):
                      epic_id: str) -> ProjectItem:
         raise NotImplementedError(f"{self.display_name} does not support epics.")
 
+    def get_due_items(self, project_id: str, days_ahead: int = 2) -> list[dict]:
+        """Retrieve items nearing their due date or overdue."""
+        return []
+
+    def extend_due_date(self, project_id: str, item_id: str, new_date: str, reason: str = "") -> dict:
+        """Extend or update item due date with reason."""
+        raise NotImplementedError(f"{self.display_name} does not support extending due dates.")
+
+    def get_watchers_info(self, project_id: str, watcher_ids: list[int | str]) -> list[dict]:
+        """Resolve project watcher IDs to usernames and details."""
+        return []
+
 
 class MemoryStore(ABC):
     """Abstract interface for conversation and meeting memory."""

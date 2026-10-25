@@ -16,4 +16,5 @@ KAFKA_GROUP_ID = os.environ.get("KAFKA_GROUP_ID", "agent-bridge-consumer")
 KAFKA_AUTO_OFFSET_RESET = os.environ.get("KAFKA_AUTO_OFFSET_RESET", "latest")
 KAFKA_SASL_USERNAME = os.environ.get("KAFKA_SASL_USERNAME")
 KAFKA_SASL_PASSWORD = os.environ.get("KAFKA_SASL_PASSWORD")
+KAFKA_SASL_MECHANISM = os.environ.get("KAFKA_SASL_MECHANISM", "SCRAM-SHA-256")
 KAFKA_SSL = os.environ.get("KAFKA_SSL", "false").lower() == "true"

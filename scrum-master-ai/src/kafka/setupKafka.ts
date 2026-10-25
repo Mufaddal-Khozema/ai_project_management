@@ -14,15 +14,21 @@ export function getKafkaConfig(): KafkaProducerConfig | null {
     console.warn('[Kafka] KAFKA_BROKERS not set — Kafka publishing disabled. Tasks will only save to MongoDB.');
     return null;
   }
+  const sslVerify = process.env.KAFKA_SSL_VERIFY !== 'false';
+  const ssl = process.env.KAFKA_SSL === 'true'
+    ? (sslVerify ? true : { rejectUnauthorized: false })
+    : false;
   const cfg: KafkaProducerConfig = {
     brokers:  brokers.split(',').map(b => b.trim()),
     clientId: process.env.KAFKA_CLIENT_ID ?? 'scrum-master-ai',
-    ssl:      process.env.KAFKA_SSL === 'true',
+    ssl,
   };
   const user = process.env.KAFKA_SASL_USERNAME;
   const pass = process.env.KAFKA_SASL_PASSWORD;
+  const rawMech = (process.env.KAFKA_SASL_MECHANISM || (brokers.includes('aivencloud.com') ? 'scram-sha-256' : 'plain')).toLowerCase();
+  const mechanism = (rawMech === 'scram-sha-256' || rawMech === 'scram-sha-512') ? rawMech : 'plain';
   if (user && pass) {
-    cfg.sasl = { mechanism: 'plain', username: user, password: pass };
+    cfg.sasl = { mechanism, username: user, password: pass };
   }
   return cfg;
 }

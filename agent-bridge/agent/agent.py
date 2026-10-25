@@ -1208,15 +1208,15 @@ class AgentBridge:
                             f"Discord User ID: `{incoming.author_id}`"
                         ),
                     )
-                if not id_result.has_subscription:
-                    return OutgoingMessage(
-                        channel_id=incoming.channel_id,
-                        content=(
-                            "⚠️ **Active Subscription Required**\n"
-                            f"Workspace **{id_result.company_name or 'Default'}** does not have an active subscription.\n"
-                            "Please activate or upgrade your plan in the CoordinaAI dashboard."
-                        ),
-                    )
+                # if not id_result.has_subscription:
+                #     return OutgoingMessage(
+                #         channel_id=incoming.channel_id,
+                #         content=(
+                #             "⚠️ **Active Subscription Required**\n"
+                #             f"Workspace **{id_result.company_name or 'Default'}** does not have an active subscription.\n"
+                #             "Please activate or upgrade your plan in the CoordinaAI dashboard."
+                #         ),
+                #     )
             except Exception as e:
                 logger.error("Identity resolution check failed: %s", e)
                 if self.strict_identity:
