@@ -10,6 +10,7 @@ from repositories import (
     external_identity_repo,
     integration_repo,
     payment_repo,
+    project_repo,
     user_repo,
     workspace_repo,
 )
@@ -41,55 +42,78 @@ async def resolve_identity(
     """Answer "who is who": map an external id to its app servicing context.
 
     Raises 400 for unsupported providers, 404 when the external id is not
-    linked to any app user (bots reply with a link hint). Never raises for
-    a missing workspace or subscription — those come back as
-    ``workspace=None`` / ``has_subscription=False`` so the caller can decide
-    how to gate. ``guild_id``/``channel_id`` are accepted for the later
-    multi-workspace disambiguation and logged, but not used for lookup yet.
+    linked to any app user or the user has no workspace (bots reply with a
+    link hint). Never raises for a missing subscription — it comes back as
+    ``has_subscription=False`` so the caller can decide how to gate.
+
+    The resolved response — including the channel's project mapping when
+    ``channel_id`` is supplied — is cached per
+    ``(provider, external_id, guild_id, channel_id)``.
     """
     normalized = provider.strip().lower()
     if normalized not in SUPPORTED_PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
-    cache_key = identity_cache.make_identity_key(normalized, external_id)
+    cache_key = identity_cache.make_identity_key(
+        normalized, external_id, guild_id, channel_id
+    )
     cached = await identity_cache.cache_get(cache_key)
     if cached is not None:
         logger.info("identity resolve cache hit", provider=normalized)
         return ResolveIdentityResponse.model_validate(cached)
 
     link = await external_identity_repo.find_by_provider_external_id(normalized, external_id)
-    if link is None or link.get("user_id") is None:
+    if link is None or link.user_id is None:
         logger.info("identity resolve unlinked", provider=normalized)
         raise HTTPException(
             status_code=404,
             detail="Identity not linked. Run !link in Discord, then enter the code under Settings → Discord.",
         )
 
-    user = await user_repo.find_by_id(link["user_id"])
+    user = await user_repo.find_by_id(link.user_id)
     if user is None:
-        logger.warning("identity resolve link points at missing user", user_id=link["user_id"])
+        logger.warning("identity resolve link points at missing user", user_id=link.user_id)
         raise HTTPException(status_code=404, detail="Identity not linked.")
 
     workspace = await workspace_repo.find_by_member_id(user.id)
+    if workspace is None:
+        logger.info("identity resolve no workspace", user_id=user.id)
+        raise HTTPException(status_code=404, detail="Workspace not found")
 
-    integrations = (
-        [
-            IdentityIntegration(
-                provider=row.get("provider"),
-                account_name=row.get("account_name"),
-                status=row.get("status"),
-                token_encrypted=row.get("token_encrypted"),
+    project = None
+    if channel_id:
+        project = await project_repo.find_by_channel(
+            workspace.id, "discord", channel_id, guild_id
+        )
+        if project is None:
+            logger.info(
+                "identity channel mapping not found",
+                workspace_id=workspace.id,
+                channel_id=channel_id,
+                guild_id=guild_id,
             )
-            for row in await integration_repo.list_by_workspace(workspace["id"])
-        ]
-        if workspace is not None
-        else []
-    )
+        else:
+            logger.info(
+                "identity channel mapping found",
+                channel_id=channel_id,
+                guild_id=guild_id,
+                workspace_id=workspace.id,
+                project_id=project.project_id,
+            )
+
+    integrations = [
+        IdentityIntegration(
+            provider=row.provider,
+            account_name=row.account_name,
+            status=row.status,
+            token_encrypted=row.token_encrypted,
+        )
+        for row in await integration_repo.list_by_workspace(workspace.id)
+    ]
 
     # The subscription belongs to the workspace owner — members are covered
     # by the owner's plan, so entitlement is checked against the owner's id.
-    owner_id = workspace["user_id"] if workspace is not None else None
-    subscription = await payment_repo.find_by_user_id(owner_id) if owner_id is not None else None
+    subscription = await payment_repo.find_by_user_id(workspace.user_id)
     response = ResolveIdentityResponse(
         linked=True,
         user=IdentityUser(
@@ -99,22 +123,17 @@ async def resolve_identity(
             name=user.name,
             avatar=user.avatar,
         ),
-        workspace=(
-            None
-            if workspace is None
-            else IdentityWorkspace(
-                uuid=workspace["uuid"], company_name=workspace.get("company_name")
-            )
+        workspace=IdentityWorkspace(
+            uuid=workspace.uuid, company_name=workspace.company_name
         ),
+        project=project,
         entitlements=IdentityEntitlements(
             has_subscription=subscription is not None,
-            onboarding_completed=workspace is not None
-            and workspace.get("onboarding_completed_at") is not None,
+            onboarding_completed=workspace.onboarding_completed_at is not None,
         ),
         integrations=integrations,
         cached_at=_utc_now(),
     )
-
     await identity_cache.cache_set(cache_key, response.model_dump(mode="json"))
 
     logger.info(
@@ -123,6 +142,7 @@ async def resolve_identity(
         user_id=user.id,
         guild_id=guild_id,
         channel_id=channel_id,
+        project_id=project.project_id if project else None,
     )
     return response
 

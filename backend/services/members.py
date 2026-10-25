@@ -103,8 +103,8 @@ async def _resolve_or_create_user(
 
     for provider, member in ((pm_provider, pm_member), (comm_provider, comm_member)):
         existing = await external_identity_repo.find_by_provider_external_id(provider, member["id"])
-        if existing and existing.get("user_id") is not None:
-            return existing["user_id"]
+        if existing and existing.user_id is not None:
+            return existing.user_id
 
     if email:
         existing_user = await user_repo.find_by_email(email)

@@ -17,8 +17,8 @@ async def find_by_workspace_provider(workspace_id: int, provider: str) -> dict[s
     return rows[0] if rows else None
 
 
-async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
-    return await Integration.select().where(Integration.workspace_id == workspace_id).run()
+async def list_by_workspace(workspace_id: int) -> list[Integration]:
+    return await Integration.objects().where(Integration.workspace_id == workspace_id).run()
 
 
 async def create(

@@ -73,6 +73,27 @@ class Workspace(Table, tablename="workspace", db=DB):
     comm_platform = Varchar(length=50, null=True, default=None)
     pm_platform = Varchar(length=50, null=True, default=None)
     onboarding_completed_at = Timestamp(null=True, default=None)
+    is_deleted = Boolean(null=False, default=False)
+    created_on = Timestamp(null=False, default=TimestampNow())
+    updated_on = Timestamp(null=False, default=TimestampNow())
+
+
+class Project(Table, tablename="projects", db=DB):
+    uuid = UUID(null=False, default=UUID4, unique=True)
+    workspace_id = ForeignKey(
+        references=Workspace,
+        null=False,
+        on_delete=OnDelete.cascade,
+        on_update=OnUpdate.no_action,
+    )
+    pm_provider = Varchar(length=50, null=False, default="taiga")
+    project_id = Varchar(length=255, null=False)
+    project_name = Varchar(length=255, null=True, default=None)
+    project_slug = Varchar(length=255, null=True, default=None)
+    comm_provider = Varchar(length=50, null=False, default="discord")
+    guild_id = Varchar(length=255, null=True, default=None)
+    channel_id = Varchar(length=255, null=False)
+    active = Boolean(null=False, default=True)
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())
 
@@ -201,6 +222,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS email_log_user_id_email_type_entity_id_idx
 ON email_log (user_id, email_type, entity_id);
 """
 
+CREATE_PROJECTS_WORKSPACE_COMM_CHANNEL_UNIQUE_DDL = """
+CREATE UNIQUE INDEX IF NOT EXISTS projects_workspace_comm_channel_idx
+ON projects (workspace_id, comm_provider, channel_id);
+"""
+
 CREATE_USER_ACCOUNT_STATUS_DDL = """
 DO $$
 BEGIN
@@ -230,11 +256,16 @@ async def create_email_log_index() -> None:
     await DB.run_ddl(CREATE_EMAIL_LOG_USER_EMAIL_TYPE_ENTITY_UNIQUE_DDL, in_pool=False)
 
 
+async def create_projects_index() -> None:
+    await DB.run_ddl(CREATE_PROJECTS_WORKSPACE_COMM_CHANNEL_UNIQUE_DDL, in_pool=False)
+
+
 async def create_all_tables() -> None:
     await create_user_account_status_type()
     await User.create_table(if_not_exists=True).run()
     await UserStatusHistory.create_table(if_not_exists=True).run()
     await Workspace.create_table(if_not_exists=True).run()
+    await Project.create_table(if_not_exists=True).run()
     await WorkspaceMember.create_table(if_not_exists=True).run()
     await Integration.create_table(if_not_exists=True).run()
     await ExternalIdentity.create_table(if_not_exists=True).run()
@@ -245,4 +276,5 @@ async def create_all_tables() -> None:
     await create_external_identities_indexes()
     await create_workspace_members_index()
     await create_email_log_index()
+    await create_projects_index()
     await DB.start_connection_pool()

@@ -10,6 +10,7 @@ from lib.service_auth import hash_service_key
 from schemas.identity import (
     IdentityEntitlements,
     IdentityIntegration,
+    IdentityProject,
     IdentityUser,
     IdentityWorkspace,
     ResolveIdentityResponse,
@@ -47,6 +48,15 @@ def _payload():
         workspace=IdentityWorkspace(
             uuid="223e4567-e89b-12d3-a456-426614174001",
             company_name="Acme",
+        ),
+        project=IdentityProject(
+            provider="taiga",
+            project_id="10",
+            project_name="Website Redesign",
+            project_slug="website-redesign",
+            comm_provider="discord",
+            guild_id="g1",
+            channel_id="c1",
         ),
         entitlements=IdentityEntitlements(has_subscription=True, onboarding_completed=True),
         integrations=[
@@ -98,6 +108,8 @@ def test_resolve_returns_servicing_context(client, monkeypatch):
     assert body["workspace"]["company_name"] == "Acme"
     assert body["entitlements"]["has_subscription"] is True
     assert body["integrations"][0]["provider"] == "taiga"
+    assert body["project"]["project_id"] == "10"
+    assert body["project"]["project_slug"] == "website-redesign"
 
 
 def test_resolve_requires_service_key(client):

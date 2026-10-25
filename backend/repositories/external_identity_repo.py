@@ -9,20 +9,24 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-async def find_by_provider_external_id(provider: str, external_id: str) -> dict[str, Any] | None:
-    rows = await (
-        ExternalIdentity.select()
-        .where(ExternalIdentity.provider == provider, ExternalIdentity.external_id == external_id)
+async def find_by_provider_external_id(
+    provider: str, external_id: str
+) -> ExternalIdentity | None:
+    return await (
+        ExternalIdentity.objects()
+        .get(
+            (ExternalIdentity.provider == provider)
+            & (ExternalIdentity.external_id == external_id)
+        )
         .run()
     )
-    return rows[0] if rows else None
 
 
 async def find_user_id_by_provider_external_id(provider: str, external_id: str) -> int | None:
     row = await find_by_provider_external_id(provider, external_id)
-    if not row or row.get("user_id") is None:
+    if row is None or row.user_id is None:
         return None
-    return row["user_id"]
+    return row.user_id
 
 
 async def create(
