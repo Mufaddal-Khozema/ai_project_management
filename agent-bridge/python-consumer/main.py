@@ -60,10 +60,12 @@ def _build_mongo_client():
         return None
     try:
         import pymongo
+        import re
         client = pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")
         db = client[mongo_db_name]
-        logger.info("MongoDB connected for consolidation: %s", mongo_uri)
+        masked_mongo = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", mongo_uri)
+        logger.info("MongoDB connected for consolidation: %s", masked_mongo)
         return db
     except Exception as e:
         logger.warning("MongoDB not available for consolidation: %s", e)

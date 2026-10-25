@@ -115,17 +115,22 @@ def _build_memory_store(cfg: dict):
         import redis
         r = redis.Redis.from_url(redis_url, decode_responses=True)
         r.ping()
-        logger.info("Redis connected: %s", redis_url)
+        import re
+        masked_redis = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", redis_url)
+        logger.info("Redis connected: %s", masked_redis)
     except Exception as e:
         logger.warning("Redis connection failed (%s) — using in-memory fallback", e)
         return ChannelMemoryStore(max_messages=30)
 
     try:
         import pymongo
+        if "@:" in mongo_uri:
+            mongo_uri = mongo_uri.replace("@:", ":")
         client = pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")
         db = client[mongo_db_name]
-        logger.info("MongoDB connected: %s (database: %s)", mongo_uri, mongo_db_name)
+        masked_mongo = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", mongo_uri)
+        logger.info("MongoDB connected: %s (database: %s)", masked_mongo, mongo_db_name)
     except Exception as e:
         logger.warning("MongoDB connection failed (%s) — using in-memory fallback", e)
         return ChannelMemoryStore(max_messages=30)

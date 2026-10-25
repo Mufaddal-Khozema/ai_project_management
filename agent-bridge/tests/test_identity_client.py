@@ -101,3 +101,82 @@ def test_resolve_discord_identity_unlinked(identity_client):
         result = identity_client.resolve_discord_identity("999999999")
         assert result.linked is False
         assert "not linked" in (result.error_detail or "").lower()
+
+
+def test_resolve_discord_identity_with_project(identity_client):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "linked": True,
+        "user": {"name": "Ghulam Hasnain"},
+        "workspace": {"company_name": "Acme"},
+        "project": {
+            "provider": "taiga",
+            "project_id": "1786016",
+            "project_name": "AI Project Management Tool",
+            "project_slug": "maheennaseem-ai-project-management-tool",
+            "comm_provider": "discord",
+            "guild_id": "1489127884319625276",
+            "channel_id": "1489127884319625279",
+        },
+        "entitlements": {"has_subscription": True},
+        "integrations": [],
+    }
+
+    with patch("requests.post", return_value=mock_resp):
+        result = identity_client.resolve_discord_identity(
+            external_id="1319579537012424797",
+            guild_id="1489127884319625276",
+            channel_id="1489127884319625279",
+        )
+        assert result.linked is True
+        assert result.project is not None
+        assert result.project["provider"] == "taiga"
+        assert result.project["project_id"] == "1786016"
+        assert result.project["project_name"] == "AI Project Management Tool"
+        assert result.project_slug == "maheennaseem-ai-project-management-tool"
+        assert result.project["channel_id"] == "1489127884319625279"
+
+
+def test_discover_active_project_via_taiga_api(identity_client):
+    from core.identity_client import IdentityResult
+
+    # Mock identity result without project, but with encrypted Taiga token
+    fake_payload = {
+        "access_token": "taiga_access_token_123",
+        "user_id": 927867,
+        "account_name": "test@example.com",
+    }
+    encrypted_token = identity_client._fernet.encrypt(json.dumps(fake_payload).encode()).decode()
+
+    result = IdentityResult(
+        linked=True,
+        user={"name": "Ghulam Hasnain"},
+        workspace={"company_name": "Acme"},
+        project=None,
+        entitlements={"has_subscription": True},
+        integrations=[
+            {
+                "provider": "taiga",
+                "status": "connected",
+                "token_encrypted": encrypted_token,
+            }
+        ],
+    )
+
+    mock_taiga_resp = MagicMock()
+    mock_taiga_resp.status_code = 200
+    mock_taiga_resp.json.return_value = [
+        {
+            "id": 1786016,
+            "name": "AI Project Management Tool",
+            "slug": "maheennaseem-ai-project-management-tool",
+        }
+    ]
+
+    with patch("requests.get", return_value=mock_taiga_resp):
+        discovered = identity_client.discover_active_project(result)
+        assert discovered is not None
+        assert discovered["project_slug"] == "maheennaseem-ai-project-management-tool"
+        assert discovered["project_id"] == "1786016"
+        assert result.project_slug == "maheennaseem-ai-project-management-tool"

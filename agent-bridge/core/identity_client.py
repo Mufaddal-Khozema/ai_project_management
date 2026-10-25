@@ -27,6 +27,7 @@ class IdentityResult:
     linked: bool
     user: dict[str, Any] = field(default_factory=dict)
     workspace: dict[str, Any] | None = None
+    project: dict[str, Any] | None = None
     entitlements: dict[str, Any] = field(default_factory=dict)
     integrations: list[dict[str, Any]] = field(default_factory=list)
     error_detail: str | None = None
@@ -42,6 +43,12 @@ class IdentityResult:
     @property
     def company_name(self) -> str:
         return self.workspace.get("company_name", "") if self.workspace else ""
+
+    @property
+    def project_slug(self) -> str | None:
+        if self.project:
+            return self.project.get("project_slug") or self.project.get("project_id")
+        return None
 
 
 class IdentityClient:
@@ -128,6 +135,7 @@ class IdentityClient:
                 linked=data.get("linked", True),
                 user=data.get("user") or {},
                 workspace=data.get("workspace"),
+                project=data.get("project"),
                 entitlements=data.get("entitlements") or {},
                 integrations=data.get("integrations") or [],
             )
@@ -157,3 +165,71 @@ class IdentityClient:
                     except Exception as e:
                         logger.warning("Could not decrypt Taiga token for workspace: %s", e)
         return None
+
+    def list_taiga_projects(self, taiga_creds: dict[str, Any]) -> list[dict[str, Any]]:
+        """Fetch accessible projects from Taiga using the user's decrypted access token."""
+        access_token = taiga_creds.get("access_token")
+        if not access_token:
+            return []
+
+        base_url = (
+            taiga_creds.get("instance_url")
+            or taiga_creds.get("url")
+            or "https://api.taiga.io/api/v1"
+        ).rstrip("/")
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        user_id = taiga_creds.get("user_id")
+        url = f"{base_url}/projects"
+        params = {"member": str(user_id)} if user_id else {}
+
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                projects = resp.json()
+                if isinstance(projects, list) and projects:
+                    return projects
+            if params:
+                resp2 = requests.get(url, headers=headers, timeout=10)
+                if resp2.status_code == 200:
+                    projects2 = resp2.json()
+                    if isinstance(projects2, list) and projects2:
+                        return projects2
+        except Exception as e:
+            logger.warning("Could not list Taiga projects via OAuth token: %s", e)
+
+        return []
+
+    def discover_active_project(self, result: IdentityResult) -> dict[str, Any] | None:
+        """Dynamically resolve the active PM project from the user's decrypted integrations."""
+        if result.project and (result.project.get("project_slug") or result.project.get("project_id")):
+            return result.project
+
+        taiga_creds = self.get_taiga_credentials(result)
+        if not taiga_creds:
+            return None
+
+        projects = self.list_taiga_projects(taiga_creds)
+        if not projects:
+            return None
+
+        first = projects[0]
+        project_dict = {
+            "provider": "taiga",
+            "project_id": str(first.get("id")),
+            "project_name": first.get("name"),
+            "project_slug": first.get("slug"),
+        }
+        result.project = project_dict
+        logger.info(
+            "Dynamically discovered Taiga project '%s' (id: %s) for workspace '%s'",
+            project_dict["project_slug"],
+            project_dict["project_id"],
+            result.company_name,
+        )
+        return project_dict

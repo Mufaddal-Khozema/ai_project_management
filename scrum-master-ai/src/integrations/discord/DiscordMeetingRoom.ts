@@ -157,7 +157,9 @@ export class DiscordMeetingRoom {
     /** Called once, at the end of stop() — lets the owning manager remove
      *  this room from its active-meetings registry regardless of *why* the
      *  meeting ended (explicit stop, natural completion, or an error). */
-    private readonly onEnded?: () => void
+    private readonly onEnded?: () => void,
+    private targetTextChannelId?: string,
+    private readonly projectSlug?: string
   ) {}
 
   getState() {
@@ -177,6 +179,9 @@ export class DiscordMeetingRoom {
     }
 
     if (!channel || channel.type !== ChannelType.GuildVoice) {
+      if (!this.targetTextChannelId && channel && channel.isTextBased()) {
+        this.targetTextChannelId = channel.id;
+      }
       log(this.guildId, `Configured channel "${this.channelId}" is not a voice channel, resolving fallback...`);
       const allChannels = await guild.channels.fetch();
       const voiceChannels = [...allChannels.values()].filter(
@@ -465,6 +470,12 @@ export class DiscordMeetingRoom {
 
     try { this.stateService.endMeeting(); } catch (err) { log(this.guildId, 'endMeeting failed:', err); }
 
+    try {
+      await this.postMeetingSummaryToDiscord();
+    } catch (err) {
+      log(this.guildId, 'Failed to post meeting summary to Discord text channel:', err);
+    }
+
     log(this.guildId, 'stopped');
     this.onEnded?.();
   }
@@ -741,4 +752,66 @@ export class DiscordMeetingRoom {
       this.healthCheckId = null;
     }
   }
+
+  private async postMeetingSummaryToDiscord(): Promise<void> {
+    const textChannelId = this.targetTextChannelId || process.env.DISCORD_SUMMARY_CHANNEL_ID;
+    if (!textChannelId) return;
+
+    const guild = await this.client.guilds.fetch(this.guildId).catch(() => null);
+    if (!guild) return;
+
+    const channel = await guild.channels.fetch(textChannelId).catch(() => null);
+    if (!channel || !channel.isTextBased() || !('send' in channel)) return;
+
+    const state = this.stateService.getState();
+    const participantsList = state.participants.map((p) => p.name).join(', ') || 'Team';
+
+    let message = `📋 **Daily Scrum Summary — ${new Date().toLocaleDateString()}**\n`;
+    if (this.projectSlug) {
+      message += `**Project:** \`${this.projectSlug}\`\n`;
+    }
+    message += `**Participants:** ${participantsList}\n\n`;
+
+    let hasUpdates = false;
+    let updatesText = '**Team Updates:**\n';
+    const allBlockers: string[] = [];
+
+    for (const p of state.participants) {
+      const standup = state.standups[p.id];
+      if (!standup) continue;
+      const yesterday = (standup.yesterday || []).join(', ');
+      const today = (standup.today || []).join(', ');
+      const blockers = (standup.blockers || []).join(', ');
+      if (blockers && blockers.toLowerCase() !== 'none') {
+        allBlockers.push(`${p.name}: ${blockers}`);
+      }
+      if (yesterday || today || blockers) {
+        hasUpdates = true;
+        updatesText += `• **${p.name}**\n`;
+        if (yesterday) updatesText += `   - *Yesterday:* ${yesterday}\n`;
+        if (today) updatesText += `   - *Today:* ${today}\n`;
+        if (blockers && blockers.toLowerCase() !== 'none') updatesText += `   - *Blockers:* ⚠️ ${blockers}\n`;
+      }
+    }
+
+    if (hasUpdates) {
+      message += updatesText + '\n';
+    }
+
+    if (allBlockers.length > 0) {
+      message += `⚠️ **Key Blockers:**\n${allBlockers.map((b) => `• ${b}`).join('\n')}\n\n`;
+    }
+
+    message += `*Standup meeting ended at ${new Date().toLocaleTimeString()}*`;
+
+    if (message.length <= 2000) {
+      await (channel as any).send(message);
+    } else {
+      const parts = message.match(/[\s\S]{1,1900}(?:\n|$)/g) || [message];
+      for (const part of parts) {
+        await (channel as any).send(part);
+      }
+    }
+  }
+
 }

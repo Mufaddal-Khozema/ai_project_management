@@ -713,6 +713,8 @@ def build_tools(
                     channel_id=target_ch,
                     org_id=org_id,
                     duration_ms=duration_minutes * 60 * 1000,
+                    project_slug=project_key,
+                    text_channel_id=channel_id,
                 )
                 if res.get("started"):
                     return f"🎙️ **Voice Meeting Started!**\n  • Server: `{guild_id}`\n  • Channel: #{target_ch_name} (`{target_ch}`)\n  • Duration: {duration_minutes} min\n  • The Scrum Master bot is joining the voice room now."

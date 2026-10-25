@@ -26,7 +26,7 @@ export class KafkaBridgeProducer {
       clientId: cfg.clientId,
       brokers: cfg.brokers,
       ssl: cfg.ssl,
-      sasl: cfg.sasl,
+      sasl: cfg.sasl as any,
       logLevel: logLevel.WARN,
       retry: { retries: 5, initialRetryTime: 300 },
     });
