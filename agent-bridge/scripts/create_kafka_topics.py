@@ -29,6 +29,7 @@ TOPICS = [
     "agent-bridge.task-events",
     "agent-bridge.meeting-events",
     "agent-bridge.config-events",
+    "agent-bridge.missing-tool-requests",
 ]
 
 print(f"Connecting to Kafka brokers: {brokers} (SSL={ssl_flag}, SASL={sasl_mech})...")

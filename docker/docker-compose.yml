@@ -65,6 +65,9 @@ services:
       kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
         --topic agent-bridge.meeting-events --partitions 4 --replication-factor 1 \
         --config retention.ms=604800000
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
+        --topic agent-bridge.missing-tool-requests --partitions 2 --replication-factor 1 \
+        --config retention.ms=604800000
       echo Topics ready.
       "
     networks:
@@ -197,6 +200,30 @@ services:
       - "8003:8000"
     volumes:
       - ../agent-bridge/data:/app/data
+    networks:
+      - project-net
+
+  # ── Universal MCP Gateway (Unified Tools & Multi-Tier Guardrails, Port 8005) ─
+  mcp-gateway:
+    build:
+      context: ../mcp-gateway
+      dockerfile: Dockerfile
+    container_name: mcp-gateway
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      PORT: 8005
+      HOST: 0.0.0.0
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+      SERVICE_API_KEY: ${SERVICE_API_KEY:-svc_6Q22890ts96ox-oc0pavSc_OSWQZyueE8-J8AY5ytlo}
+      INTEGRATION_TOKEN_ENCRYPTION_KEY: ${INTEGRATION_TOKEN_ENCRYPTION_KEY:-}
+      VOICE_SERVICE_URL: http://voice-bot:3001
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_ENABLED: "true"
+    depends_on:
+      kafka:
+        condition: service_healthy
     networks:
       - project-net
 

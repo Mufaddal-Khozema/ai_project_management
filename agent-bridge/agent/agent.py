@@ -1389,6 +1389,20 @@ class AgentBridge:
             channel_name=incoming.channel_name,
             org_id=org_id,
         )
+        try:
+            from agent.mcp_client import build_mcp_tools
+            auth_context = {
+                "user_id": incoming.author_id,
+                "role": tier,
+                "org_id": org_id,
+                "guild_id": incoming.server_id,
+                "channel_id": incoming.channel_id,
+                "project_key": project_key,
+            }
+            mcp_tools = build_mcp_tools(auth_context)
+            tools = mcp_tools + tools
+        except Exception as e:
+            logger.warning("Could not initialize MCP tools: %s", e)
         tools_by_name = {t.name: t for t in tools}
         llm_with_tools = self._llm.bind_tools(tools)
 
