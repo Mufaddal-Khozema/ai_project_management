@@ -1225,8 +1225,7 @@ class AgentBridge:
             self._memory.save_chat_message(message_doc)
 
     async def handle(self, incoming: IncomingMessage) -> OutgoingMessage:
-        logger.info("[%s] %s: %s",
-                    incoming.channel_id, incoming.author_name, incoming.content[:100])
+        logger.info(f"Incoming Request: {incoming.channel_id}, {incoming.author_name}, {incoming.content[:100]}")
 
         # ── 0. Identity & Entitlement Verification (Root Backend) ────────────
         id_result = None
@@ -1237,15 +1236,21 @@ class AgentBridge:
                     guild_id=incoming.server_id,
                     channel_id=incoming.channel_id,
                 )
+                logger.info(f"Resolved identity for user {incoming.author_id}: linked={id_result.linked}, org_id={id_result.org_id}, project_slug={id_result.project_slug}")
                 if not id_result.linked:
-                    return OutgoingMessage(
-                        channel_id=incoming.channel_id,
-                        content=(
-                            "⚠️ **Identity Not Linked**\n"
-                            "Your Discord account is not linked to any project workspace.\n"
-                            "Please link your Discord account in the CoordinaAI dashboard (Settings → Integrations).\n"
-                            f"Discord User ID: `{incoming.author_id}`"
-                        ),
+                    if self.strict_identity:
+                        return OutgoingMessage(
+                            channel_id=incoming.channel_id,
+                            content=(
+                                "⚠️ **Identity Not Linked**\n"
+                                "Your Discord account is not linked to any project workspace.\n"
+                                "Please link your Discord account in the CoordinaAI dashboard (Settings → Integrations).\n"
+                                f"Discord User ID: `{incoming.author_id}`"
+                            ),
+                        )
+                    logger.warning(
+                        "User %s identity not linked (or workspace not resolved), but STRICT_IDENTITY_ENFORCEMENT=false — falling back to channel project mapping",
+                        incoming.author_id,
                     )
                 # if not id_result.has_subscription:
                 #     return OutgoingMessage(
@@ -1378,31 +1383,37 @@ class AgentBridge:
             or (incoming.metadata.get("org_id") if incoming.metadata else None)
             or "default"
         )
-        tools = build_tools(
-            self.pm,
-            project_id,
-            tier,
-            memory_store=self._memory,
-            project_key=project_key,
-            guild_id=incoming.server_id,
-            channel_id=incoming.channel_id,
-            channel_name=incoming.channel_name,
-            org_id=org_id,
-        )
-        try:
-            from agent.mcp_client import build_mcp_tools
-            auth_context = {
-                "user_id": incoming.author_id,
-                "role": tier,
-                "org_id": org_id,
-                "guild_id": incoming.server_id,
-                "channel_id": incoming.channel_id,
-                "project_key": project_key,
-            }
-            mcp_tools = build_mcp_tools(auth_context)
-            tools = mcp_tools + tools
-        except Exception as e:
-            logger.warning("Could not initialize MCP tools: %s", e)
+        use_mcp = os.environ.get("USE_MCP_GATEWAY", "true").lower() in ("true", "1", "yes")
+        mcp_tools = None
+        if use_mcp:
+            try:
+                from agent.mcp_client import build_mcp_tools
+                auth_context = {
+                    "user_id": incoming.author_id,
+                    "role": tier,
+                    "org_id": org_id,
+                    "guild_id": incoming.server_id,
+                    "channel_id": incoming.channel_id,
+                    "project_key": project_key,
+                }
+                mcp_tools = build_mcp_tools(auth_context)
+            except Exception as e:
+                logger.warning("Could not initialize MCP tools, falling back to local tools: %s", e)
+
+        if mcp_tools:
+            tools = mcp_tools
+        else:
+            tools = build_tools(
+                self.pm,
+                project_id,
+                tier,
+                memory_store=self._memory,
+                project_key=project_key,
+                guild_id=incoming.server_id,
+                channel_id=incoming.channel_id,
+                channel_name=incoming.channel_name,
+                org_id=org_id,
+            )
         tools_by_name = {t.name: t for t in tools}
         llm_with_tools = self._llm.bind_tools(tools)
 
