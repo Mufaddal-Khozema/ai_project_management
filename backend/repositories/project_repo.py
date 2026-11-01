@@ -56,6 +56,21 @@ async def find_by_channel(
         where &= (Project.guild_id == guild_id) | Project.guild_id.is_null()
     return await Project.objects().get(where).run()
 
+async def find_by_comm_channel(
+    comm_provider: str,
+    channel_id: str,
+    guild_id: str | None = None,
+) -> Project | None:
+    """Return the active mapping for a channel across workspaces."""
+    where = (
+        (Project.comm_provider == comm_provider)
+        & (Project.channel_id == channel_id)
+        & (Project.active == True)  # noqa: E712
+    )
+    if guild_id:
+        where &= (Project.guild_id == guild_id) | Project.guild_id.is_null()
+    return await Project.objects().get(where).run()
+
 
 async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
     return await (

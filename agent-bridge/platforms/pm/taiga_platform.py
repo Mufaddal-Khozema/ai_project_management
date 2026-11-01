@@ -23,19 +23,21 @@ def _norm(item_type: str) -> str:
     return _RESOURCE_MAP.get(item_type.lower().strip(), item_type.lower().strip())
 
 
+import os
+
 class _TaigaHTTP:
     def __init__(self, base_url: str, username: str = "", password: str = "", token: str | None = None):
         self.base_url = (base_url or "https://api.taiga.io/api/v1").rstrip("/")
         self.username = username
         self.password = password
-        self.token = token
+        self.token = token or os.environ.get("TAIGA_TOKEN") or os.environ.get("TAIGA_ACCESS_TOKEN")
         self._slug_cache: dict[str, str] = {}
         self._status_cache: dict[str, int] = {}
 
     def login(self) -> None:
+        if self.token:
+            return
         if not self.username or not self.password:
-            if self.token:
-                return
             raise RuntimeError(
                 "Taiga authentication failed: neither credentials (username/password) nor access token provided."
             )
@@ -45,7 +47,7 @@ class _TaigaHTTP:
         if r.status_code in (401, 403):
             raise RuntimeError(
                 f"Taiga authentication failed (HTTP {r.status_code}). "
-                "Verify the Taiga username/password configured for this organization."
+                "Verify the Taiga access token or credentials configured for this organization."
             )
         r.raise_for_status()
         self.token = r.json()["auth_token"]
@@ -53,17 +55,28 @@ class _TaigaHTTP:
 
     def _headers(self) -> dict:
         if not self.token:
-            self.login()
+            if self.username and self.password:
+                self.login()
+            else:
+                raise RuntimeError(
+                    "Taiga authentication failed: No access token provided. "
+                    "Connect Taiga via the workspace dashboard to obtain a valid access token."
+                )
         return {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
 
     def request(self, method: str, path: str, **kwargs) -> Any:
+        headers = self._headers()
         r = requests.request(method, f"{self.base_url}{path}",
-            headers=self._headers(), timeout=300, **kwargs)
+            headers=headers, timeout=300, **kwargs)
         if r.status_code == 401:
+            logger.warning("Taiga access token expired or invalid (HTTP 401)")
             self.token = None
-            self.login()
-            r = requests.request(method, f"{self.base_url}{path}",
-                headers=self._headers(), timeout=300, **kwargs)
+            if self.username and self.password:
+                self.login()
+                r = requests.request(method, f"{self.base_url}{path}",
+                    headers=self._headers(), timeout=300, **kwargs)
+            else:
+                raise RuntimeError("Taiga access token expired (HTTP 401). Please re-link in dashboard.")
         r.raise_for_status()
         return r.json() if r.text.strip() else None
 
@@ -106,7 +119,7 @@ def _to_item(raw: dict, resource: str, base_url: str) -> ProjectItem:
 class TaigaPlatform(ProjectManagementPlatform):
     platform_id = "taiga"
     display_name = "Taiga"
-    required_config_keys = ["url", "username", "password"]
+    required_config_keys = ["url"]
 
     def __init__(self):
         self._http: _TaigaHTTP | None = None
@@ -115,8 +128,13 @@ class TaigaPlatform(ProjectManagementPlatform):
 
     def configure(self, config: dict[str, Any]) -> None:
         self._config = dict(config)
-        token = config.get("token") or config.get("access_token")
-        url = config.get("url") or config.get("instance_url") or "https://api.taiga.io/api/v1"
+        token = (
+            config.get("token")
+            or config.get("access_token")
+            or os.environ.get("TAIGA_TOKEN")
+            or os.environ.get("TAIGA_ACCESS_TOKEN")
+        )
+        url = config.get("url") or config.get("instance_url") or os.environ.get("TAIGA_URL") or "https://api.taiga.io/api/v1"
         username = config.get("username", "")
         password = config.get("password", "")
         self._http = _TaigaHTTP(url, username, password, token=token)
