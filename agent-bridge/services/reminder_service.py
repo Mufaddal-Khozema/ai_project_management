@@ -25,6 +25,7 @@ class DueDateReminderService:
         redis_client: Any = None,
         interval_seconds: int = 1800,
         days_ahead: int = 2,
+        identity_client: Any = None,
     ):
         self.comm = comm
         self.pm = pm
@@ -32,6 +33,7 @@ class DueDateReminderService:
         self.redis_client = redis_client
         self.interval_seconds = interval_seconds
         self.days_ahead = days_ahead
+        self.identity_client = identity_client
         self._running = False
         self._in_memory_cache: dict[str, float] = {}
 
@@ -81,6 +83,32 @@ class DueDateReminderService:
                 if not project_slug:
                     continue
                 try:
+                    # Dynamically resolve Taiga access token for this channel if PM is unauthenticated
+                    pm_http = getattr(self.pm, "_http", None)
+                    if pm_http and not getattr(pm_http, "token", None) and self.identity_client and self.identity_client.is_configured():
+                        try:
+                            id_res = self.identity_client.resolve_discord_identity(
+                                external_id=str(channel_id),
+                                guild_id=str(guild_id),
+                                channel_id=str(channel_id),
+                            )
+                            if id_res and id_res.linked:
+                                creds = self.identity_client.get_taiga_credentials(id_res)
+                                if creds and creds.get("access_token") and hasattr(self.pm, "configure"):
+                                    self.pm.configure({
+                                        "url": creds.get("instance_url") or getattr(pm_http, "base_url", "https://api.taiga.io/api/v1"),
+                                        "token": creds["access_token"],
+                                    })
+                                    logger.info("Bound workspace Taiga token for channel %s (%s)", channel_id, project_slug)
+                        except Exception as ex:
+                            logger.debug("Could not resolve workspace Taiga token for channel %s: %s", channel_id, ex)
+
+                    # If still no token is available on real Taiga HTTP client, skip reminder scanning gracefully
+                    from platforms.pm.taiga_platform import _TaigaHTTP
+                    if isinstance(pm_http, _TaigaHTTP) and not pm_http.token:
+                        logger.debug("Skipping due reminders for channel %s (%s): No Taiga access token available.", channel_id, project_slug)
+                        continue
+
                     project_id = self.pm.get_project_id(str(project_slug))
                     if not project_id:
                         continue

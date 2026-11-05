@@ -63,43 +63,53 @@ async def resolve_identity(
         return ResolveIdentityResponse.model_validate(cached)
 
     link = await external_identity_repo.find_by_provider_external_id(normalized, external_id)
-    if link is None or link.user_id is None:
+    user = None
+    workspace = None
+    project = None
+
+    if link is not None and link.user_id is not None:
+        user = await user_repo.find_by_id(link.user_id)
+        if user is not None:
+            workspace = await workspace_repo.find_by_member_id(user.id)
+            if workspace and channel_id:
+                project = await project_repo.find_by_channel(
+                    workspace.id, "discord", channel_id, guild_id
+                )
+
+    # Fallback for headless / background workers resolving by channel
+    if (workspace is None or user is None) and channel_id:
+        project = await project_repo.find_by_comm_channel("discord", channel_id, guild_id)
+        if project is not None:
+            workspace = await workspace_repo.find_by_id(project.workspace_id)
+            if workspace is not None:
+                user = await user_repo.find_by_id(workspace.user_id)
+
+    if user is None:
         logger.info("identity resolve unlinked", provider=normalized)
         raise HTTPException(
             status_code=404,
             detail="Identity not linked. Run !link in Discord, then enter the code under Settings → Discord.",
         )
 
-    user = await user_repo.find_by_id(link.user_id)
-    if user is None:
-        logger.warning("identity resolve link points at missing user", user_id=link.user_id)
-        raise HTTPException(status_code=404, detail="Identity not linked.")
-
-    workspace = await workspace_repo.find_by_member_id(user.id)
     if workspace is None:
         logger.info("identity resolve no workspace", user_id=user.id)
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    project = None
-    if channel_id:
-        project = await project_repo.find_by_channel(
-            workspace.id, "discord", channel_id, guild_id
+    if project is None and channel_id:
+        logger.info(
+            "identity channel mapping not found",
+            workspace_id=workspace.id,
+            channel_id=channel_id,
+            guild_id=guild_id,
         )
-        if project is None:
-            logger.info(
-                "identity channel mapping not found",
-                workspace_id=workspace.id,
-                channel_id=channel_id,
-                guild_id=guild_id,
-            )
-        else:
-            logger.info(
-                "identity channel mapping found",
-                channel_id=channel_id,
-                guild_id=guild_id,
-                workspace_id=workspace.id,
-                project_id=project.project_id,
-            )
+    elif project is not None and channel_id:
+        logger.info(
+            "identity channel mapping found",
+            channel_id=channel_id,
+            guild_id=guild_id,
+            workspace_id=workspace.id,
+            project_id=project.project_id,
+        )
 
     integrations = [
         IdentityIntegration(

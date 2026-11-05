@@ -11,6 +11,7 @@
  * so both the chat agent and the voice bot behave the same against Taiga.
  */
 import type { TaskStore, Task, TaskInput, TaskChanges, TaskStorePmSurface } from './TaskStore.js';
+import { McpTaskClient } from './McpTaskClient.js';
 
 export interface TaigaStoreConfig {
   /** Taiga API base, e.g. "https://api.taiga.io/api/v1" */
@@ -127,6 +128,7 @@ export class TaigaTaskStore implements TaskStore, TaskStorePmSurface {
   private projectName: string | null = null;
   private closedStatusIds = new Set<number>();
   private members: TaigaMember[] | null = null;
+  private mcpClient = new McpTaskClient();
 
   constructor(private readonly config: TaigaStoreConfig) {
     this.http = new TaigaHttp(config.url, config.username, config.password, config.token);
@@ -229,6 +231,39 @@ export class TaigaTaskStore implements TaskStore, TaskStorePmSurface {
   // ── TaskStore ─────────────────────────────────────────────────────────
 
   async create(orgId: string, input: TaskInput): Promise<Task> {
+    // 1. Unified execution via central MCP Gateway with GuardRails
+    try {
+      const mcpRes = await this.mcpClient.execute(
+        'pm',
+        'taiga_create_task',
+        {
+          project_id: this.config.projectSlug || this.projectId,
+          subject: input.title,
+          description: input.description || '',
+          assignee: input.assignee,
+        },
+        { role: 'write', org_id: orgId }
+      );
+      if (mcpRes.status === 'success' && mcpRes.result) {
+        const r = mcpRes.result as { item_id: string; subject: string; url?: string };
+        return {
+          id: String(r.item_id),
+          orgId,
+          title: r.subject || input.title,
+          description: input.description,
+          assignee: input.assignee,
+          status: 'open',
+          createdBy: input.createdBy,
+          createdAt: Date.now(),
+          closedAt: null,
+          sourceChannelId: input.sourceChannelId || '',
+        };
+      }
+    } catch {
+      // Fallback to direct HTTP if gateway is offline
+    }
+
+    // 2. Direct HTTP Fallback
     const projectId = await this.resolveProjectId();
     const payload: Record<string, unknown> = {
       project: Number(projectId),

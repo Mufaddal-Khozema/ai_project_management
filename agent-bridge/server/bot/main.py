@@ -237,8 +237,7 @@ async def main(config_path: str) -> None:
     pm = PMClass()
     pm.configure({
         "url":               taiga_url,
-        "username":          cfg.get("taiga", {}).get("username", ""),
-        "password":          cfg.get("taiga", {}).get("password", ""),
+        "token":             os.environ.get("TAIGA_TOKEN") or os.environ.get("TAIGA_ACCESS_TOKEN") or cfg.get("taiga", {}).get("token", ""),
         "context_cache_ttl": cfg.get("advanced", {}).get("context_cache_ttl", 60),
     })
 
@@ -356,6 +355,7 @@ async def main(config_path: str) -> None:
         redis_client=status_redis,
         interval_seconds=reminder_interval,
         days_ahead=reminder_days_ahead,
+        identity_client=identity_client,
     )
     reminder_task = asyncio.create_task(reminder_service.run())
 
