@@ -27,7 +27,16 @@ const TIMER_TICK_MS = 5_000;
  *  flight time for the final frame — because it's now anchored to a real
  *  "done" signal instead of being a blind guess covering both "did Discord
  *  finish playing" and "did Gemini finish talking" at once. */
-const MIC_REOPEN_SAFETY_MS = 150;
+const MIC_REOPEN_SAFETY_MS = 50;
+
+/** Peak amplitude threshold for human speech barge-in. Acoustic echo and
+ *  speaker bleed typically register below ~0.12, while direct vocal speech
+ *  registers above ~0.20. If incoming audio exceeds this while the AI is
+ *  speaking, the bot immediately halts playback and yields to the speaker. */
+const BARGE_IN_PEAK_THRESHOLD = 0.22;
+/** Number of consecutive loud frames (40ms) needed to confirm human speech
+ *  and prevent accidental barge-in triggers from brief mic pops or clicks. */
+const BARGE_IN_CONSECUTIVE_FRAMES = 2;
 
 /** After a participant's "speaking start" fires, how long to wait for an
  *  actual decoded audio packet before concluding the subscription is dead
@@ -132,6 +141,7 @@ export class DiscordMeetingRoom {
    *  hundred ms of user audio through even if aiSpeaking briefly flickers
    *  true (e.g. due to a late onAudioChunk racing with the reopen timeout). */
   private micReopenAt = 0;
+  private consecutiveLoudFrames = 0;
 
   /** Tracks whether the user has spoken at least once since the current
    *  subscription was created. The health checker uses this to avoid
@@ -342,6 +352,18 @@ export class DiscordMeetingRoom {
           this.subscribeToCurrentSpeaker();
         }
       }, SPEAKING_WATCHDOG_MS);
+    });
+
+    this.connection.receiver.speaking.on('end', (discordUserId) => {
+      const participantId = this.discordToParticipant.get(discordUserId);
+      log(this.guildId, `speaking end: ${discordUserId} (${participantId ? 'known participant' : 'unknown/bot'})`);
+
+      // If the current speaker stopped talking, notify Gemini immediately
+      // so it triggers turn completion without waiting for the silence timer
+      if (participantId && participantId === this.stateService.currentSpeakerId) {
+        log(this.guildId, `current speaker ${discordUserId} stopped talking — signaling audioStreamEnd to Gemini`);
+        this.gemini?.sendAudioStreamEnd();
+      }
     });
 
     this.player = createAudioPlayer();
@@ -579,11 +601,35 @@ export class DiscordMeetingRoom {
         const sinceReopen = Date.now() - this.micReopenAt;
         if (sinceReopen < 250) {
           // Grace period — let it through despite aiSpeaking
+        } else if (level > BARGE_IN_PEAK_THRESHOLD) {
+          this.consecutiveLoudFrames++;
+          if (this.consecutiveLoudFrames >= BARGE_IN_CONSECUTIVE_FRAMES) {
+            log(
+              this.guildId,
+              `barge-in detected (peak level ${level.toFixed(2)}) — stopping AI playback immediately to yield to speaker`
+            );
+            // Immediately halt Discord playback and clear output buffers
+            try { this.player?.stop(); } catch {}
+            try { this.outputStream?.end(); } catch {}
+            this.outputStream = null;
+            this.aiSpeaking = false;
+            this.geminiDoneSendingAudio = true;
+            this.consecutiveLoudFrames = 0;
+            // Fall through to forward this audio frame to Gemini
+          } else {
+            // First loud frame — drop while validating second frame
+            this.audioChunksDroppedByGate++;
+            this.turnStats.droppedByGate++;
+            return;
+          }
         } else {
+          this.consecutiveLoudFrames = 0;
           this.audioChunksDroppedByGate++;
           this.turnStats.droppedByGate++;
           return;
         }
+      } else {
+        this.consecutiveLoudFrames = 0;
       }
 
       // Sent immediately, one Gemini message per decoded 20ms Opus packet —

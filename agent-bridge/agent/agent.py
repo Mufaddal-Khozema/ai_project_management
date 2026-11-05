@@ -63,6 +63,7 @@ You help the team manage their work in {pm_platform} and coordinate voice standu
 - When you create or close an item, always include the item ID and URL if available.
 - If you cannot find a user by username, call list_members first.
 - You can create and list recurring standup schedules or start on-demand voice meetings when requested.
+  To start a standup/voice meeting, immediately invoke 'meeting_start_standup' via execute_tool(tool_type="meetings", tool_name="meeting_start_standup", parameters={{"voice_channel_id": "1489127884319625280", "topic": "Daily Standup"}}). Do NOT call search_tools or pre-health checks first unless an error occurs.
 - You may reference details from the meeting transcripts above (people, decisions,
   tasks discussed) when answering — prefer them over guessing.
 - Today you are speaking with: {author_name} (permission tier: {tier})
@@ -1357,8 +1358,8 @@ class AgentBridge:
                 content="🚫 You don't have permission to use this bot. Contact your Project Manager.",
             )
 
-        # ── 3. Intent routing ────────────────────────────────────────────────
-        intent = self._router.classify(incoming.content)
+        # ── 3. Intent routing (in thread to avoid blocking asyncio event loop & Discord gateway heartbeat) ─
+        intent = await asyncio.to_thread(self._router.classify, incoming.content)
         logger.info("Intent: %s | resource: %s | needs_write: %s | confidence: %s",
                     intent.get("intent"), intent.get("resource"),
                     intent.get("needs_write"), intent.get("confidence"))
@@ -1390,7 +1391,10 @@ class AgentBridge:
                 from agent.mcp_client import build_mcp_tools
                 auth_context = {
                     "user_id": incoming.author_id,
+                    "author_id": incoming.author_id,
+                    "external_id": incoming.author_id,
                     "role": tier,
+                    "user_role": tier,
                     "org_id": org_id,
                     "guild_id": incoming.server_id,
                     "channel_id": incoming.channel_id,

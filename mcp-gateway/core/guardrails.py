@@ -21,7 +21,7 @@ class GuardrailEngine:
         Deterministic multi-tier verification before tool execution.
         Raises GuardrailViolation on failure.
         """
-        user_role = str(auth.get("user_role", "read")).lower()
+        user_role = str(auth.get("user_role") or auth.get("role") or "read").lower()
         entitlements = auth.get("entitlements", {})
 
         # 1. Subscription & Entitlement Guard (if strict enforcement enabled)
