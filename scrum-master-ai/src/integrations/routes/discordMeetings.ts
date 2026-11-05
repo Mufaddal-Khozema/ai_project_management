@@ -33,9 +33,12 @@ export default function registerDiscordMeetingRoutes(
 
   // ── Start a standup in a specific server + voice channel ─────────────────────
   fastify.post('/integrations/discord/meetings/start', { preHandler: requireAuth }, async (req: FastifyRequest, reply) => {
-    const { guildId, channelId, textChannelId, durationMs, projectSlug } = (req.body ?? {}) as {
-      guildId?: string; channelId?: string; textChannelId?: string; durationMs?: number; projectSlug?: string;
-    };
+    const body = (req.body ?? {}) as any;
+    const guildId = body.guildId || body.guild_id;
+    const channelId = body.channelId || body.channel_id || body.voice_channel_id;
+    const textChannelId = body.textChannelId || body.text_channel_id;
+    const durationMs = body.durationMs || body.duration_ms;
+    const projectSlug = body.projectSlug || body.project_slug;
     if (!guildId || !channelId) return reply.code(400).send({ error: 'guildId and channelId are required' });
 
     try {
@@ -50,15 +53,8 @@ export default function registerDiscordMeetingRoutes(
 
   // ── Stop the active standup in a server ──────────────────────────────────────
   fastify.post('/integrations/discord/meetings/stop', { preHandler: requireAuth }, async (req: FastifyRequest, reply) => {
-    // NOTE: no ownership check that `guildId` actually belongs to req.orgId
-    // — DiscordMeetingManager's active-meeting registry is keyed by guildId
-    // globally, with no guildId→orgId mapping at that layer today. In
-    // practice a caller would need to already know a specific guildId
-    // (Discord's own IDs, not enumerable/guessable) to target it, but this
-    // isn't the same as an explicit per-org authorization check. Worth
-    // tightening if DiscordMeetingManager ever tracks which org owns each
-    // active meeting — out of scope for the auth wiring done here.
-    const { guildId } = (req.body ?? {}) as { guildId?: string };
+    const body = (req.body ?? {}) as any;
+    const guildId = body.guildId || body.guild_id;
     if (!guildId) return reply.code(400).send({ error: 'guildId is required' });
     await stopDiscordMeeting(guildId);
     return { stopped: true, guildId };

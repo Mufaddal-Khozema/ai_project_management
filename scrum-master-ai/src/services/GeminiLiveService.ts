@@ -188,7 +188,7 @@ private stopHeartbeat(): void {
               prebuiltVoiceConfig: { voiceName: 'Aoede' },
             },
           },
-          temperature: 0.75,
+          temperature: 0.4,
           // NOTE: thinkingLevel/thinkingConfig is NOT part of the Live
           // API's generationConfig schema for BidiGenerateContentSetup —
           // confirmed against Google's own reference, which enumerates the
@@ -215,8 +215,8 @@ private stopHeartbeat(): void {
             // real, noticeable chunk of perceived latency; below ~400ms
             // risks cutting people off mid-thought during natural pauses,
             // so this is close to the practical floor for a voice UI.
-            silenceDurationMs: 500,
-            prefixPaddingMs: 100,
+            silenceDurationMs: 300,
+            prefixPaddingMs: 80,
           },
         },
         tools: [
@@ -372,6 +372,16 @@ private stopHeartbeat(): void {
       return;
     }
 
+    // Acknowledge the function call IMMEDIATELY over the WebSocket
+    // so Gemini Live continues audio synthesis without waiting on local processing.
+    this.send({
+      toolResponse: {
+        functionResponses: [
+          { id: callId, name: 'update_standup_data', response: { success: true } },
+        ],
+      },
+    });
+
     const data: StandupData = {
       yesterday: args.yesterday ?? [],
       today: args.today ?? [],
@@ -387,15 +397,6 @@ private stopHeartbeat(): void {
       this.meetingState.setPhase(args.phase as MeetingPhase);
       this.cb.onPhaseChange(args.phase as MeetingPhase);
     }
-
-    // Reply to the function call so Gemini continues speaking
-    this.send({
-      toolResponse: {
-        functionResponses: [
-          { id: callId, name: 'update_standup_data', response: { success: true } },
-        ],
-      },
-    });
 
     if (args.readyForNextParticipant) {
       this.cb.onReadyForNextParticipant();
@@ -456,7 +457,7 @@ STANDUP PHASES (per team member, follow in order):
 5. summary/completed — Only after the LAST team member finishes: give one brief overall team summary (mention any cross-team blockers), then close the meeting.
 
 TONE & STYLE:
-- Keep every response to 1–3 sentences max. Be concise and warm.
+- Keep every response to 1 single concise sentence max (maximum 15 words). Be direct, warm, and snappy.
 - Do NOT repeat questions already answered by the current speaker.
 - Ask at most ONE follow-up per topic before moving on.
 - Speak naturally — this is a voice conversation, not a text chat.

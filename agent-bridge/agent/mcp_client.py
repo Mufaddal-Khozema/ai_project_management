@@ -90,8 +90,17 @@ def build_mcp_tools(auth_context: dict[str, Any], base_url: str = MCP_GATEWAY_UR
     @tool
     def execute_tool(tool_type: str, tool_name: str, parameters: dict = None) -> str:
         """
-        Executes a project management or meeting operation through the secure MCP Gateway.
-        Example: execute_tool(tool_type='pm', tool_name='taiga_create_task', parameters={'project_id': 10, 'subject': 'Write unit test'})
+        Executes an operation through the secure MCP Gateway.
+        Common tools & categories:
+          - tool_type='meetings':
+              - 'meeting_start_standup': Start real-time AI Voice Standup in Discord.
+                parameters: {'voice_channel_id': '1489127884319625280', 'topic': 'Daily Standup'}
+              - 'meeting_stop_standup': Stop active standup session. parameters: {}
+              - 'meeting_check_voice_health': Check voice daemon health. parameters: {}
+          - tool_type='pm':
+              - 'taiga_list_tasks', 'taiga_create_task', 'taiga_update_task', 'taiga_list_user_stories'
+          - tool_type='discord':
+              - 'discord_post_summary', 'discord_verify_channel_mapping'
         """
         try:
             res = client.execute(

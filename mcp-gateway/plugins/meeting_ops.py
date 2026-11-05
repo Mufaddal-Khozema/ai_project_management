@@ -45,11 +45,27 @@ class MeetingOpsPlugin(BasePlugin):
         async with httpx.AsyncClient(timeout=15.0) as client:
             if tool_name == "meeting_start_standup":
                 url = f"{voice_url}/integrations/discord/meetings/start"
+                raw_guild_id = params.get("guild_id")
+                guild_id = auth.get("guild_id") if (not raw_guild_id or raw_guild_id == "default") else raw_guild_id
+                raw_channel_id = params.get("voice_channel_id") or params.get("channel_id")
+                if not raw_channel_id or str(raw_channel_id).lower() in ("general", "default", "none"):
+                    channel_id = "1489127884319625280"
+                else:
+                    channel_id = str(raw_channel_id)
+                text_channel_id = auth.get("channel_id")
+                project_slug = auth.get("project_key")
                 payload = {
-                    "guild_id": params.get("guild_id") or auth.get("guild_id"),
-                    "voice_channel_id": params.get("voice_channel_id"),
+                    "guildId": guild_id,
+                    "guild_id": guild_id,
+                    "channelId": channel_id,
+                    "channel_id": channel_id,
+                    "voice_channel_id": channel_id,
+                    "textChannelId": text_channel_id,
+                    "text_channel_id": text_channel_id,
+                    "projectSlug": project_slug,
+                    "project_slug": project_slug,
                     "topic": params.get("topic", "Daily Standup"),
-                    "initiated_by": auth.get("external_id", "unknown"),
+                    "initiated_by": auth.get("external_id") or auth.get("user_id", "unknown"),
                 }
                 resp = await client.post(url, json=payload)
                 if resp.status_code in (200, 201):
@@ -59,7 +75,12 @@ class MeetingOpsPlugin(BasePlugin):
 
             elif tool_name == "meeting_stop_standup":
                 url = f"{voice_url}/integrations/discord/meetings/stop"
-                payload = {"guild_id": params.get("guild_id") or auth.get("guild_id")}
+                raw_guild_id = params.get("guild_id")
+                guild_id = auth.get("guild_id") if (not raw_guild_id or raw_guild_id == "default") else raw_guild_id
+                payload = {
+                    "guildId": guild_id,
+                    "guild_id": guild_id,
+                }
                 resp = await client.post(url, json=payload)
                 return {"success": resp.status_code == 200, "message": "Standup terminated."}
 
