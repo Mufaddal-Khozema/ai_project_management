@@ -73,12 +73,12 @@ async def resolve_identity(
             workspace = await workspace_repo.find_by_member_id(user.id)
             if workspace and channel_id:
                 project = await project_repo.find_by_channel(
-                    workspace.id, "discord", channel_id, guild_id
+                    workspace.id, normalized, channel_id, guild_id
                 )
 
     # Fallback for headless / background workers resolving by channel
     if (workspace is None or user is None) and channel_id:
-        project = await project_repo.find_by_comm_channel("discord", channel_id, guild_id)
+        project = await project_repo.find_by_comm_channel(normalized, channel_id, guild_id)
         if project is not None:
             workspace = await workspace_repo.find_by_id(project.workspace_id)
             if workspace is not None:

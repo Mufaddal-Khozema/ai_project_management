@@ -103,19 +103,16 @@ class IdentityClient:
             logger.exception("Unexpected error decrypting integration token payload")
             raise ValueError(f"Failed to decrypt token: {e}") from e
 
-    def resolve_discord_identity(
+    def resolve_identity(
         self,
+        provider: str,
         external_id: str,
         guild_id: str | None = None,
         channel_id: str | None = None,
     ) -> IdentityResult:
-        """Resolve a Discord user ID against the root backend.
-
-        Returns an IdentityResult. When linked=False, the user has not connected
-        their Discord account to a workspace in the root dashboard.
-        """
-        provider = "discord"
-        cache_key = (provider, str(external_id))
+        """Resolve any chat provider (Discord, Slack) user ID against the root backend."""
+        clean_provider = provider.lower().strip()
+        cache_key = (clean_provider, str(external_id))
         cached = self._cache.get(cache_key)
         if cached and (time.monotonic() - cached[1]) < self.cache_ttl_seconds:
             return cached[0]
@@ -127,14 +124,14 @@ class IdentityClient:
             "Accept": "application/json",
         }
         payload = {
-            "provider": provider,
+            "provider": clean_provider,
             "external_id": str(external_id),
             "guild_id": str(guild_id) if guild_id else None,
             "channel_id": str(channel_id) if channel_id else None,
         }
 
         try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=300)
+            resp = requests.post(url, json=payload, headers=headers, timeout=30)
         except requests.RequestException as e:
             logger.error("Root backend identity service unreachable: %s", e)
             raise RuntimeError(f"Backend identity service unreachable: {e}") from e
@@ -164,17 +161,44 @@ class IdentityClient:
 
         raise RuntimeError(f"Root backend identity resolve failed ({resp.status_code}): {resp.text[:200]}")
 
-    def get_taiga_credentials(self, result: IdentityResult) -> dict[str, Any] | None:
-        """Helper to find Taiga integration from an IdentityResult and decrypt it."""
+    def resolve_discord_identity(
+        self,
+        external_id: str,
+        guild_id: str | None = None,
+        channel_id: str | None = None,
+    ) -> IdentityResult:
+        """Resolve a Discord user ID against the root backend."""
+        return self.resolve_identity("discord", external_id, guild_id, channel_id)
+
+    def resolve_slack_identity(
+        self,
+        external_id: str,
+        team_id: str | None = None,
+        channel_id: str | None = None,
+    ) -> IdentityResult:
+        """Resolve a Slack user ID against the root backend."""
+        return self.resolve_identity("slack", external_id, team_id, channel_id)
+
+    def get_integration_credentials(self, result: IdentityResult, provider: str) -> dict[str, Any] | None:
+        """Helper to find any integration by provider from an IdentityResult and decrypt it."""
+        clean_provider = provider.lower().strip()
         for integration in result.integrations:
-            if integration.get("provider") == "taiga":
+            if integration.get("provider", "").lower() == clean_provider:
                 token_encrypted = integration.get("token_encrypted")
                 if token_encrypted:
                     try:
                         return self.decrypt_token(token_encrypted)
                     except Exception as e:
-                        logger.warning("Could not decrypt Taiga token for workspace: %s", e)
+                        logger.warning("Could not decrypt %s token for workspace: %s", clean_provider, e)
         return None
+
+    def get_taiga_credentials(self, result: IdentityResult) -> dict[str, Any] | None:
+        """Helper to find Taiga integration from an IdentityResult and decrypt it."""
+        return self.get_integration_credentials(result, "taiga")
+
+    def get_jira_credentials(self, result: IdentityResult) -> dict[str, Any] | None:
+        """Helper to find Jira integration from an IdentityResult and decrypt it."""
+        return self.get_integration_credentials(result, "jira")
 
     def list_taiga_projects(self, taiga_creds: dict[str, Any]) -> list[dict[str, Any]]:
         """Fetch accessible projects from Taiga using the user's decrypted access token."""
@@ -215,31 +239,81 @@ class IdentityClient:
 
         return []
 
+    def list_jira_projects(self, jira_creds: dict[str, Any]) -> list[dict[str, Any]]:
+        """Fetch accessible projects from Jira using decrypted credentials."""
+        token = jira_creds.get("access_token") or jira_creds.get("token")
+        base_url = (jira_creds.get("url") or jira_creds.get("site_url") or "https://api.atlassian.com").rstrip("/")
+        cloud_id = jira_creds.get("cloud_id")
+
+        if cloud_id and "api.atlassian.com" in base_url:
+            base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
+
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        elif jira_creds.get("email") and jira_creds.get("api_token"):
+            import base64
+            auth_str = f"{jira_creds['email']}:{jira_creds['api_token']}"
+            encoded = base64.b64encode(auth_str.encode("utf-8")).decode("utf-8")
+            headers["Authorization"] = f"Basic {encoded}"
+        else:
+            return []
+
+        try:
+            resp = requests.get(f"{base_url}/rest/api/3/project", headers=headers, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, list):
+                    return data
+        except Exception as e:
+            logger.warning("Could not list Jira projects via credentials: %s", e)
+        return []
+
     def discover_active_project(self, result: IdentityResult) -> dict[str, Any] | None:
         """Dynamically resolve the active PM project from the user's decrypted integrations."""
         if result.project and (result.project.get("project_slug") or result.project.get("project_id")):
             return result.project
 
+        # Check Taiga
         taiga_creds = self.get_taiga_credentials(result)
-        if not taiga_creds:
-            return None
+        if taiga_creds:
+            projects = self.list_taiga_projects(taiga_creds)
+            if projects:
+                first = projects[0]
+                project_dict = {
+                    "provider": "taiga",
+                    "project_id": str(first.get("id")),
+                    "project_name": first.get("name"),
+                    "project_slug": first.get("slug"),
+                }
+                result.project = project_dict
+                logger.info(
+                    "Dynamically discovered Taiga project '%s' (id: %s) for workspace '%s'",
+                    project_dict["project_slug"],
+                    project_dict["project_id"],
+                    result.company_name,
+                )
+                return project_dict
 
-        projects = self.list_taiga_projects(taiga_creds)
-        if not projects:
-            return None
+        # Check Jira
+        jira_creds = self.get_jira_credentials(result)
+        if jira_creds:
+            jira_projects = self.list_jira_projects(jira_creds)
+            if jira_projects:
+                first = jira_projects[0]
+                project_dict = {
+                    "provider": "jira",
+                    "project_id": str(first.get("key") or first.get("id")),
+                    "project_name": first.get("name"),
+                    "project_slug": first.get("key"),
+                }
+                result.project = project_dict
+                logger.info(
+                    "Dynamically discovered Jira project '%s' (key: %s) for workspace '%s'",
+                    project_dict["project_name"],
+                    project_dict["project_slug"],
+                    result.company_name,
+                )
+                return project_dict
 
-        first = projects[0]
-        project_dict = {
-            "provider": "taiga",
-            "project_id": str(first.get("id")),
-            "project_name": first.get("name"),
-            "project_slug": first.get("slug"),
-        }
-        result.project = project_dict
-        logger.info(
-            "Dynamically discovered Taiga project '%s' (id: %s) for workspace '%s'",
-            project_dict["project_slug"],
-            project_dict["project_id"],
-            result.company_name,
-        )
-        return project_dict
+        return None

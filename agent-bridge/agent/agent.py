@@ -1287,28 +1287,42 @@ class AgentBridge:
             )
 
         # ── 0b. Dynamically apply PM credentials if provided by workspace ───
-        if self._identity_client and id_result and hasattr(self.pm, "configure"):
+        if self._identity_client and id_result:
             try:
-                taiga_creds = self._identity_client.get_taiga_credentials(id_result)
-                if taiga_creds:
-                    current_pm_cfg = dict(getattr(self.pm, "_config", {}))
-                    current_pm_cfg["url"] = (
-                        taiga_creds.get("instance_url")
-                        or taiga_creds.get("url")
-                        or current_pm_cfg.get("url")
-                        or "https://api.taiga.io/api/v1"
-                    )
-                    if taiga_creds.get("username"):
-                        current_pm_cfg["username"] = taiga_creds["username"]
-                    if taiga_creds.get("password"):
-                        current_pm_cfg["password"] = taiga_creds["password"]
-                    if taiga_creds.get("access_token"):
-                        current_pm_cfg["token"] = taiga_creds["access_token"]
-                    self.pm.configure(current_pm_cfg)
-                    logger.info("Bound workspace '%s' Taiga credentials dynamically", id_result.company_name)
+                pm_prov = (
+                    (id_result.project.get("provider") if id_result.project else None)
+                    or ("jira" if self._identity_client.get_jira_credentials(id_result) else "taiga")
+                ).lower()
+
+                if pm_prov == "jira":
+                    jira_creds = self._identity_client.get_jira_credentials(id_result)
+                    if jira_creds:
+                        from platforms.pm.jira_platform import JiraPlatform
+                        if not isinstance(self.pm, JiraPlatform):
+                            self.pm = JiraPlatform()
+                        self.pm.configure(jira_creds)
+                        logger.info("Bound workspace '%s' Jira credentials dynamically", id_result.company_name)
+                else:
+                    taiga_creds = self._identity_client.get_taiga_credentials(id_result)
+                    if taiga_creds and hasattr(self.pm, "configure"):
+                        current_pm_cfg = dict(getattr(self.pm, "_config", {}))
+                        current_pm_cfg["url"] = (
+                            taiga_creds.get("instance_url")
+                            or taiga_creds.get("url")
+                            or current_pm_cfg.get("url")
+                            or "https://api.taiga.io/api/v1"
+                        )
+                        if taiga_creds.get("username"):
+                            current_pm_cfg["username"] = taiga_creds["username"]
+                        if taiga_creds.get("password"):
+                            current_pm_cfg["password"] = taiga_creds["password"]
+                        if taiga_creds.get("access_token"):
+                            current_pm_cfg["token"] = taiga_creds["access_token"]
+                        self.pm.configure(current_pm_cfg)
+                        logger.info("Bound workspace '%s' Taiga credentials dynamically", id_result.company_name)
             except Exception as e:
                 logger.warning(
-                    "Could not apply dynamic Taiga credentials from workspace '%s': %s (using local PM configuration)",
+                    "Could not apply dynamic PM credentials from workspace '%s': %s (using local PM configuration)",
                     getattr(id_result, "company_name", "Unknown"),
                     e,
                 )
@@ -1322,7 +1336,7 @@ class AgentBridge:
             discovered = self._identity_client.discover_active_project(id_result)
             if discovered:
                 project_key = discovered.get("project_slug") or discovered.get("project_id")
-                logger.info("Dynamically discovered Taiga project '%s' via Taiga API", project_key)
+                logger.info("Dynamically discovered PM project '%s' via API", project_key)
 
         if not project_key:
             project_key = self.comm.resolve_project_key(
@@ -1331,7 +1345,7 @@ class AgentBridge:
             return OutgoingMessage(
                 channel_id=incoming.channel_id,
                 content=(
-                    "⚠️ This channel is not linked to a Taiga project.\n"
+                    f"⚠️ This channel is not linked to a {self.pm.display_name} project.\n"
                     "Ask an admin to configure it in the Agent Bridge dashboard.\n"
                     f"Channel ID: `{incoming.channel_id}` | Server ID: `{incoming.server_id}`"
                 ),

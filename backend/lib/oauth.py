@@ -609,3 +609,150 @@ async def list_discord_members(access_token: str, bot_token: str | None) -> list
         for member in await list_discord_guild_members(access_token, bot_token, guild["id"]):
             members[member["id"]] = member
     return list(members.values())
+
+
+async def get_jira_cloud_id(access_token: str) -> str | None:
+    """Return the primary cloud_id from Atlassian's accessible resources."""
+    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {access_token}"}) as http:
+        resp = await http.get("https://api.atlassian.com/oauth/token/accessible-resources")
+        if resp.status_code != 200:
+            return None
+        resources = resp.json()
+        if not resources:
+            return None
+        return resources[0].get("id")
+
+
+async def list_jira_projects(access_token: str) -> list[dict[str, Any]]:
+    """List accessible Jira projects for the authenticated Atlassian user."""
+    cloud_id = await get_jira_cloud_id(access_token)
+    if not cloud_id:
+        return []
+    url = f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/project"
+    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {access_token}"}) as http:
+        resp = await http.get(url)
+        if resp.status_code != 200:
+            return []
+        projects = resp.json()
+        return [
+            {
+                "id": str(p.get("id")),
+                "name": p.get("name") or "",
+                "slug": p.get("key") or "",
+            }
+            for p in projects
+            if p.get("id")
+        ]
+
+
+async def list_jira_project_members(access_token: str, project_id: str) -> list[dict[str, Any]]:
+    """Return assignable users for a specific Jira project."""
+    cloud_id = await get_jira_cloud_id(access_token)
+    if not cloud_id:
+        return []
+    url = f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/user/assignable/search"
+    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {access_token}"}) as http:
+        resp = await http.get(url, params={"project": project_id})
+        if resp.status_code != 200:
+            return []
+        users = resp.json()
+        return [
+            {
+                "id": str(u.get("accountId")),
+                "name": u.get("displayName") or "",
+                "username": u.get("displayName") or "",
+                "email": u.get("emailAddress") or "",
+                "avatar": (u.get("avatarUrls") or {}).get("48x48") or "",
+            }
+            for u in users
+            if u.get("accountId")
+        ]
+
+
+async def list_slack_channels(access_token: str) -> list[dict[str, Any]]:
+    """Return public and private channels accessible to the Slack token."""
+    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {access_token}"}) as http:
+        resp = await http.get(
+            "https://slack.com/api/conversations.list",
+            params={"types": "public_channel,private_channel", "limit": 200},
+        )
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        if not data.get("ok"):
+            return []
+        return [
+            {
+                "id": str(c.get("id")),
+                "name": c.get("name") or "",
+                "guild_id": str(c.get("context_team_id") or ""),
+            }
+            for c in data.get("channels", [])
+            if c.get("id")
+        ]
+
+
+async def get_slack_channel_team(access_token: str, channel_id: str) -> str | None:
+    """Return the workspace/team id a Slack channel belongs to."""
+    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {access_token}"}) as http:
+        resp = await http.get(
+            "https://slack.com/api/conversations.info",
+            params={"channel": channel_id},
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        if not data.get("ok"):
+            return None
+        channel = data.get("channel", {})
+        return channel.get("context_team_id") or (channel.get("shared_team_ids") or [None])[0]
+
+
+async def list_slack_channel_members(access_token: str, channel_id: str) -> list[dict[str, Any]]:
+    """Return members of a specific Slack channel."""
+    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {access_token}"}) as http:
+        resp = await http.get(
+            "https://slack.com/api/conversations.members",
+            params={"channel": channel_id, "limit": 200},
+        )
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        if not data.get("ok"):
+            return []
+        member_ids = set(data.get("members", []))
+        if not member_ids:
+            return []
+
+        users_resp = await http.get(
+            "https://slack.com/api/users.list",
+            params={"limit": 200},
+        )
+        if users_resp.status_code != 200:
+            return [
+                {"id": mid, "name": mid, "username": mid, "email": "", "avatar": ""}
+                for mid in member_ids
+            ]
+        users_data = users_resp.json()
+        if not users_data.get("ok"):
+            return [
+                {"id": mid, "name": mid, "username": mid, "email": "", "avatar": ""}
+                for mid in member_ids
+            ]
+
+        members: list[dict[str, Any]] = []
+        for user in users_data.get("members", []):
+            uid = user.get("id")
+            if uid in member_ids and not user.get("is_bot") and not user.get("deleted"):
+                profile = user.get("profile") or {}
+                members.append(
+                    {
+                        "id": str(uid),
+                        "name": profile.get("real_name") or user.get("real_name") or user.get("name") or "",
+                        "username": user.get("name") or "",
+                        "email": profile.get("email") or "",
+                        "avatar": profile.get("image_48") or profile.get("image_72") or "",
+                    }
+                )
+        return members
+

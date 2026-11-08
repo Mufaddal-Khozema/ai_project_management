@@ -20,8 +20,8 @@ from schemas.project import UpsertProjectRequest
 
 logger = structlog.get_logger(__name__)
 
-SUPPORTED_PM_PROVIDERS = frozenset({"taiga"})
-SUPPORTED_COMM_PROVIDERS = frozenset({"discord"})
+SUPPORTED_PM_PROVIDERS = frozenset({"taiga", "jira"})
+SUPPORTED_COMM_PROVIDERS = frozenset({"discord", "slack"})
 
 
 def validate_provider_pair(pm_provider: str, comm_provider: str) -> None:
@@ -29,11 +29,6 @@ def validate_provider_pair(pm_provider: str, comm_provider: str) -> None:
         raise HTTPException(status_code=400, detail=f"Unsupported project provider: {pm_provider}")
     if comm_provider not in SUPPORTED_COMM_PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported channel provider: {comm_provider}")
-    if (pm_provider, comm_provider) != ("taiga", "discord"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported provider pair: {pm_provider} + {comm_provider}",
-        )
 
 
 async def _workspace_id_for_user(email: str) -> int:
@@ -70,12 +65,20 @@ async def _resolve_project(
 ) -> tuple[str | None, str | None]:
     payload = await _provider_payload(workspace_id, pm_provider)
     access_token = payload.get("access_token") or ""
-    projects = await _provider_call(
-        pm_provider,
-        oauth.list_taiga_projects(
-            access_token, settings.taiga_base_url, payload.get("user_id")
-        ),
-    )
+    if pm_provider == "taiga":
+        projects = await _provider_call(
+            pm_provider,
+            oauth.list_taiga_projects(
+                access_token, settings.taiga_base_url, payload.get("user_id")
+            ),
+        )
+    elif pm_provider == "jira":
+        projects = await _provider_call(
+            pm_provider,
+            oauth.list_jira_projects(access_token),
+        )
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported project provider: {pm_provider}")
     project = next((p for p in projects if str(p.get("id")) == str(project_id)), None)
     if project is None:
         raise HTTPException(
@@ -88,18 +91,26 @@ async def _resolve_project(
 async def _resolve_guild(workspace_id: int, comm_provider: str, channel_id: str) -> str | None:
     payload = await _provider_payload(workspace_id, comm_provider)
     access_token = payload.get("access_token") or ""
-    guild_id = await _provider_call(
-        comm_provider,
-        oauth.get_discord_channel_guild(
-            access_token, settings.discord_bot_token, channel_id
-        ),
-    )
-    if guild_id is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Channel not found or no longer accessible. Refresh and choose another.",
+    if comm_provider == "discord":
+        guild_id = await _provider_call(
+            comm_provider,
+            oauth.get_discord_channel_guild(
+                access_token, settings.discord_bot_token, channel_id
+            ),
         )
-    return guild_id
+        if guild_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Channel not found or no longer accessible. Refresh and choose another.",
+            )
+        return guild_id
+    elif comm_provider == "slack":
+        team_id = await _provider_call(
+            comm_provider,
+            oauth.get_slack_channel_team(access_token, channel_id),
+        )
+        return team_id
+    return None
 
 
 async def save_mapping(

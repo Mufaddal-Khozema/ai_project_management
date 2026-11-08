@@ -14,7 +14,15 @@ class ToolRegistry:
         logger.info("Registered plugin category '%s' with %d tools", category, len(plugin.get_supported_tools()))
 
     @classmethod
-    def get_plugin(cls, category: str) -> BasePlugin | None:
+    def get_plugin(cls, category: str, tool_name: str | None = None) -> BasePlugin | None:
+        if tool_name:
+            t = tool_name.lower().strip()
+            direct = cls._plugins.get(category.lower())
+            if direct and t in direct.get_supported_tools():
+                return direct
+            for plugin in cls._plugins.values():
+                if t in plugin.get_supported_tools():
+                    return plugin
         return cls._plugins.get(category.lower())
 
     @classmethod
@@ -23,7 +31,15 @@ class ToolRegistry:
 
     @classmethod
     def get_tools_for_category(cls, category: str) -> list[str]:
-        plugin = cls.get_plugin(category)
+        cat = category.lower().strip()
+        if cat == "pm":
+            tools = []
+            for p_cat in ("pm", "taiga", "jira"):
+                p = cls._plugins.get(p_cat)
+                if p:
+                    tools.extend(p.get_supported_tools().keys())
+            return list(dict.fromkeys(tools))
+        plugin = cls.get_plugin(cat)
         if not plugin:
             return []
         return list(plugin.get_supported_tools().keys())
@@ -60,7 +76,7 @@ class ToolRegistry:
         params: dict[str, Any],
         auth: dict[str, Any],
     ) -> dict[str, Any]:
-        plugin = cls.get_plugin(category)
+        plugin = cls.get_plugin(category, tool_name)
         if not plugin:
-            raise KeyError(f"Category '{category}' not found")
+            raise KeyError(f"Category '{category}' or tool '{tool_name}' not found")
         return await plugin.execute(tool_name, params, auth)

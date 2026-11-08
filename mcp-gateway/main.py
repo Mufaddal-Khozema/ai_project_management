@@ -10,6 +10,7 @@ from core.registry import ToolRegistry
 from core.guardrails import GuardrailEngine, GuardrailViolation
 from core.fallback import FallbackEngine
 from plugins.pm_taiga import TaigaPlugin
+from plugins.pm_jira import JiraPlugin
 from plugins.meeting_ops import MeetingOpsPlugin
 from plugins.discord_ops import DiscordOpsPlugin
 
@@ -36,6 +37,8 @@ app.add_middleware(
 
 # 2. Register Built-in Plugins
 ToolRegistry.register_plugin("pm", TaigaPlugin())
+ToolRegistry.register_plugin("taiga", TaigaPlugin())
+ToolRegistry.register_plugin("jira", JiraPlugin())
 ToolRegistry.register_plugin("meetings", MeetingOpsPlugin())
 ToolRegistry.register_plugin("discord", DiscordOpsPlugin())
 
@@ -45,8 +48,8 @@ class SearchRequest(BaseModel):
     category: str | None = Field(default=None, description="Optional category filter (e.g. 'pm', 'meetings')")
 
 class ExecutePayload(BaseModel):
-    tool_type: str = Field(description="Category of tool: 'pm', 'meetings', 'discord'")
-    tool_name: str = Field(description="Exact tool name, e.g. 'taiga_create_task'")
+    tool_type: str = Field(description="Category of tool: 'pm', 'jira', 'taiga', 'meetings', 'discord'")
+    tool_name: str = Field(description="Exact tool name, e.g. 'jira_create_issue' or 'taiga_create_task'")
     parameters: dict[str, Any] = Field(default_factory=dict, description="Arguments for the tool")
     auth_context: dict[str, Any] = Field(
         default_factory=dict,
@@ -76,8 +79,8 @@ async def execute_tool_endpoint(payload: ExecutePayload):
     tool_name = payload.tool_name.lower().strip()
     auth = payload.auth_context
 
-    # Step 1: Category Check
-    plugin = ToolRegistry.get_plugin(category)
+    # Step 1: Category Check & Resolution
+    plugin = ToolRegistry.get_plugin(category, tool_name)
     if not plugin:
         return FallbackEngine.handle_unsupported_tool(
             category=category,
@@ -87,12 +90,13 @@ async def execute_tool_endpoint(payload: ExecutePayload):
         )
 
     # Step 2: Tool Existence Check & Fallback
-    supported_tools = ToolRegistry.get_tools_for_category(category)
+    supported_tools = plugin.get_supported_tools()
     if tool_name not in supported_tools:
+        all_avail = ToolRegistry.get_tools_for_category(category) or list(supported_tools.keys())
         return FallbackEngine.handle_unsupported_tool(
             category=category,
             tool_name=tool_name,
-            available_tools=supported_tools,
+            available_tools=all_avail,
             auth=auth,
         )
 
@@ -107,8 +111,6 @@ async def execute_tool_endpoint(payload: ExecutePayload):
             "message": gv.message,
             "tool_name": tool_name,
         }
-
-
 
     # Step 4: Execute the Tool Action
     try:
