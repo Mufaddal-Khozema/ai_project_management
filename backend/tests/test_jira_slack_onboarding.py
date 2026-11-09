@@ -15,6 +15,7 @@ from lib import oauth
 from services import projects as project_service
 from services import integrations as integration_service
 from services import identity as identity_service
+from services import members as members_service
 
 
 def _run(coro):
@@ -239,6 +240,27 @@ def test_resolve_guild_slack():
     assert team_id == "T-SLACK-TEAM"
 
 
+# 7. Member Scope Fetch Tests (used by onboarding create_matched_users)
+def test_fetch_scope_members_jira():
+    async def mock_coro():
+        with patch.object(members_service, "_scope_payload", new=AsyncMock(return_value={"access_token": "tok"})):
+            with patch("lib.oauth.list_jira_project_members", new=AsyncMock(return_value=[{"id": "j1", "name": "Jira User"}])):
+                return await members_service._fetch_scope_members(1, "test@example.com", "jira", "proj-1", is_project=True)
+
+    members = _run(mock_coro())
+    assert members == [{"id": "j1", "name": "Jira User"}]
+
+
+def test_fetch_scope_members_slack():
+    async def mock_coro():
+        with patch.object(members_service, "_scope_payload", new=AsyncMock(return_value={"access_token": "tok"})):
+            with patch("lib.oauth.list_slack_channel_members", new=AsyncMock(return_value=[{"id": "s1", "name": "Slack User"}])):
+                return await members_service._fetch_scope_members(1, "test@example.com", "slack", "chan-1", is_project=False)
+
+    members = _run(mock_coro())
+    assert members == [{"id": "s1", "name": "Slack User"}]
+
+
 if __name__ == "__main__":
     test_validate_provider_pair_all_valid_combinations()
     test_validate_provider_pair_invalid_pm()
@@ -253,4 +275,6 @@ if __name__ == "__main__":
     test_integrations_list_channels_slack()
     test_resolve_project_jira()
     test_resolve_guild_slack()
-    print("ALL 13 JIRA & SLACK ONBOARDING TESTS PASSED!")
+    test_fetch_scope_members_jira()
+    test_fetch_scope_members_slack()
+    print("ALL 15 JIRA & SLACK ONBOARDING TESTS PASSED!")
