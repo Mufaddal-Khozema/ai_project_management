@@ -152,3 +152,9 @@ class TestSlackPlatformCore:
         }
         res = _run(slack.handle_event(payload))
         assert res == {"challenge": "challenge_token_xyz_987"}
+
+    def test_fetch_wss_url_no_app_token(self, slack):
+        slack._app_token = None
+        mock_session = MagicMock()
+        res = _run(slack._fetch_wss_url(mock_session))
+        assert res is None

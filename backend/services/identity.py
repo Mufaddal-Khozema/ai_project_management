@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 # Providers a headless caller may resolve. Extended in Phase 2 alongside
 # the link flow (discord first — discord-bot and voice both speak Discord).
-SUPPORTED_PROVIDERS = frozenset({"discord"})
+SUPPORTED_PROVIDERS = frozenset({"discord", "slack"})
 
 
 def _utc_now() -> datetime:
@@ -88,7 +88,7 @@ async def resolve_identity(
         logger.info("identity resolve unlinked", provider=normalized)
         raise HTTPException(
             status_code=404,
-            detail="Identity not linked. Run !link in Discord, then enter the code under Settings → Discord.",
+            detail=f"Identity not linked for {normalized}. Link your account under Settings → Integrations.",
         )
 
     if workspace is None:
