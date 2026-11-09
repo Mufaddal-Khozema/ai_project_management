@@ -1205,13 +1205,21 @@ class AgentBridge:
         guild_id = message_doc.get("guild_id")
         channel_id = message_doc.get("channel_id")
 
+        platform = str(message_doc.get("platform", "discord")).lower()
         if self._identity_client and self._identity_client.is_configured() and author_id:
             try:
-                id_res = self._identity_client.resolve_discord_identity(
-                    external_id=author_id,
-                    guild_id=guild_id,
-                    channel_id=channel_id,
-                )
+                if platform == "slack":
+                    id_res = self._identity_client.resolve_slack_identity(
+                        external_id=author_id,
+                        team_id=guild_id,
+                        channel_id=channel_id,
+                    )
+                else:
+                    id_res = self._identity_client.resolve_discord_identity(
+                        external_id=author_id,
+                        guild_id=guild_id,
+                        channel_id=channel_id,
+                    )
                 if id_res and id_res.org_id:
                     message_doc["org_id"] = id_res.org_id
                 if id_res and id_res.project_slug and not message_doc.get("project_key"):
@@ -1230,13 +1238,21 @@ class AgentBridge:
 
         # ── 0. Identity & Entitlement Verification (Root Backend) ────────────
         id_result = None
+        platform_name = "Slack" if incoming.platform == "slack" else "Discord"
         if self._identity_client and self._identity_client.is_configured():
             try:
-                id_result = self._identity_client.resolve_discord_identity(
-                    external_id=incoming.author_id,
-                    guild_id=incoming.server_id,
-                    channel_id=incoming.channel_id,
-                )
+                if incoming.platform == "slack":
+                    id_result = self._identity_client.resolve_slack_identity(
+                        external_id=incoming.author_id,
+                        team_id=incoming.server_id,
+                        channel_id=incoming.channel_id,
+                    )
+                else:
+                    id_result = self._identity_client.resolve_discord_identity(
+                        external_id=incoming.author_id,
+                        guild_id=incoming.server_id,
+                        channel_id=incoming.channel_id,
+                    )
                 logger.info(f"Resolved identity for user {incoming.author_id}: linked={id_result.linked}, org_id={id_result.org_id}, project_slug={id_result.project_slug}")
                 if not id_result.linked:
                     if self.strict_identity:
@@ -1244,10 +1260,11 @@ class AgentBridge:
                             channel_id=incoming.channel_id,
                             content=(
                                 "⚠️ **Identity Not Linked**\n"
-                                "Your Discord account is not linked to any project workspace.\n"
-                                "Please link your Discord account in the CoordinaAI dashboard (Settings → Integrations).\n"
-                                f"Discord User ID: `{incoming.author_id}`"
+                                f"Your {platform_name} account is not linked to any project workspace.\n"
+                                f"Please link your {platform_name} account in the CoordinaAI dashboard (Settings → Integrations).\n"
+                                f"{platform_name} User ID: `{incoming.author_id}`"
                             ),
+                            metadata={"platform": incoming.platform},
                         )
                     logger.warning(
                         "User %s identity not linked (or workspace not resolved), but STRICT_IDENTITY_ENFORCEMENT=false — falling back to channel project mapping",
@@ -1263,8 +1280,10 @@ class AgentBridge:
                 #         ),
                 #     )
             except Exception as e:
-                logger.error("Identity resolution check failed: %s", e)
-                if self.strict_identity:
+                logger.warning("Identity resolution check failed: %s", e)
+                if "Unsupported provider: slack" in str(e) or not self.strict_identity:
+                    logger.info("Central backend does not support Slack identity yet (or STRICT_IDENTITY_ENFORCEMENT=false) — falling back to local PM mapping")
+                else:
                     return OutgoingMessage(
                         channel_id=incoming.channel_id,
                         content=(
@@ -1272,6 +1291,7 @@ class AgentBridge:
                             "Could not verify your workspace account authorization with the central server.\n"
                             "To protect AI token quotas, requests cannot proceed while identity verification is offline. Please try again shortly."
                         ),
+                        metadata={"platform": incoming.platform},
                     )
                 logger.warning(
                     "Identity resolution check failed: %s — continuing with local configuration fallback (STRICT_IDENTITY_ENFORCEMENT=false)", e
@@ -1475,7 +1495,7 @@ class AgentBridge:
             "No meeting context recorded yet for this channel."
 
         system_text = SYSTEM_PROMPT.format(
-            comm_platform  = self.comm.display_name,
+            comm_platform  = platform_name,
             pm_platform    = self.pm.display_name,
             project_name   = ctx.project_name if ctx else project_key,
             active_sprint  = (ctx.active_sprint or "None") if ctx else "Unknown",

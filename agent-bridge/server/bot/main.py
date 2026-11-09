@@ -35,6 +35,8 @@ logger = logging.getLogger("agent_bridge")
 # ── Register all platform adapters by importing them ────────────────────────
 import platforms.communication.discord_platform  # noqa: F401
 import platforms.communication.slack_platform    # noqa: F401
+import platforms.communication.multi_platform    # noqa: F401
+from platforms.communication.multi_platform import MultiCommPlatform
 import platforms.pm.taiga_platform               # noqa: F401
 import platforms.pm.jira_platform                # noqa: F401
 import platforms.pm.linear_platform              # noqa: F401
@@ -179,24 +181,25 @@ async def main(config_path: str) -> None:
     cfg = load_config(config_path)
 
     # ── Validate required keys ───────────────────────────────────────────────
-    bot_token = os.environ.get("DISCORD_BOT_TOKEN") or cfg.get("discord", {}).get("bot_token", "")
-    trigger_role = os.environ.get("DISCORD_TRIGGER_ROLE") or cfg.get("discord", {}).get("trigger_role", "CoordinaAI, FYP")
     gemini_key = os.environ.get("GEMINI_API_KEY") or cfg.get("llm", {}).get("gemini_api_key", "")
-    taiga_url = os.environ.get("TAIGA_URL") or cfg.get("taiga", {}).get("url", "")
-
-    if not bot_token or bot_token.startswith("$"):
-        logger.error("Discord bot_token is missing. Set DISCORD_BOT_TOKEN env var or configure it in the dashboard.")
-        sys.exit(1)
     if not gemini_key or gemini_key.startswith("$"):
         logger.error("Gemini API key is missing. Set GEMINI_API_KEY env var or configure it in the dashboard.")
         sys.exit(1)
-    if not taiga_url or taiga_url.startswith("$"):
-        logger.error("Taiga URL is missing. Set TAIGA_URL env var or configure it in the dashboard.")
-        sys.exit(1)
 
-    # ── Build channel_map in the format DiscordPlatform expects ─────────────
-    # Config stores: channel_mappings = [{guild_id, channel_id, project_slug, active}, ...]
-    # Discord adapter expects: channel_map = {guild_id: {channel_id: project_slug}}
+    comm_choice = (os.environ.get("COMM_PLATFORM") or cfg.get("comm_platform", "auto")).strip().lower()
+    discord_token = os.environ.get("DISCORD_BOT_TOKEN") or cfg.get("discord", {}).get("bot_token", "")
+    discord_trigger = os.environ.get("DISCORD_TRIGGER_ROLE") or cfg.get("discord", {}).get("trigger_role", "CoordinaAI, FYP")
+    discord_configured = bool(discord_token and not discord_token.startswith("$"))
+
+    slack_bot_token = os.environ.get("SLACK_BOT_TOKEN") or cfg.get("slack", {}).get("bot_token", "") or cfg.get("slack", {}).get("token", "")
+    slack_app_token = os.environ.get("SLACK_APP_TOKEN") or cfg.get("slack", {}).get("app_token", "")
+    slack_secret = os.environ.get("SLACK_SIGNING_SECRET") or cfg.get("slack", {}).get("signing_secret", "")
+    slack_configured = bool(
+        (slack_bot_token and not slack_bot_token.startswith("$"))
+        or (slack_app_token and not slack_app_token.startswith("$"))
+    )
+
+    # ── Build channel_map ───────────────────────────────────────────────────
     channel_map: dict = {}
     for mapping in cfg.get("channel_mappings", []):
         if not mapping.get("active", True):
@@ -208,10 +211,11 @@ async def main(config_path: str) -> None:
             if guild_id not in channel_map:
                 channel_map[guild_id] = {}
             channel_map[guild_id][channel_id] = project_slug
+        elif channel_id and project_slug:
+            if "" not in channel_map:
+                channel_map[""] = {}
+            channel_map[""][channel_id] = project_slug
 
-    # Build role_permissions in the format DiscordPlatform expects
-    # Config stores: [{role_name, tier}, ...]
-    # Discord adapter expects: {role_name: tier}
     role_perms: dict = {}
     for rp in cfg.get("role_permissions", []):
         if rp.get("role_name"):
@@ -220,26 +224,69 @@ async def main(config_path: str) -> None:
     logger.info("Channel map: %s", channel_map)
     logger.info("Role permissions: %s", role_perms)
 
-    # ── Instantiate communication platform ───────────────────────────────────
-    comm_id = cfg.get("comm_platform", "discord")
-    CommClass = PlatformRegistry.get_comm(comm_id)
-    comm = CommClass()
-    comm.configure({
-        "bot_token":        bot_token,
-        "trigger_role":     trigger_role,
-        "channel_map":      channel_map,
-        "role_permissions": role_perms,
-    })
+    # ── Instantiate communication platform(s) ────────────────────────────────
+    active_comms = []
+    # If explicitly discord or auto/both when discord configured
+    if comm_choice in ("discord", "both", "all", "multi", "auto") and discord_configured:
+        d_cls = PlatformRegistry.get_comm("discord")
+        d_comm = d_cls()
+        d_comm.configure({
+            "bot_token": discord_token,
+            "trigger_role": discord_trigger,
+            "channel_map": channel_map,
+            "role_permissions": role_perms,
+        })
+        active_comms.append(d_comm)
+
+    # If explicitly slack or auto/both when slack configured
+    if comm_choice in ("slack", "both", "all", "multi", "auto") and slack_configured:
+        s_cls = PlatformRegistry.get_comm("slack")
+        s_comm = s_cls()
+        s_comm.configure({
+            "bot_token": slack_bot_token,
+            "app_token": slack_app_token,
+            "signing_secret": slack_secret,
+            "trigger_role": os.environ.get("SLACK_TRIGGER_ROLE", "CoordinaAI"),
+            "channel_map": channel_map,
+            "role_permissions": role_perms,
+        })
+        active_comms.append(s_comm)
+
+    if not active_comms:
+        if comm_choice == "slack":
+            logger.error("COMM_PLATFORM=slack requested, but neither SLACK_BOT_TOKEN nor SLACK_APP_TOKEN is configured.")
+        elif comm_choice == "discord":
+            logger.error("COMM_PLATFORM=discord requested, but DISCORD_BOT_TOKEN is missing.")
+        else:
+            logger.error("No communication platform credentials found. Please set DISCORD_BOT_TOKEN or SLACK_BOT_TOKEN/SLACK_APP_TOKEN.")
+        sys.exit(1)
+
+    if len(active_comms) == 1:
+        comm = active_comms[0]
+        comm_id = comm.platform_id
+    else:
+        comm = MultiCommPlatform(active_comms)
+        comm_id = "multi (discord + slack)"
 
     # ── Instantiate PM platform ──────────────────────────────────────────────
-    pm_id = cfg.get("pm_platform", "taiga")
-    PMClass = PlatformRegistry.get_pm(pm_id)
-    pm = PMClass()
-    pm.configure({
-        "url":               taiga_url,
-        "token":             os.environ.get("TAIGA_TOKEN") or os.environ.get("TAIGA_ACCESS_TOKEN") or cfg.get("taiga", {}).get("token", ""),
-        "context_cache_ttl": cfg.get("advanced", {}).get("context_cache_ttl", 60),
-    })
+    pm_id = (os.environ.get("PM_PLATFORM") or cfg.get("pm_platform", "taiga")).strip().lower()
+    if pm_id == "jira":
+        PMClass = PlatformRegistry.get_pm("jira")
+        pm = PMClass()
+        pm.configure({
+            "instance_url": os.environ.get("JIRA_INSTANCE_URL") or cfg.get("jira", {}).get("instance_url", ""),
+            "token": os.environ.get("JIRA_TOKEN") or cfg.get("jira", {}).get("token", ""),
+            "user_email": os.environ.get("JIRA_USER_EMAIL") or cfg.get("jira", {}).get("user_email", ""),
+        })
+    else:
+        taiga_url = os.environ.get("TAIGA_URL") or cfg.get("taiga", {}).get("url", "https://api.taiga.io/api/v1")
+        PMClass = PlatformRegistry.get_pm("taiga")
+        pm = PMClass()
+        pm.configure({
+            "url": taiga_url,
+            "token": os.environ.get("TAIGA_TOKEN") or os.environ.get("TAIGA_ACCESS_TOKEN") or cfg.get("taiga", {}).get("token", ""),
+            "context_cache_ttl": cfg.get("advanced", {}).get("context_cache_ttl", 60),
+        })
 
     # ── Build memory store (Redis+MongoDB or in-memory fallback) ────────────
     memory_store = _build_memory_store(cfg)
