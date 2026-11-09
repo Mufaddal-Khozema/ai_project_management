@@ -53,6 +53,8 @@ async def _fetch_scope_members(
         return await oauth.list_taiga_project_members(
             access_token, settings.taiga_base_url, scope_id
         )
+    if provider == "jira" and is_project:
+        return await oauth.list_jira_project_members(access_token, scope_id)
     if provider == "discord" and not is_project:
         guild_id = await oauth.get_discord_channel_guild(
             access_token, settings.discord_bot_token, scope_id
@@ -62,6 +64,8 @@ async def _fetch_scope_members(
         return await oauth.list_discord_guild_members(
             access_token, settings.discord_bot_token, guild_id
         )
+    if provider == "slack" and not is_project:
+        return await oauth.list_slack_channel_members(access_token, scope_id)
     raise HTTPException(
         status_code=400,
         detail=f"Member scope not supported for provider: {provider}",
@@ -170,8 +174,15 @@ async def create_matched_users(
             raise HTTPException(status_code=400, detail="Match references a member outside the selected scope")
 
         is_owner = (
-            pm_owner_external_id == str(pm_member["id"])
-            or comm_owner_external_id == str(comm_member["id"])
+            (bool(pm_owner_external_id) and pm_owner_external_id == str(pm_member["id"]))
+            or (bool(comm_owner_external_id) and comm_owner_external_id == str(comm_member["id"]))
+            or (
+                bool(owner.get("email"))
+                and (
+                    pm_member.get("email") == owner["email"]
+                    or comm_member.get("email") == owner["email"]
+                )
+            )
         )
         if is_owner:
             user_id = owner_user_id

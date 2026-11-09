@@ -91,13 +91,22 @@ export function OnboardingDialog({
   const taigaConnect = useTaigaConnectMutation();
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
 
+  const integrationsById = useMemo(() => {
+    const map: Record<string, IntegrationResponse> = {};
+    for (const integration of integrationsData?.integrations ?? []) {
+      map[integration.provider] = integration;
+    }
+    return map;
+  }, [integrationsData]);
+
   const isMatchStep = step === "match";
 
   const projectsQuery = useQuery({
     ...listProjectsOptions({ path: { provider: selectedPm } }),
     enabled:
       (step === "project" || step === "channel" || isMatchStep) &&
-      selectedPm.length > 0,
+      selectedPm.length > 0 &&
+      integrationsById[selectedPm]?.status === "connected",
   });
   const projectMembersQuery = useQuery({
     ...listProjectMembersOptions({
@@ -107,11 +116,15 @@ export function OnboardingDialog({
       isMatchStep &&
       PROJECT_PROVIDERS.has(selectedPm) &&
       selectedPm.length > 0 &&
-      selectedProject.length > 0,
+      selectedProject.length > 0 &&
+      integrationsById[selectedPm]?.status === "connected",
   });
   const channelsQuery = useQuery({
     ...listChannelsOptions({ path: { provider: selectedComm } }),
-    enabled: (step === "channel" || isMatchStep) && selectedComm.length > 0,
+    enabled:
+      (step === "channel" || isMatchStep) &&
+      selectedComm.length > 0 &&
+      integrationsById[selectedComm]?.status === "connected",
   });
   const channelMembersQuery = useQuery({
     ...listChannelMembersOptions({
@@ -121,16 +134,9 @@ export function OnboardingDialog({
       isMatchStep &&
       CHANNEL_PROVIDERS.has(selectedComm) &&
       selectedComm.length > 0 &&
-      selectedChannel.length > 0,
+      selectedChannel.length > 0 &&
+      integrationsById[selectedComm]?.status === "connected",
   });
-
-  const integrationsById = useMemo(() => {
-    const map: Record<string, IntegrationResponse> = {};
-    for (const integration of integrationsData?.integrations ?? []) {
-      map[integration.provider] = integration;
-    }
-    return map;
-  }, [integrationsData]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -206,12 +212,12 @@ export function OnboardingDialog({
     if (current === "survey") return "comm";
     if (current === "comm") return "pm";
     if (current === "pm") {
-      if (PROJECT_PROVIDERS.has(selectedPm)) return "project";
-      if (CHANNEL_PROVIDERS.has(selectedComm)) return "channel";
+      if (PROJECT_PROVIDERS.has(selectedPm) && integrationsById[selectedPm]?.status === "connected") return "project";
+      if (CHANNEL_PROVIDERS.has(selectedComm) && integrationsById[selectedComm]?.status === "connected") return "channel";
       return "match";
     }
     if (current === "project") {
-      if (CHANNEL_PROVIDERS.has(selectedComm)) return "channel";
+      if (CHANNEL_PROVIDERS.has(selectedComm) && integrationsById[selectedComm]?.status === "connected") return "channel";
       return "match";
     }
     if (current === "channel") return "match";
@@ -575,10 +581,20 @@ export function OnboardingDialog({
                   <div key={i} className="h-11 animate-pulse rounded-lg bg-zinc-900" />
                 ))}
               </div>
-            ) : projectsQuery.isError ? (
-              <p className="text-xs text-red-400">
-                Couldn&apos;t load projects. Please reconnect in Settings.
-              </p>
+            ) : projectsQuery.isError || integrationsById[selectedPm]?.status !== "connected" ? (
+              <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-center">
+                <p className="text-xs text-zinc-400">
+                  {pmProvider?.name ?? "Provider"} is not connected yet. Connect your account to select a project.
+                </p>
+                <Button
+                  size="sm"
+                  className="bg-indigo-600 hover:bg-indigo-500"
+                  onClick={() => handleConnect(selectedPm)}
+                  disabled={Boolean(connectingProvider)}
+                >
+                  {connectingProvider ? "Connecting…" : `Connect ${pmProvider?.name ?? "Account"}`}
+                </Button>
+              </div>
             ) : (projectsQuery.data?.scopes.length ?? 0) === 0 ? (
               <p className="text-xs text-zinc-500">No projects found.</p>
             ) : (
@@ -617,10 +633,20 @@ export function OnboardingDialog({
                   <div key={i} className="h-11 animate-pulse rounded-lg bg-zinc-900" />
                 ))}
               </div>
-            ) : channelsQuery.isError ? (
-              <p className="text-xs text-red-400">
-                Couldn&apos;t load channels. Please reconnect in Settings.
-              </p>
+            ) : channelsQuery.isError || integrationsById[selectedComm]?.status !== "connected" ? (
+              <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-center">
+                <p className="text-xs text-zinc-400">
+                  {commProvider?.name ?? "Provider"} is not connected yet. Connect your account to select a channel.
+                </p>
+                <Button
+                  size="sm"
+                  className="bg-indigo-600 hover:bg-indigo-500"
+                  onClick={() => handleConnect(selectedComm)}
+                  disabled={Boolean(connectingProvider)}
+                >
+                  {connectingProvider ? "Connecting…" : `Connect ${commProvider?.name ?? "Account"}`}
+                </Button>
+              </div>
             ) : (channelsQuery.data?.scopes.length ?? 0) === 0 ? (
               <p className="text-xs text-zinc-500">No channels found.</p>
             ) : (
@@ -883,10 +909,17 @@ export function OnboardingDialog({
             className="flex-1 bg-indigo-600 hover:bg-indigo-500"
             onClick={next}
             disabled={
+              Boolean(connectingProvider) ||
               (step === "comm" && !selectedComm) ||
               (step === "pm" && !selectedPm) ||
-              (step === "project" && PROJECT_PROVIDERS.has(selectedPm) && !selectedProject) ||
-              (step === "channel" && CHANNEL_PROVIDERS.has(selectedComm) && !selectedChannel)
+              (step === "project" &&
+                PROJECT_PROVIDERS.has(selectedPm) &&
+                integrationsById[selectedPm]?.status === "connected" &&
+                !selectedProject) ||
+              (step === "channel" &&
+                CHANNEL_PROVIDERS.has(selectedComm) &&
+                integrationsById[selectedComm]?.status === "connected" &&
+                !selectedChannel)
             }
           >
             {step === "match" ? "Finish setup" : "Next"}
