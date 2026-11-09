@@ -12,8 +12,9 @@ def run_all():
     import tests.test_guardrails as tg
     import tests.test_fallback as tf
     import tests.test_api as ta
+    import tests.test_jira_plugin as tj
 
-    modules = [tg, tf, ta]
+    modules = [tg, tf, ta, tj]
 
     for mod in modules:
         for name in dir(mod):
@@ -22,7 +23,14 @@ def run_all():
                 if callable(fn):
                     try:
                         print(f"RUNNING: {mod.__name__}.{name}...", flush=True)
-                        fn()
+                        if name == "test_supported_tools":
+                            from plugins.pm_jira import JiraPlugin
+                            fn(JiraPlugin())
+                        elif name.startswith("test_execute_jira"):
+                            from plugins.pm_jira import JiraPlugin
+                            fn(JiraPlugin())
+                        else:
+                            fn()
                         print(f"PASSED: {mod.__name__}.{name}", flush=True)
                         passed += 1
                     except Exception as e:

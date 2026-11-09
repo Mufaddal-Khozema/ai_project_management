@@ -365,11 +365,11 @@ async def refresh_integration(email: str, provider: str, request: Request) -> di
     return result
 
 
-_MEMBER_PROVIDERS = frozenset({"taiga", "discord"})
+_MEMBER_PROVIDERS = frozenset({"taiga", "discord", "jira", "slack"})
 
 _SCOPE_PROVIDERS = {
-    "projects": frozenset({"taiga"}),
-    "channels": frozenset({"discord"}),
+    "projects": frozenset({"taiga", "jira"}),
+    "channels": frozenset({"discord", "slack"}),
 }
 
 
@@ -404,6 +404,11 @@ async def list_projects(email: str, provider: str) -> dict[str, Any]:
             provider,
             oauth.list_taiga_projects(access_token, settings.taiga_base_url, payload.get("user_id")),
         )
+    elif provider == "jira":
+        scopes = await _provider_call(
+            provider,
+            oauth.list_jira_projects(access_token),
+        )
     else:
         raise HTTPException(status_code=400, detail=f"Projects not supported for provider: {provider}")
     return {"provider": provider, "account_name": row.get("account_name"), "scopes": scopes}
@@ -418,6 +423,11 @@ async def list_project_members(email: str, provider: str, project_id: str) -> di
         members = await _provider_call(
             provider,
             oauth.list_taiga_project_members(access_token, settings.taiga_base_url, project_id),
+        )
+    elif provider == "jira":
+        members = await _provider_call(
+            provider,
+            oauth.list_jira_project_members(access_token, project_id),
         )
     else:
         raise HTTPException(status_code=400, detail=f"Projects not supported for provider: {provider}")
@@ -439,6 +449,19 @@ async def list_channels(email: str, provider: str) -> dict[str, Any]:
                 "id": channel["id"],
                 "name": channel["name"],
                 "parent_id": channel["guild_id"],
+            }
+            for channel in channels
+        ]
+    elif provider == "slack":
+        channels = await _provider_call(
+            provider,
+            oauth.list_slack_channels(access_token),
+        )
+        scopes = [
+            {
+                "id": channel["id"],
+                "name": channel["name"],
+                "parent_id": channel.get("guild_id"),
             }
             for channel in channels
         ]
@@ -467,6 +490,11 @@ async def list_channel_members(email: str, provider: str, channel_id: str) -> di
                 access_token, settings.discord_bot_token, guild_id
             ),
         )
+    elif provider == "slack":
+        members = await _provider_call(
+            provider,
+            oauth.list_slack_channel_members(access_token, channel_id),
+        )
     else:
         raise HTTPException(status_code=400, detail=f"Channels not supported for provider: {provider}")
     return {"provider": provider, "account_name": row.get("account_name"), "members": members}
@@ -493,6 +521,22 @@ async def list_members(email: str, provider: str) -> dict[str, Any]:
         )
     elif provider == "discord":
         members = await oauth.list_discord_members(access_token, settings.discord_bot_token)
+    elif provider == "jira":
+        projects = await oauth.list_jira_projects(access_token)
+        all_members: dict[str, dict[str, Any]] = {}
+        for p in projects:
+            p_members = await oauth.list_jira_project_members(access_token, p["id"])
+            for m in p_members:
+                all_members[m["id"]] = m
+        members = list(all_members.values())
+    elif provider == "slack":
+        channels = await oauth.list_slack_channels(access_token)
+        all_members: dict[str, dict[str, Any]] = {}
+        for c in channels[:5]:
+            c_members = await oauth.list_slack_channel_members(access_token, c["id"])
+            for m in c_members:
+                all_members[m["id"]] = m
+        members = list(all_members.values())
     else:
         raise HTTPException(status_code=400, detail=f"Member sync not supported for provider: {provider}")
 

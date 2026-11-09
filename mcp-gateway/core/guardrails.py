@@ -13,7 +13,7 @@ class GuardrailViolation(Exception):
 
 class GuardrailEngine:
     DESTRUCTIVE_KEYWORDS = {"delete", "remove", "drop", "terminate", "archive", "purge"}
-    WRITE_KEYWORDS = {"create", "add", "update", "patch", "start", "stop", "assign"}
+    WRITE_KEYWORDS = {"create", "add", "update", "patch", "start", "stop", "assign", "transition"}
 
     @classmethod
     def verify_request(cls, tool_name: str, params: dict[str, Any], auth: dict[str, Any]) -> None:

@@ -46,8 +46,8 @@ const pmProviders = integrationProviders.filter((p) => p.category === "pm");
 
 type Step = "survey" | "comm" | "pm" | "project" | "channel" | "match";
 
-const PROJECT_PROVIDERS = new Set(["taiga"]);
-const CHANNEL_PROVIDERS = new Set(["discord"]);
+const PROJECT_PROVIDERS = new Set(["taiga", "jira"]);
+const CHANNEL_PROVIDERS = new Set(["discord", "slack"]);
 
 interface Props {
   open: boolean;
@@ -652,7 +652,7 @@ export function OnboardingDialog({
           <div className="space-y-4">
             {!PROJECT_PROVIDERS.has(selectedPm) || !CHANNEL_PROVIDERS.has(selectedComm) ? (
               <p className="text-xs text-zinc-400">
-                Member matching is available when syncing Taiga with Discord.
+                Member matching is available when syncing Taiga or Jira with Discord or Slack.
               </p>
             ) : (
               <>
