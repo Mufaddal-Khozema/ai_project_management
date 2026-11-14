@@ -21,14 +21,29 @@ import {
   Filter,
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { useListProjectsQuery, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
+import { useQuery } from "@tanstack/react-query";
+import { listProjectsOptions, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
 
 export default function ProjectsPage() {
   const [search, setSearch] = useState("");
-  const { data: projectsData, isLoading: isProjectsLoading } = useListProjectsQuery({
-    path: { provider: "taiga" },
-  });
   const { data: integrationsData } = useIntegrations();
+
+  const activePmProvider = useMemo(() => {
+    const connected = integrationsData?.integrations?.filter(
+      (i) => i.status === "connected"
+    );
+    const pm = connected?.find(
+      (i) => i.provider === "jira" || i.provider === "taiga"
+    );
+    return pm?.provider;
+  }, [integrationsData]);
+
+  const { data: projectsData, isLoading: isProjectsLoading } = useQuery({
+    ...listProjectsOptions({
+      path: { provider: activePmProvider ?? "jira" },
+    }),
+    enabled: Boolean(activePmProvider),
+  });
 
   const scopes = useMemo(() => projectsData?.scopes ?? [], [projectsData?.scopes]);
   const projects = useMemo(
