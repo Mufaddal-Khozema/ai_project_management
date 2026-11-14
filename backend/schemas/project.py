@@ -6,9 +6,9 @@ from pydantic import BaseModel, Field
 
 
 class UpsertProjectRequest(BaseModel):
-    pm_provider: Literal["taiga"] = "taiga"
+    pm_provider: Literal["taiga", "jira"] = "taiga"
     project_id: str = Field(min_length=1, max_length=255)
-    comm_provider: Literal["discord"] = "discord"
+    comm_provider: Literal["discord", "slack"] = "discord"
     channel_id: str = Field(min_length=1, max_length=255)
     active: bool = True
 
