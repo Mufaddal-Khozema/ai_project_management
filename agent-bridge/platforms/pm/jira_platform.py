@@ -96,6 +96,7 @@ class _JiraHTTP:
         api_token: str = "",
         token: str | None = None,
         cloud_id: str | None = None,
+        site_url: str | None = None,
         api_version: str = "3",
     ):
         raw_url = (base_url or "").rstrip("/")
@@ -104,11 +105,14 @@ class _JiraHTTP:
         self.api_token = api_token or os.environ.get("JIRA_API_TOKEN", "")
         self.token = token or os.environ.get("JIRA_TOKEN") or os.environ.get("JIRA_ACCESS_TOKEN")
         self.cloud_id = cloud_id or os.environ.get("JIRA_CLOUD_ID")
+        self.site_url = (site_url or "").rstrip("/")
 
-        if self.cloud_id:
+        if self.cloud_id and self.cloud_id != "direct":
             self.base_url = f"https://api.atlassian.com/ex/jira/{self.cloud_id}"
         elif "atlassian.net" in raw_url:
             self.base_url = raw_url
+            if not self.site_url:
+                self.site_url = raw_url
         elif raw_url:
             self.base_url = raw_url
         else:
@@ -175,7 +179,7 @@ class _JiraHTTP:
         return self._project_cache[key]
 
 
-def _to_item(raw: dict[str, Any], base_url: str) -> ProjectItem:
+def _to_item(raw: dict[str, Any], base_url: str, site_url: str = "") -> ProjectItem:
     fields = raw.get("fields", {})
     key = raw.get("key", str(raw.get("id", "")))
     issuetype = fields.get("issuetype", {})
@@ -196,7 +200,9 @@ def _to_item(raw: dict[str, Any], base_url: str) -> ProjectItem:
     labels = fields.get("labels", []) or []
 
     web_url = None
-    if base_url and "api.atlassian.com" not in base_url:
+    if site_url:
+        web_url = f"{site_url.rstrip('/')}/browse/{key}"
+    elif base_url and "api.atlassian.com" not in base_url:
         web_url = f"{base_url.rstrip('/')}/browse/{key}"
 
     return ProjectItem(
@@ -242,6 +248,26 @@ class JiraPlatform(ProjectManagementPlatform):
             or os.environ.get("JIRA_ACCESS_TOKEN")
         )
         cloud_id = config.get("cloud_id", "") or os.environ.get("JIRA_CLOUD_ID", "")
+        site_url = config.get("site_url", "") or config.get("instance_url", "")
+
+        if token and (not cloud_id or cloud_id == "direct") and "api.atlassian.com" in url:
+            try:
+                r = requests.get(
+                    "https://api.atlassian.com/oauth/token/accessible-resources",
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                    timeout=10,
+                )
+                if r.status_code == 200:
+                    resources = r.json()
+                    if isinstance(resources, list) and resources:
+                        cloud_id = str(resources[0].get("id") or "")
+                        if cloud_id:
+                            self._config["cloud_id"] = cloud_id
+                        if resources[0].get("url"):
+                            site_url = str(resources[0].get("url"))
+                            self._config["site_url"] = site_url
+            except Exception as e:
+                logger.warning("Could not auto-resolve Jira cloud_id in configure: %s", e)
 
         self._http = _JiraHTTP(
             base_url=url,
@@ -249,9 +275,10 @@ class JiraPlatform(ProjectManagementPlatform):
             api_token=api_token,
             token=token,
             cloud_id=cloud_id,
+            site_url=site_url,
         )
         self._ttl = float(config.get("context_cache_ttl", 60))
-        logger.info("Jira configured at %s (cloud_id=%s)", url, cloud_id or "direct")
+        logger.info("Jira configured at %s (cloud_id=%s, site_url=%s)", url, cloud_id or "direct", site_url or "unknown")
 
     def get_project_id(self, key: str) -> str:
         if not self._http:
@@ -338,7 +365,7 @@ class JiraPlatform(ProjectManagementPlatform):
                 },
             )
             recent = [
-                _to_item(issue, self._http.base_url)
+                _to_item(issue, self._http.base_url, self._http.site_url)
                 for issue in recent_resp.get("issues", [])
             ]
         except Exception as e:
@@ -414,7 +441,7 @@ class JiraPlatform(ProjectManagementPlatform):
 
         # Fetch newly created issue with full fields
         full_issue = self._http.request("GET", f"/issue/{issue_key}")
-        return _to_item(full_issue, self._http.base_url)
+        return _to_item(full_issue, self._http.base_url, self._http.site_url)
 
     def update_item(
         self,
@@ -456,7 +483,7 @@ class JiraPlatform(ProjectManagementPlatform):
         payload = {"fields": jira_fields}
         self._http.request("PUT", f"/issue/{item_id}", json=payload)
         full_issue = self._http.request("GET", f"/issue/{item_id}")
-        return _to_item(full_issue, self._http.base_url)
+        return _to_item(full_issue, self._http.base_url, self._http.site_url)
 
     def close_item(
         self,
@@ -488,7 +515,7 @@ class JiraPlatform(ProjectManagementPlatform):
             json={"transition": {"id": target_trans["id"]}},
         )
         full_issue = self._http.request("GET", f"/issue/{item_id}")
-        return _to_item(full_issue, self._http.base_url)
+        return _to_item(full_issue, self._http.base_url, self._http.site_url)
 
     def get_item(
         self,
@@ -497,7 +524,7 @@ class JiraPlatform(ProjectManagementPlatform):
         item_type: str | None = None,
     ) -> ProjectItem:
         raw = self._http.request("GET", f"/issue/{item_id}")
-        return _to_item(raw, self._http.base_url)
+        return _to_item(raw, self._http.base_url, self._http.site_url)
 
     def list_items(
         self,
@@ -529,7 +556,7 @@ class JiraPlatform(ProjectManagementPlatform):
             json={"jql": jql, "maxResults": limit},
         )
         issues = resp.get("issues", [])
-        return [_to_item(issue, self._http.base_url) for issue in issues]
+        return [_to_item(issue, self._http.base_url, self._http.site_url) for issue in issues]
 
     def search_items(self, project_id: str, query: str, limit: int = 20) -> list[ProjectItem]:
         project_key = str(project_id).upper()
@@ -542,7 +569,7 @@ class JiraPlatform(ProjectManagementPlatform):
                 json={"jql": jql, "maxResults": limit},
             )
             issues = resp.get("issues", [])
-            return [_to_item(issue, self._http.base_url) for issue in issues]
+            return [_to_item(issue, self._http.base_url, self._http.site_url) for issue in issues]
         except Exception as e:
             logger.warning("Jira search failed for query '%s': %s", query, e)
             return []
