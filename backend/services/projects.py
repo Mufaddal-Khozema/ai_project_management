@@ -79,7 +79,14 @@ async def _resolve_project(
         )
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported project provider: {pm_provider}")
-    project = next((p for p in projects if str(p.get("id")) == str(project_id)), None)
+    project = next(
+        (
+            p for p in projects
+            if str(p.get("id")) == str(project_id)
+            or (p.get("slug") and str(p.get("slug")).upper() == str(project_id).upper())
+        ),
+        None,
+    )
     if project is None:
         raise HTTPException(
             status_code=400,

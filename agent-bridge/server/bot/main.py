@@ -40,6 +40,8 @@ from platforms.communication.multi_platform import MultiCommPlatform
 import platforms.pm.taiga_platform               # noqa: F401
 import platforms.pm.jira_platform                # noqa: F401
 import platforms.pm.linear_platform              # noqa: F401
+import platforms.pm.dynamic_platform             # noqa: F401
+from platforms.pm.dynamic_platform import DynamicPMPlatform
 
 from core.registry import PlatformRegistry
 from agent.agent import AgentBridge, DualMemoryStore, ChannelMemoryStore
@@ -269,8 +271,28 @@ async def main(config_path: str) -> None:
         comm_id = "multi (discord + slack)"
 
     # ── Instantiate PM platform ──────────────────────────────────────────────
-    pm_id = (os.environ.get("PM_PLATFORM") or cfg.get("pm_platform", "taiga")).strip().lower()
-    if pm_id == "jira":
+    pm_id = (os.environ.get("PM_PLATFORM") or cfg.get("pm_platform", "dynamic")).strip().lower()
+    if pm_id in ("dynamic", "auto", ""):
+        pm = DynamicPMPlatform(default_provider=cfg.get("default_pm_provider", "taiga"))
+        # Pre-seed credentials if present in config or environment
+        taiga_url = os.environ.get("TAIGA_URL") or cfg.get("taiga", {}).get("url", "https://api.taiga.io/api/v1")
+        taiga_token = os.environ.get("TAIGA_TOKEN") or os.environ.get("TAIGA_ACCESS_TOKEN") or cfg.get("taiga", {}).get("token", "")
+        if taiga_token:
+            pm.bind_provider("taiga", {
+                "url": taiga_url,
+                "token": taiga_token,
+                "context_cache_ttl": cfg.get("advanced", {}).get("context_cache_ttl", 60),
+            })
+        jira_url = os.environ.get("JIRA_INSTANCE_URL") or cfg.get("jira", {}).get("instance_url", "")
+        jira_token = os.environ.get("JIRA_TOKEN") or cfg.get("jira", {}).get("token", "")
+        if jira_url and jira_token:
+            pm.bind_provider("jira", {
+                "instance_url": jira_url,
+                "token": jira_token,
+                "user_email": os.environ.get("JIRA_USER_EMAIL") or cfg.get("jira", {}).get("user_email", ""),
+            })
+        pm_id = "dynamic (auto-resolving)"
+    elif pm_id == "jira":
         PMClass = PlatformRegistry.get_pm("jira")
         pm = PMClass()
         pm.configure({
