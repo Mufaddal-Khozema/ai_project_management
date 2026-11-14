@@ -83,30 +83,75 @@ class DueDateReminderService:
                 if not project_slug:
                     continue
                 try:
-                    # Dynamically resolve Taiga access token for this channel if PM is unauthenticated
-                    pm_http = getattr(self.pm, "_http", None)
-                    if pm_http and not getattr(pm_http, "token", None) and self.identity_client and self.identity_client.is_configured():
+                    pm_prov = "taiga"
+                    id_res = None
+                    if self.identity_client and self.identity_client.is_configured():
                         try:
-                            id_res = self.identity_client.resolve_discord_identity(
+                            comm_plat = getattr(self.comm, "platform_id", "")
+                            is_slack = (
+                                comm_plat == "slack"
+                                or str(channel_id).startswith(("C", "G"))
+                                or str(guild_id).startswith("T")
+                            )
+                            provider = "slack" if is_slack else "discord"
+                            id_res = self.identity_client.resolve_identity(
+                                provider=provider,
                                 external_id=str(channel_id),
                                 guild_id=str(guild_id),
                                 channel_id=str(channel_id),
                             )
-                            if id_res and id_res.linked:
-                                creds = self.identity_client.get_taiga_credentials(id_res)
-                                if creds and creds.get("access_token") and hasattr(self.pm, "configure"):
-                                    self.pm.configure({
-                                        "url": creds.get("instance_url") or getattr(pm_http, "base_url", "https://api.taiga.io/api/v1"),
-                                        "token": creds["access_token"],
-                                    })
-                                    logger.info("Bound workspace Taiga token for channel %s (%s)", channel_id, project_slug)
-                        except Exception as ex:
-                            logger.debug("Could not resolve workspace Taiga token for channel %s: %s", channel_id, ex)
+                            if (not id_res or not id_res.linked) and comm_plat == "multi":
+                                # Try the alternative chat provider
+                                alt_provider = "discord" if is_slack else "slack"
+                                alt_res = self.identity_client.resolve_identity(
+                                    provider=alt_provider,
+                                    external_id=str(channel_id),
+                                    guild_id=str(guild_id),
+                                    channel_id=str(channel_id),
+                                )
+                                if alt_res and alt_res.linked:
+                                    id_res = alt_res
 
-                    # If still no token is available on real Taiga HTTP client, skip reminder scanning gracefully
-                    from platforms.pm.taiga_platform import _TaigaHTTP
-                    if isinstance(pm_http, _TaigaHTTP) and not pm_http.token:
+                            if id_res and id_res.linked:
+                                if id_res.project and id_res.project.get("provider"):
+                                    pm_prov = id_res.project["provider"].lower()
+                                elif self.identity_client.get_jira_credentials(id_res):
+                                    pm_prov = "jira"
+
+                                if pm_prov == "jira":
+                                    creds = self.identity_client.get_jira_credentials(id_res)
+                                    if creds:
+                                        if hasattr(self.pm, "bind_provider"):
+                                            self.pm.bind_provider("jira", creds)
+                                        elif hasattr(self.pm, "configure"):
+                                            self.pm.configure(creds)
+                                        logger.debug("Bound workspace Jira token for channel %s (%s)", channel_id, project_slug)
+                                else:
+                                    creds = self.identity_client.get_taiga_credentials(id_res)
+                                    if creds:
+                                        cfg_dict = {
+                                            "url": creds.get("instance_url") or creds.get("url") or "https://api.taiga.io/api/v1",
+                                            "token": creds.get("access_token"),
+                                            "username": creds.get("username"),
+                                            "password": creds.get("password"),
+                                        }
+                                        cfg_dict = {k: v for k, v in cfg_dict.items() if v is not None}
+                                        if hasattr(self.pm, "bind_provider"):
+                                            self.pm.bind_provider("taiga", cfg_dict)
+                                        elif hasattr(self.pm, "configure"):
+                                            self.pm.configure(cfg_dict)
+                                        logger.debug("Bound workspace Taiga token for channel %s (%s)", channel_id, project_slug)
+                        except Exception as ex:
+                            logger.debug("Could not resolve workspace PM token for channel %s: %s", channel_id, ex)
+
+                    # Verify active PM provider has valid authentication before polling
+                    active_pm = getattr(self.pm, "active_pm", self.pm)
+                    pm_http = getattr(active_pm, "_http", None)
+                    if pm_http is not None and hasattr(pm_http, "token") and not pm_http.token:
                         logger.debug("Skipping due reminders for channel %s (%s): No Taiga access token available.", channel_id, project_slug)
+                        continue
+                    if hasattr(active_pm, "_token") and not active_pm._token:
+                        logger.debug("Skipping due reminders for channel %s (%s): No Jira token available.", channel_id, project_slug)
                         continue
 
                     project_id = self.pm.get_project_id(str(project_slug))
@@ -125,7 +170,7 @@ class DueDateReminderService:
                         subject = item.get("subject", "")
                         assignee = item.get("assigned_to") or "unassigned"
 
-                        cache_key = f"taiga_due_remind:{project_id}:{item_type}:{item_id}:{due_date}"
+                        cache_key = f"{pm_prov}_due_remind:{project_id}:{item_type}:{item_id}:{due_date}"
                         if self._is_recently_reminded(cache_key):
                             continue
 
@@ -147,7 +192,7 @@ class DueDateReminderService:
                             f"**#{ref} [{item_type.capitalize()}]** {subject}\n"
                             f"👤 **Assignee**: {assignee_tag}\n"
                             f"📅 **Deadline**: {due_text}\n\n"
-                            f"💡 *Need more time? Reply with:* `@FYP extend due date of #{ref} to YYYY-MM-DD because <reason>`\n"
+                            f"💡 *Need more time? Reply with:* `@CoordinaAI extend due date of #{ref} to YYYY-MM-DD because <reason>`\n"
                             f"*(Note: Extending due date will notify all watchers/stakeholders)*"
                         )
 

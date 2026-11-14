@@ -105,8 +105,7 @@ def build_bridge(memory_store=None):
         consumer.on("task.closed",  taiga_handler.on_task_closed)
         logger.info("Taiga sync registered for project '%s'", project_slug)
     else:
-        logger.warning("Taiga config incomplete — task sync disabled. "
-                       "Set TAIGA_URL, TAIGA_USER, TAIGA_PASS, TAIGA_PROJECT_SLUG.")
+        logger.info("Kafka task sync to Taiga not configured — voice event task sync disabled (meeting memory injector active)")
 
     # ── Shared embedding provider (optional semantic memory search) ────────────
     # Built once and threaded through both the live injector (so a fresh

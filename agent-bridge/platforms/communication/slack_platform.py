@@ -256,11 +256,6 @@ class SlackPlatform(CommunicationPlatform):
                         if slug:
                             return slug
 
-        # 5. Environment default slug fallback (e.g. TAIGA_PROJECT_SLUG or JIRA_PROJECT_KEY)
-        default_slug = os.environ.get("TAIGA_PROJECT_SLUG") or os.environ.get("JIRA_PROJECT_KEY")
-        if default_slug:
-            return default_slug
-
         return None
 
     def get_permission_tier(self, author_roles: list[str]) -> str:
