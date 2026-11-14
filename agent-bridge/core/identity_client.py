@@ -239,11 +239,46 @@ class IdentityClient:
 
         return []
 
+    def resolve_jira_cloud_id(self, jira_creds: dict[str, Any]) -> str | None:
+        """Resolve Atlassian cloud_id and site_url if missing using OAuth accessible-resources."""
+        cloud_id = jira_creds.get("cloud_id")
+        if cloud_id and cloud_id != "direct":
+            return str(cloud_id)
+
+        token = jira_creds.get("access_token") or jira_creds.get("token")
+        if not token:
+            return None
+
+        try:
+            r = requests.get(
+                "https://api.atlassian.com/oauth/token/accessible-resources",
+                headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                resources = r.json()
+                if isinstance(resources, list) and resources:
+                    primary = resources[0]
+                    cid = primary.get("id")
+                    if cid:
+                        jira_creds["cloud_id"] = str(cid)
+                        site_url = primary.get("url")
+                        if site_url:
+                            jira_creds["site_url"] = str(site_url)
+                            jira_creds["instance_url"] = str(site_url)
+                        logger.info("Auto-resolved Jira cloud_id=%s, site_url=%s", cid, site_url)
+                        return str(cid)
+            else:
+                logger.warning("Atlassian accessible-resources returned HTTP %s: %s", r.status_code, r.text[:200])
+        except Exception as e:
+            logger.warning("Could not resolve Jira cloud_id via accessible-resources: %s", e)
+        return None
+
     def list_jira_projects(self, jira_creds: dict[str, Any]) -> list[dict[str, Any]]:
         """Fetch accessible projects from Jira using decrypted credentials."""
         token = jira_creds.get("access_token") or jira_creds.get("token")
         base_url = (jira_creds.get("url") or jira_creds.get("site_url") or "https://api.atlassian.com").rstrip("/")
-        cloud_id = jira_creds.get("cloud_id")
+        cloud_id = self.resolve_jira_cloud_id(jira_creds)
 
         if cloud_id and "api.atlassian.com" in base_url:
             base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
@@ -265,6 +300,8 @@ class IdentityClient:
                 data = resp.json()
                 if isinstance(data, list):
                     return data
+            else:
+                logger.warning("Jira list projects returned status %s: %s", resp.status_code, resp.text[:200])
         except Exception as e:
             logger.warning("Could not list Jira projects via credentials: %s", e)
         return []
@@ -298,6 +335,7 @@ class IdentityClient:
         # Check Jira
         jira_creds = self.get_jira_credentials(result)
         if jira_creds:
+            cloud_id = self.resolve_jira_cloud_id(jira_creds)
             jira_projects = self.list_jira_projects(jira_creds)
             if jira_projects:
                 first = jira_projects[0]
@@ -306,12 +344,14 @@ class IdentityClient:
                     "project_id": str(first.get("key") or first.get("id")),
                     "project_name": first.get("name"),
                     "project_slug": first.get("key"),
+                    "cloud_id": cloud_id,
                 }
                 result.project = project_dict
                 logger.info(
-                    "Dynamically discovered Jira project '%s' (key: %s) for workspace '%s'",
+                    "Dynamically discovered Jira project '%s' (key: %s, cloud_id: %s) for workspace '%s'",
                     project_dict["project_name"],
                     project_dict["project_slug"],
+                    cloud_id,
                     result.company_name,
                 )
                 return project_dict

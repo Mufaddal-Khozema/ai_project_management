@@ -1321,6 +1321,8 @@ class AgentBridge:
                     pm_prov = "taiga"
 
                 if pm_prov == "jira" and jira_creds:
+                    if self._identity_client:
+                        self._identity_client.resolve_jira_cloud_id(jira_creds)
                     if hasattr(self.pm, "bind_provider"):
                         self.pm.bind_provider("jira", jira_creds)
                     elif hasattr(self.pm, "configure"):
@@ -1328,7 +1330,7 @@ class AgentBridge:
                         if not isinstance(self.pm, JiraPlatform):
                             self.pm = JiraPlatform()
                         self.pm.configure(jira_creds)
-                    logger.info("Bound workspace '%s' Jira credentials dynamically", id_result.company_name)
+                    logger.info("Bound workspace '%s' Jira credentials dynamically (cloud_id=%s)", id_result.company_name, jira_creds.get("cloud_id", "direct"))
                 elif pm_prov == "taiga" and taiga_creds:
                     cfg_dict = {
                         "url": (

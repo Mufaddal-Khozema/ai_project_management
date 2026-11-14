@@ -241,3 +241,28 @@ class TestJiraPlatformOperations:
         assert len(members) == 2
         assert members[0]["username"] == "Alice"
         assert members[0]["id"] == "acc_1"
+
+    @patch("platforms.pm.jira_platform.requests.get")
+    def test_configure_auto_resolves_cloud_id(self, mock_get):
+        from platforms.pm.jira_platform import JiraPlatform
+        p = JiraPlatform()
+
+        mock_resp = MagicMock(status_code=200)
+        mock_resp.json.return_value = [
+            {
+                "id": "cloud-uuid-999",
+                "name": "my-tenant",
+                "url": "https://my-tenant.atlassian.net",
+            }
+        ]
+        mock_get.return_value = mock_resp
+
+        p.configure({
+            "token": "oauth_token_abc",
+            "url": "https://api.atlassian.com",
+        })
+
+        assert p._http.cloud_id == "cloud-uuid-999"
+        assert p._http.site_url == "https://my-tenant.atlassian.net"
+        assert p._http.base_url == "https://api.atlassian.com/ex/jira/cloud-uuid-999"
+

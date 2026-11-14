@@ -182,3 +182,58 @@ def test_discover_active_project_via_taiga_api(identity_client):
         assert discovered["project_slug"] == "maheennaseem-ai-project-management-tool"
         assert discovered["project_id"] == "1786016"
         assert result.project_slug == "maheennaseem-ai-project-management-tool"
+
+
+def test_discover_active_project_via_jira_api(identity_client):
+    from core.identity_client import IdentityResult
+
+    fake_payload = {
+        "access_token": "jira_oauth_bearer_123",
+        "account_name": "AIPM",
+    }
+    encrypted_token = identity_client._fernet.encrypt(json.dumps(fake_payload).encode()).decode()
+
+    result = IdentityResult(
+        linked=True,
+        user={"name": "Ghulam Hasnain"},
+        workspace={"company_name": "Testing"},
+        project=None,
+        entitlements={"has_subscription": True},
+        integrations=[
+            {
+                "provider": "jira",
+                "status": "connected",
+                "token_encrypted": encrypted_token,
+            }
+        ],
+    )
+
+    def mock_requests_get(url, *args, **kwargs):
+        resp = MagicMock()
+        resp.status_code = 200
+        if "accessible-resources" in url:
+            resp.json.return_value = [
+                {
+                    "id": "cloud-uuid-1234",
+                    "name": "aipm-site",
+                    "url": "https://aipm.atlassian.net",
+                }
+            ]
+        elif "/project" in url:
+            resp.json.return_value = [
+                {
+                    "id": "10001",
+                    "key": "AIPM",
+                    "name": "AI Project Management",
+                }
+            ]
+        return resp
+
+    with patch("requests.get", side_effect=mock_requests_get):
+        discovered = identity_client.discover_active_project(result)
+        assert discovered is not None
+        assert discovered["provider"] == "jira"
+        assert discovered["project_slug"] == "AIPM"
+        assert discovered["cloud_id"] == "cloud-uuid-1234"
+        assert result.project_slug == "AIPM"
+
