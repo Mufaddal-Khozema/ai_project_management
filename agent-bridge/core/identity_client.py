@@ -255,6 +255,10 @@ class IdentityClient:
                 headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
                 timeout=10,
             )
+            if r.status_code == 401:
+                logger.warning("Atlassian accessible-resources returned HTTP 401: token expired or unauthorized")
+                jira_creds["auth_expired"] = True
+                return None
             if r.status_code == 200:
                 resources = r.json()
                 if isinstance(resources, list) and resources:
@@ -300,6 +304,9 @@ class IdentityClient:
                 data = resp.json()
                 if isinstance(data, list):
                     return data
+            elif resp.status_code == 401:
+                logger.warning("Jira list projects returned status 401 Unauthorized (token expired)")
+                jira_creds["auth_expired"] = True
             else:
                 logger.warning("Jira list projects returned status %s: %s", resp.status_code, resp.text[:200])
         except Exception as e:
@@ -336,7 +343,13 @@ class IdentityClient:
         jira_creds = self.get_jira_credentials(result)
         if jira_creds:
             cloud_id = self.resolve_jira_cloud_id(jira_creds)
+            if jira_creds.get("auth_expired"):
+                result.error_detail = "jira_auth_expired"
+                return None
             jira_projects = self.list_jira_projects(jira_creds)
+            if jira_creds.get("auth_expired"):
+                result.error_detail = "jira_auth_expired"
+                return None
             if jira_projects:
                 first = jira_projects[0]
                 project_dict = {
