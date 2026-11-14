@@ -1379,6 +1379,19 @@ class AgentBridge:
         if not project_key:
             channel_name_str = incoming.channel_name or incoming.channel_id
             company_str = (id_result.company_name if id_result else "") or "your workspace"
+            if id_result and getattr(id_result, "error_detail", None) == "jira_auth_expired":
+                return OutgoingMessage(
+                    channel_id=incoming.channel_id,
+                    content=(
+                        f"⚠️ **Jira Session Expired**\n\n"
+                        f"The Jira integration for **{company_str}** has expired (HTTP 401 Unauthorized from Atlassian).\n\n"
+                        f"**How to fix:**\n"
+                        f"1. Open the CoordinaAI dashboard.\n"
+                        f"2. Go to **Settings → Integrations**.\n"
+                        f"3. Next to **Jira**, click **Disconnect**, then click **Connect** to refresh your session."
+                    ),
+                    metadata={"platform": incoming.platform},
+                )
             return OutgoingMessage(
                 channel_id=incoming.channel_id,
                 content=(
