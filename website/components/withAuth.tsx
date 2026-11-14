@@ -20,7 +20,7 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
           auth: () => localStorage.getItem(StorageKeys.TOKEN) ?? undefined,
         });
       } else {
-        router.replace("/signup");
+        router.replace("/signin");
       }
       setChecking(false);
     }, [router]);
