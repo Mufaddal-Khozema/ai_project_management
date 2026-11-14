@@ -53,11 +53,13 @@ import {
   KeyRound,
   Palette,
 } from "lucide-react";
+import { useTheme } from "@/components/landing/use-theme";
 
 export default function SettingsPage() {
   const { data: user, isLoading } = useCurrentUser();
   const updateProfile = useUpdateProfileMutation();
   const queryClient = useQueryClient();
+  const { preference, setThemePreference } = useTheme();
 
   const { data: integrationsData, isLoading: integrationsLoading, isError: integrationsError } =
     useIntegrations();
@@ -510,7 +512,18 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </div>
-                <Select defaultValue="system">
+                <Select
+                  value={preference}
+                  onValueChange={(value) => {
+                    if (
+                      value === "light" ||
+                      value === "dark" ||
+                      value === "system"
+                    ) {
+                      setThemePreference(value);
+                    }
+                  }}
+                >
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>

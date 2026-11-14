@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-  --background: #09090b; /* zinc-950 */
-  --foreground: #f4f4f5; /* zinc-100 */
+  --background: #e1e8fb;
+  --foreground: #f4f4f5;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --background: #1b2040;
+  --foreground: #f4f4f5;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --background: #1b2040;
+    --foreground: #f4f4f5;
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
@@ -45,15 +62,36 @@
   --color-input: var(--color-border-subtle);
   --color-ring: var(--color-brand);
   --radius-md: 0.5rem;
+
+  --color-canvas: var(--ca-bg);
+  --color-ink: var(--ca-ink);
+  --color-ink-muted: var(--ca-mute);
+  --color-hairline: var(--ca-line);
+  --shadow-raise: 6px 6px 14px var(--ca-lo), -6px -6px 14px var(--ca-hi);
+  --shadow-soft: 3px 3px 8px var(--ca-lo), -3px -3px 8px var(--ca-hi);
+  --shadow-press: inset 3px 3px 8px var(--ca-lo), inset -3px -3px 8px var(--ca-hi);
 }
 
 @theme {
+  --font-display: "Bricolage Grotesque", "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --animate-orb-float-1: orbFloat1 15s ease-in-out infinite;
   --animate-orb-float-2: orbFloat2 18s ease-in-out infinite;
   --animate-success-in: successIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-ring-pulse: ringPulse 2s ease-in-out infinite;
   --animate-shake: shake 0.4s ease;
   --animate-fade-slide-up: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-orb-blink: orbBlink 6s infinite;
+  --animate-thread-draw: threadDraw 2.8s ease-out forwards;
+
+  @keyframes orbBlink {
+    0%, 94%, 100% { transform: scaleY(1); }
+    97% { transform: scaleY(0.1); }
+  }
+  @keyframes threadDraw {
+    to { stroke-dashoffset: 0; }
+  }
+
 
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -84,17 +122,16 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b; /* zinc-950 */
-    --foreground: #f4f4f5; /* zinc-100 */
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* --- Thick neon decorative threads --- */
+.thread-line {
+  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 8px currentColor)
+    drop-shadow(0 0 18px currentColor) drop-shadow(0 0 34px currentColor);
 }
 
 ::selection {
@@ -148,5 +185,29 @@ header, section, footer {
     background-image: url('https://flowty.co/img/bg.png');
     background-size: cover;
     background-position: center;
+}
+
+/* --- Landing page neumorphic surface tokens --- */
+@layer base {
+  .landing {
+    --ca-bg: var(--background);
+    --ca-hi: var(--color-white);
+    --ca-lo: var(--color-indigo-300);
+    --ca-ink: var(--color-slate-800);
+    --ca-mute: var(--color-slate-500);
+    --ca-line: var(--color-indigo-200);
+    color-scheme: light;
+  }
+
+  .landing[data-theme="dark"],
+  :root[data-theme="dark"] .landing {
+    --ca-bg: var(--background);
+    --ca-hi: var(--color-slate-700);
+    --ca-lo: var(--color-slate-950);
+    --ca-ink: var(--color-slate-100);
+    --ca-mute: var(--color-slate-400);
+    --ca-line: var(--color-slate-700);
+    color-scheme: dark;
+  }
 }
 

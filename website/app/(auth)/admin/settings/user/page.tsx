@@ -23,10 +23,12 @@ import {
   Mail,
   Save,
 } from "lucide-react";
+import { useTheme } from "@/components/landing/use-theme";
 
 export default function UserSettingsPage() {
   const { data: user, isLoading } = useCurrentUser();
   const updateProfile = useUpdateProfileMutation();
+  const { preference, setThemePreference } = useTheme();
 
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -220,7 +222,18 @@ export default function UserSettingsPage() {
                   </p>
                 </div>
               </div>
-              <Select defaultValue="system">
+              <Select
+                value={preference}
+                onValueChange={(value) => {
+                  if (
+                    value === "light" ||
+                    value === "dark" ||
+                    value === "system"
+                  ) {
+                    setThemePreference(value);
+                  }
+                }}
+              >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>

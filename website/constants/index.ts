@@ -5,4 +5,5 @@ export const API_URL =
 export const StorageKeys = {
   TOKEN: "token",
   SELECTED_PLAN: "selectedPlan",
+  THEME: "ct",
 } as const;

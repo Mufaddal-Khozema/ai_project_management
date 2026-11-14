@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Elements } from "@stripe/react-stripe-js";
 import { useMutation } from "@tanstack/react-query";
@@ -10,6 +11,10 @@ import { PaymentForm } from "@/components/PaymentForm";
 import { setupIntentMutation } from "@/lib/api/@tanstack/react-query.gen";
 import type { PlanResponse } from "@/lib/api/types.gen";
 import { getCurrentUser, listPlans } from "@/lib/api";
+import { Orb } from "@/components/landing/orb";
+import { Threads } from "@/components/landing/threads";
+import { ThemeIcon } from "@/components/landing/icons";
+import { useLandingTheme } from "@/components/landing/use-theme";
 
 function PaymentPage() {
   const router = useRouter();
@@ -23,6 +28,7 @@ function PaymentPage() {
   const [setupError, setSetupError] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState<string | null>(null);
+  const { theme, toggleTheme } = useLandingTheme();
 
   const setupStarted = useRef(false);
 
@@ -74,8 +80,11 @@ function PaymentPage() {
 
   if (plansLoading) {
     return (
-      <div className="min-h-screen bg-[rgb(9,9,11)] flex items-center justify-center">
-        <div className="size-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      <div
+        className="landing relative isolate flex min-h-screen items-center justify-center bg-canvas font-body text-ink"
+      >
+        <Threads className="pointer-events-none fixed inset-0 -z-10 h-full w-full opacity-60" />
+        <div className="size-6 animate-spin rounded-full border-2 border-indigo-500/30 border-t-indigo-500" />
       </div>
     );
   }
@@ -83,162 +92,188 @@ function PaymentPage() {
   if (!plan) return null;
 
   const price = billing === "monthly" ? plan.price_monthly : plan.price_yearly;
+  const isDark = theme === "dark";
 
   return (
-    <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet"
-      />
+    <div
+      className="landing relative isolate min-h-screen bg-canvas font-body text-ink"
+    >
+      <Threads className="pointer-events-none fixed inset-0 -z-10 h-full w-full opacity-60" />
 
-      <div className="relative min-h-screen bg-[rgb(9,9,11)]">
-        <div className="mesh-bg fixed inset-0 z-0 overflow-hidden pointer-events-none" />
-        <div className="relative z-[2] min-h-screen flex max-[900px]:flex-col">
-          {/* Left: Order Summary */}
-          <div className="flex-1 min-h-screen relative flex flex-col justify-end p-12 overflow-hidden max-[900px]:min-h-[280px] max-[900px]:p-8 max-[480px]:min-h-[220px] max-[480px]:p-6 before:absolute before:inset-0 before:bg-gradient-to-b before:from-transparent before:via-[rgba(9,9,11,0.3)] before:to-[rgba(9,9,11,0.85)] before:z-[1]">
-            <img
-              src="/signup.png"
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover saturate-[0.7] contrast-[1.1] max-[900px]:opacity-40"
-            />
-            <div className="relative z-[2] max-w-[480px]">
-              <div className="font-['JetBrains_Mono',monospace] text-[11px] font-medium tracking-[0.15em] uppercase text-indigo-500 mb-5 inline-flex items-center gap-2">
-                <span className="size-[6px] rounded-full bg-indigo-500 animate-pulse" />
-                Checkout
+      <div className="relative z-10 grid min-h-screen lg:grid-cols-5">
+        <div className="relative flex min-h-72 flex-col justify-end overflow-hidden p-6 sm:p-8 lg:col-span-3 lg:min-h-screen lg:p-14">
+          <Image
+            src="/landing/a3.jpg"
+            alt=""
+            fill
+            priority
+            sizes="(min-width: 1024px) 60vw, 100vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/40 via-indigo-950/60 to-indigo-950/90" />
+
+          <div className="relative z-10 max-w-xl">
+            <div className="mb-5 inline-flex items-center gap-2 text-xs font-semibold tracking-widest text-indigo-200 uppercase">
+              <span className="size-1.5 rounded-full bg-indigo-300" />
+              Checkout
+            </div>
+            <h1 className="font-display text-3xl font-extrabold leading-none tracking-tight text-white sm:text-4xl lg:text-5xl">
+              Secure your workspace.
+            </h1>
+            <p className="mt-4 max-w-md text-indigo-100/80">
+              You’re subscribing to{" "}
+              <span className="font-medium text-white">{plan.name}</span> billed{" "}
+              {billing}ly. No charges until your 14-day trial ends.
+            </p>
+
+            <div className="mt-8 grid max-w-sm gap-4 rounded-2xl bg-canvas p-6 shadow-raise">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ink-muted">Plan</span>
+                <span className="font-medium">{plan.name}</span>
               </div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-[42px] font-semibold leading-[1.15] tracking-[-0.02em] mb-4 bg-gradient-to-br from-white to-white/70 bg-clip-text text-transparent">
-                Secure your workspace.
-              </h1>
-              <p className="text-[15px] leading-[1.7] text-zinc-400 max-w-[400px]">
-                You're subscribing to{" "}
-                <span className="text-white font-medium">{plan.name}</span> billed{" "}
-                {billing}ly. No charges until your 14-day trial ends.
-              </p>
-
-              <div className="mt-10 p-6 bg-zinc-900/60 backdrop-blur-xl border border-zinc-800 rounded-2xl space-y-4 max-w-sm">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-zinc-400">Plan</span>
-                  <span className="text-white font-medium">{plan.name}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-zinc-400">Billing</span>
-                  <span className="text-white font-medium capitalize">{billing}</span>
-                </div>
-                <div className="h-px bg-zinc-800" />
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 text-sm">Total today</span>
-                  <span className="text-white font-semibold text-lg">
-                    ${price / 100}
-                    <span className="text-zinc-500 text-sm font-normal">
-                      /{billing === "monthly" ? "mo" : "yr"}
-                    </span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ink-muted">Billing</span>
+                <span className="font-medium capitalize">{billing}</span>
+              </div>
+              <div className="h-px bg-hairline" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ink-muted">Total today</span>
+                <span className="font-display text-lg font-extrabold">
+                  ${price / 100}
+                  <span className="font-body text-sm font-normal text-ink-muted">
+                    /{billing === "monthly" ? "mo" : "yr"}
                   </span>
-                </div>
-                <div className="text-xs text-zinc-500">14-day free trial &bull; Cancel anytime</div>
+                </span>
               </div>
-
-              {plan.features.length > 0 && (
-                <div className="mt-6 max-w-sm">
-                  <p className="text-xs text-zinc-500 mb-3 font-medium uppercase tracking-wider">What's included</p>
-                  <ul className="space-y-2">
-                    {plan.features.slice(0, 5).map((f, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-zinc-400">
-                        <svg className="shrink-0 mt-0.5 text-indigo-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Payment Form */}
-          <div className="w-full max-w-[460px] min-h-screen flex flex-col justify-center p-10 relative bg-[rgb(9,9,11)] backdrop-blur-2xl backdrop-saturate-150 border-l border-zinc-800 max-[900px]:max-w-full max-[900px]:p-8 max-[900px]:border-l-0 max-[900px]:border-t border-zinc-800 max-[480px]:p-6">
-            <div className="mb-5">
-              <div className="flex items-center gap-[10px] mb-8">
-                <div className="size-6 rounded-lg bg-indigo-600 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-[1] size-4">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
-                </div>
-                <span className="text-base font-semibold tracking-[-0.03em] text-white">Coordina</span>
+              <div className="text-xs text-ink-muted">
+                14-day free trial · Cancel anytime
               </div>
-              <h2 className="text-lg font-semibold tracking-[-0.02em] leading-[1.2] mb-2">Complete payment</h2>
-              <p className="text-xs text-zinc-400 leading-[1.6]">Start your 14-day free trial. No charge today.</p>
             </div>
 
-            {clientSecret ? (
-              <Elements
-                stripe={getStripe()}
-                options={{
-                  clientSecret,
-                  appearance: {
-                    theme: "night",
-                    variables: {
-                      fontFamily: "'Inter Tight', -apple-system, BlinkMacSystemFont, sans-serif",
-                      colorPrimary: "#6366f1",
-                      colorBackground: "#27272a",
-                      colorText: "#f4f4f5",
-                      colorDanger: "#ef4444",
-                      borderRadius: "12px",
-                    },
-                  },
-                }}
-              >
-		<PaymentForm
-                  onSuccess={() => {
-                    router.push("/admin?onboarding=1");
-                  }}
-                  returnUrl={`${window.location.origin}/payment?plan=${planId}&billing=${billing}`}
-                  name={userName ?? undefined}
-                  email={userEmail || undefined}
-                />
-              </Elements>
-            ) : (
-              <>
-                {mutation.isPending && (
-                  <div className="h-[38px] px-4 bg-zinc-800 border border-zinc-800 rounded-xl flex items-center text-zinc-500 text-[13px] gap-2">
-                    <span className="size-[16px] border-2 border-zinc-600 border-t-indigo-500 rounded-full animate-spin" />
-                    Loading secure payment…
-                  </div>
-                )}
-
-                {setupError && (
-                  <div className="text-xs text-red-500 mb-3 flex items-center gap-1">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    {setupError}
-                  </div>
-                )}
-
-                {setupError && (
-                  <button
-                    type="button"
-                    className="w-full h-[38px] bg-indigo-600 border-none rounded-xl text-white font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-semibold tracking-[-0.01em] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-indigo-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none mt-4"
-                    onClick={() => {
-                      setupStarted.current = false;
-                      setSetupError(null);
-                    }}
-                  >
-                    Try again
-                  </button>
-                )}
-              </>
+            {plan.features.length > 0 && (
+              <div className="mt-6 max-w-sm">
+                <p className="mb-3 text-xs font-semibold tracking-wider text-indigo-200/70 uppercase">
+                  What’s included
+                </p>
+                <ul className="grid gap-2">
+                  {plan.features.slice(0, 5).map((feature, index) => (
+                    <li
+                      key={index}
+                      className="flex items-start gap-2 text-sm text-indigo-100/80"
+                    >
+                      <span className="mt-0.5 shrink-0 font-extrabold text-indigo-300">
+                        ✓
+                      </span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         </div>
+
+        <div className="flex items-center justify-center border-t border-hairline bg-canvas p-6 sm:p-10 lg:col-span-2 lg:border-t-0 lg:border-l">
+          <div className="w-full max-w-md">
+            <div className="mb-7 flex items-center gap-2.5">
+              <Orb />
+              <span className="font-display text-lg font-extrabold">
+                CoordinaAI
+              </span>
+              <span className="flex-1" />
+              <button
+                type="button"
+                aria-label="Switch light or dark theme"
+                onClick={toggleTheme}
+                className="inline-flex size-11 items-center justify-center rounded-xl bg-canvas text-ink shadow-soft active:shadow-press"
+              >
+                <ThemeIcon />
+              </button>
+            </div>
+
+            <h2 className="font-display text-2xl font-extrabold tracking-tight">
+              Complete payment
+            </h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              Start your 14-day free trial. No charge today.
+            </p>
+
+            <div className="mt-6">
+              {clientSecret ? (
+                <Elements
+                  stripe={getStripe()}
+                  options={{
+                    clientSecret,
+                    appearance: {
+                      theme: isDark ? "night" : "stripe",
+                      variables: {
+                        fontFamily: "'Figtree', -apple-system, BlinkMacSystemFont, sans-serif",
+                        colorPrimary: "#4f46e5",
+                        colorBackground: isDark ? "#0f172a" : "#ffffff",
+                        colorText: isDark ? "#f1f5f9" : "#1e293b",
+                        colorDanger: "#ef4444",
+                        borderRadius: "12px",
+                      },
+                    },
+                  }}
+                >
+                  <PaymentForm
+                    onSuccess={() => {
+                      router.push("/admin?onboarding=1");
+                    }}
+                    returnUrl={`${window.location.origin}/payment?plan=${planId}&billing=${billing}`}
+                    name={userName ?? undefined}
+                    email={userEmail || undefined}
+                  />
+                </Elements>
+              ) : (
+                <>
+                  {mutation.isPending && (
+                    <div className="flex h-12 items-center gap-2 rounded-xl bg-canvas px-4 text-sm text-ink-muted shadow-press">
+                      <span className="size-4 animate-spin rounded-full border-2 border-hairline border-t-indigo-500" />
+                      Loading secure payment…
+                    </div>
+                  )}
+
+                  {setupError && (
+                    <div className="flex items-center gap-1 text-xs text-red-500">
+                      <svg
+                        className="size-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      {setupError}
+                    </div>
+                  )}
+
+                  {setupError && (
+                    <button
+                      type="button"
+                      className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 text-sm font-semibold text-white shadow-soft active:shadow-press"
+                      onClick={() => {
+                        setupStarted.current = false;
+                        setSetupError(null);
+                      }}
+                    >
+                      Try again
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
