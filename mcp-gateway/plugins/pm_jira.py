@@ -150,8 +150,27 @@ class JiraPlugin(BasePlugin):
         if isinstance(token, dict):
             # Might be decrypted OAuth JSON blob
             if token.get("cloud_id") and not cloud_id:
-                base_url = f"https://api.atlassian.com/ex/jira/{token['cloud_id']}"
+                cloud_id = token["cloud_id"]
+                base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
+            if token.get("site_url") and "api.atlassian.com" in base_url:
+                base_url = f"https://api.atlassian.com/ex/jira/{token.get('cloud_id', cloud_id)}"
             token = token.get("access_token") or token.get("token")
+
+        if token and not cloud_id and "api.atlassian.com" in base_url:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as http_c:
+                    r = await http_c.get(
+                        "https://api.atlassian.com/oauth/token/accessible-resources",
+                        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                    )
+                    if r.status_code == 200:
+                        res = r.json()
+                        if isinstance(res, list) and res:
+                            cloud_id = res[0].get("id")
+                            if cloud_id:
+                                base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
+            except Exception as e:
+                logger.warning("Could not auto-resolve Jira cloud_id in mcp-gateway: %s", e)
 
         headers = {
             "Accept": "application/json",
@@ -200,12 +219,20 @@ class JiraPlugin(BasePlugin):
 
                 jql = " AND ".join(clauses) + " ORDER BY updated DESC"
                 limit = int(params.get("limit", 20))
-                resp = await client.post(
-                    f"{api_prefix}/search",
-                    headers=headers,
-                    json={"jql": jql, "maxResults": limit},
-                )
-                resp.raise_for_status()
+                try:
+                    resp = await client.post(
+                        f"{api_prefix}/search/jql",
+                        headers=headers,
+                        json={"jql": jql, "maxResults": limit, "fields": ["*all"]},
+                    )
+                    resp.raise_for_status()
+                except Exception:
+                    resp = await client.post(
+                        f"{api_prefix}/search",
+                        headers=headers,
+                        json={"jql": jql, "maxResults": limit},
+                    )
+                    resp.raise_for_status()
                 data = resp.json()
                 issues = data.get("issues", [])
                 return {
@@ -412,12 +439,20 @@ class JiraPlugin(BasePlugin):
                 limit = int(params.get("limit", 20))
                 jql = f'project = "{project_key}" AND (summary ~ "{query}" OR description ~ "{query}") ORDER BY updated DESC'
 
-                resp = await client.post(
-                    f"{api_prefix}/search",
-                    headers=headers,
-                    json={"jql": jql, "maxResults": limit},
-                )
-                resp.raise_for_status()
+                try:
+                    resp = await client.post(
+                        f"{api_prefix}/search/jql",
+                        headers=headers,
+                        json={"jql": jql, "maxResults": limit, "fields": ["*all"]},
+                    )
+                    resp.raise_for_status()
+                except Exception:
+                    resp = await client.post(
+                        f"{api_prefix}/search",
+                        headers=headers,
+                        json={"jql": jql, "maxResults": limit},
+                    )
+                    resp.raise_for_status()
                 data = resp.json()
                 return {
                     "total": data.get("total", 0),

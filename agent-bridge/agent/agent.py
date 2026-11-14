@@ -56,6 +56,8 @@ You help the team manage their work in {pm_platform} and coordinate voice standu
 {meetings}
 
 ## Guidelines
+- Active Project Management Platform: {pm_platform} (tool_type: '{pm_tool_type}')
+- Strictly use '{pm_tool_type}' tools for all project management tasks, stories, or issues. Never invoke tools belonging to another platform (e.g. do not call Taiga tools when using Jira).
 - Use available tools to perform actions — never fabricate IDs or data.
 - If a request is ambiguous, ask ONE short clarifying question before acting.
 - For bulk or destructive actions (closing many items), confirm with the user first.
@@ -1307,12 +1309,14 @@ class AgentBridge:
             )
 
         # ── 0b. Dynamically apply PM credentials if provided by workspace ───
+        jira_creds: dict[str, Any] | None = None
+        taiga_creds: dict[str, Any] | None = None
+        pm_prov: str | None = None
         if self._identity_client and id_result and id_result.linked:
             try:
                 jira_creds = self._identity_client.get_jira_credentials(id_result)
                 taiga_creds = self._identity_client.get_taiga_credentials(id_result)
 
-                pm_prov = None
                 if id_result.project and id_result.project.get("provider"):
                     pm_prov = id_result.project["provider"].lower()
                 elif jira_creds:
@@ -1454,6 +1458,7 @@ class AgentBridge:
         )
         use_mcp = os.environ.get("USE_MCP_GATEWAY", "true").lower() in ("true", "1", "yes")
         mcp_tools = None
+        resolved_pm_provider = (pm_prov or ("jira" if "jira" in self.pm.display_name.lower() else "taiga")).lower()
         if use_mcp:
             try:
                 from agent.mcp_client import build_mcp_tools
@@ -1467,7 +1472,17 @@ class AgentBridge:
                     "guild_id": incoming.server_id,
                     "channel_id": incoming.channel_id,
                     "project_key": project_key,
+                    "pm_provider": resolved_pm_provider,
                 }
+                if resolved_pm_provider == "jira" and jira_creds:
+                    auth_context["jira_token"] = jira_creds.get("access_token") or jira_creds.get("token")
+                    auth_context["jira_cloud_id"] = jira_creds.get("cloud_id")
+                    auth_context["jira_url"] = jira_creds.get("site_url") or jira_creds.get("url")
+                    auth_context["decrypted_pm_token"] = jira_creds
+                elif resolved_pm_provider == "taiga" and taiga_creds:
+                    auth_context["taiga_token"] = taiga_creds.get("access_token") or taiga_creds.get("token")
+                    auth_context["taiga_url"] = taiga_creds.get("instance_url") or taiga_creds.get("url")
+                    auth_context["decrypted_pm_token"] = taiga_creds
                 mcp_tools = build_mcp_tools(auth_context)
             except Exception as e:
                 logger.warning("Could not initialize MCP tools, falling back to local tools: %s", e)
@@ -1531,6 +1546,7 @@ class AgentBridge:
         system_text = SYSTEM_PROMPT.format(
             comm_platform  = platform_name,
             pm_platform    = self.pm.display_name,
+            pm_tool_type   = resolved_pm_provider,
             project_name   = ctx.project_name if ctx else project_key,
             active_sprint  = (ctx.active_sprint or "None") if ctx else "Unknown",
             sprint_end     = (ctx.sprint_end_date or "—") if ctx else "—",
