@@ -1327,6 +1327,20 @@ class AgentBridge:
                 if pm_prov == "jira" and jira_creds:
                     if self._identity_client:
                         self._identity_client.resolve_jira_cloud_id(jira_creds)
+                    if jira_creds.get("auth_expired"):
+                        logger.warning("Jira integration token expired for workspace '%s'", id_result.company_name)
+                        return OutgoingMessage(
+                            channel_id=incoming.channel_id,
+                            content=(
+                                f"⚠️ **Jira Session Expired**\n\n"
+                                f"The Jira integration for **{id_result.company_name}** has expired or was revoked.\n\n"
+                                f"**To fix:**\n"
+                                f"1. Open the CoordinaAI dashboard.\n"
+                                f"2. Navigate to **Settings → Integrations**.\n"
+                                f"3. Click **Disconnect** on Jira, then click **Connect** to re-authorize.\n"
+                            ),
+                            thread_ts=incoming.thread_ts,
+                        )
                     if hasattr(self.pm, "bind_provider"):
                         self.pm.bind_provider("jira", jira_creds)
                     elif hasattr(self.pm, "configure"):

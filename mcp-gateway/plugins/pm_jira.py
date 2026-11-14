@@ -137,8 +137,6 @@ class JiraPlugin(BasePlugin):
         ).rstrip("/")
 
         cloud_id = auth.get("jira_cloud_id") or auth.get("cloud_id") or os.environ.get("JIRA_CLOUD_ID")
-        if cloud_id and "api.atlassian.com" in base_url:
-            base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
 
         # Resolve token / creds
         token = (
@@ -151,12 +149,9 @@ class JiraPlugin(BasePlugin):
             # Might be decrypted OAuth JSON blob
             if token.get("cloud_id") and not cloud_id:
                 cloud_id = token["cloud_id"]
-                base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
-            if token.get("site_url") and "api.atlassian.com" in base_url:
-                base_url = f"https://api.atlassian.com/ex/jira/{token.get('cloud_id', cloud_id)}"
             token = token.get("access_token") or token.get("token")
 
-        if token and not cloud_id and "api.atlassian.com" in base_url:
+        if token and (not cloud_id or cloud_id == "direct"):
             try:
                 async with httpx.AsyncClient(timeout=10.0) as http_c:
                     r = await http_c.get(
@@ -167,10 +162,19 @@ class JiraPlugin(BasePlugin):
                         res = r.json()
                         if isinstance(res, list) and res:
                             cloud_id = res[0].get("id")
-                            if cloud_id:
-                                base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
             except Exception as e:
                 logger.warning("Could not auto-resolve Jira cloud_id in mcp-gateway: %s", e)
+
+        # For Atlassian Cloud OAuth (Bearer token), requests MUST be routed to
+        # https://api.atlassian.com/ex/jira/{cloud_id}. Direct tenant URLs (e.g. *.atlassian.net)
+        # do not accept OAuth 2.0 Bearer tokens and return 401 Unauthorized.
+        if cloud_id and cloud_id != "direct":
+            base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
+        elif token and (not cloud_id or cloud_id == "direct") and "api.atlassian.com" in base_url:
+            raise PermissionError(
+                "Jira Cloud ID is missing or could not be auto-resolved (OAuth token expired or unauthorized). "
+                "Please reconnect Jira under Settings -> Integrations."
+            )
 
         headers = {
             "Accept": "application/json",
@@ -245,7 +249,7 @@ class JiraPlugin(BasePlugin):
                             "status": i.get("fields", {}).get("status", {}).get("name"),
                             "issue_type": i.get("fields", {}).get("issuetype", {}).get("name"),
                             "assignee": i.get("fields", {}).get("assignee", {}).get("displayName") if i.get("fields", {}).get("assignee") else None,
-                            "url": f"{base_url.rstrip('/')}/browse/{i.get('key')}" if "api.atlassian.com" not in base_url else None,
+                            "url": f"{(auth.get('jira_url') or auth.get('site_url') or base_url).rstrip('/')}/browse/{i.get('key')}",
                         }
                         for i in issues
                     ],

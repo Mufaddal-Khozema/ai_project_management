@@ -284,7 +284,7 @@ class IdentityClient:
         base_url = (jira_creds.get("url") or jira_creds.get("site_url") or "https://api.atlassian.com").rstrip("/")
         cloud_id = self.resolve_jira_cloud_id(jira_creds)
 
-        if cloud_id and "api.atlassian.com" in base_url:
+        if cloud_id and cloud_id != "direct":
             base_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
 
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
