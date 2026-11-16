@@ -21,6 +21,9 @@ logger = structlog.get_logger(__name__)
 _oauth_states: dict[str, dict[str, Any]] = {}
 _STATE_TTL = 600
 
+_ALLOWED_REDIRECTS = {"/signin", "/signup"}
+_DEFAULT_REDIRECT = "/signup"
+
 
 def _clean_states() -> None:
     now = time.time()
@@ -29,13 +32,21 @@ def _clean_states() -> None:
         _oauth_states.pop(s, None)
 
 
+def _safe_redirect(path: str | None) -> str:
+    return path if path in _ALLOWED_REDIRECTS else _DEFAULT_REDIRECT
+
+
 @get("/auth/{provider:str}/login", sync_to_thread=False, operation_id="socialLogin")
-async def social_login(provider: str) -> Redirect:
+async def social_login(provider: str, redirect: str | None = None) -> Redirect:
     _clean_states()
     if provider not in ("google", "github"):
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {"provider": provider, "ts": time.time()}
+    _oauth_states[state] = {
+        "provider": provider,
+        "redirect": _safe_redirect(redirect),
+        "ts": time.time(),
+    }
     redirect_uri = f"{settings.app_url}/api/auth/{provider}/callback"
     auth_url = await get_authorization_url(provider, redirect_uri, state)
     return Redirect(auth_url)
@@ -48,14 +59,18 @@ async def social_callback(provider: str, request: Request) -> Redirect:
     state = params.get("state")
     error = params.get("error")
 
+    stored = _oauth_states.pop(state, None) if state else None
+    if stored and stored["provider"] != provider:
+        stored = None
+    redirect_path = _safe_redirect(stored.get("redirect") if stored else None)
+
     if error or not code or not state:
         logger.warning("oauth callback error", provider=provider, error=error)
-        return Redirect(f"{settings.frontend_url}/signup?error=oauth_failed")
+        return Redirect(f"{settings.frontend_url}{redirect_path}?error=oauth_failed")
 
-    stored = _oauth_states.pop(state, None)
-    if not stored or stored["provider"] != provider:
+    if not stored:
         logger.warning("oauth state mismatch", provider=provider)
-        return Redirect(f"{settings.frontend_url}/signup?error=oauth_failed")
+        return Redirect(f"{settings.frontend_url}{redirect_path}?error=oauth_failed")
 
     try:
         redirect_uri = f"{settings.app_url}/api/auth/{provider}/callback"
@@ -77,7 +92,9 @@ async def social_callback(provider: str, request: Request) -> Redirect:
             token_expiration=timedelta(minutes=settings.jwt_expire_minutes),
         )
 
-        response = Redirect(f"{settings.frontend_url}/signup?token={jwt_token}&provider={provider}")
+        response = Redirect(
+            f"{settings.frontend_url}{redirect_path}?token={jwt_token}&provider={provider}"
+        )
         set_refresh_cookie(response, email)
         logger.info("social login successful", provider=provider, email=email)
         return response
@@ -86,7 +103,7 @@ async def social_callback(provider: str, request: Request) -> Redirect:
         raise
     except Exception:
         logger.exception("social callback failed", provider=provider)
-        return Redirect(f"{settings.frontend_url}/signup?error=oauth_failed")
+        return Redirect(f"{settings.frontend_url}{redirect_path}?error=oauth_failed")
 
 
 router = Router(
