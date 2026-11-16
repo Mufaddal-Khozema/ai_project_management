@@ -35,16 +35,23 @@ export class MeetingEventPublisher {
 
   constructor(
     private readonly producer: KafkaBridgeProducer,
-    opts: { channelId: string; channelName: string; orgId: string },
+    opts: { channelId: string; channelName: string; orgId?: string },
   ) {
     this.channelId   = opts.channelId;
     this.channelName = opts.channelName;
-    this.orgId       = opts.orgId;
+    this.orgId       = opts.orgId || '';
+  }
+
+  setSessionContext(channelId: string, channelName: string, orgId?: string): void {
+    this.channelId = channelId;
+    this.channelName = channelName;
+    if (orgId) this.orgId = orgId;
   }
 
   // ── Called when a new ambient session starts (voice bot joins) ─────────────
 
-  onMeetingStarted(meetingId: string, participants: Array<{ id: string; name: string }>): void {
+  onMeetingStarted(meetingId: string, participants: Array<{ id: string; name: string }>, orgId?: string): void {
+    if (orgId) this.orgId = orgId;
     this.currentMeetingId = meetingId;
     this.startedAt = Date.now();
     this.transcript = [];
@@ -68,7 +75,8 @@ export class MeetingEventPublisher {
 
   // ── Called on every GeminiAmbientService onTranscript callback ─────────────
 
-  onTranscript(role: 'user' | 'assistant', text: string, speakerName?: string): void {
+  onTranscript(role: 'user' | 'assistant', text: string, speakerName?: string, orgId?: string): void {
+    if (orgId) this.orgId = orgId;
     if (!this.currentMeetingId || !text.trim()) return;
 
     const line: TranscriptLine = { role, speakerName, text: text.trim(), timestamp: Date.now() };
@@ -102,7 +110,8 @@ export class MeetingEventPublisher {
 
   // ── Called when the ambient session ends (voice bot leaves) ───────────────
 
-  onMeetingEnded(participants: Array<{ id: string; name: string }>): void {
+  onMeetingEnded(participants: Array<{ id: string; name: string }>, orgId?: string): void {
+    if (orgId) this.orgId = orgId;
     if (!this.currentMeetingId) return;
     const endedAt = Date.now();
 

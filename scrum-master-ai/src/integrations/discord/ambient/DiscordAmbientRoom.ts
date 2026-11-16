@@ -48,17 +48,26 @@ interface ActiveSubscription {
  *  in from outside does. */
 export interface AmbientFunctionHandling {
   declarations: AmbientFunctionDeclaration[];
-  handle: (call: AmbientFunctionCall, ctx: { speakerName: string; channelId: string }) => Promise<Record<string, unknown>>;
+  handle: (
+    call: AmbientFunctionCall,
+    ctx: {
+      speakerName: string;
+      channelId: string;
+      guildId?: string;
+      orgId?: string;
+    }
+  ) => Promise<Record<string, unknown>>;
 }
 
 export interface AmbientSessionCallbacks {
-  onTranscript?: (role: 'user' | 'assistant', text: string, speakerName?: string) => void;
+  onTranscript?: (role: 'user' | 'assistant', text: string, speakerName?: string, orgId?: string) => void;
   onSessionStarted?: (
     channelId: string,
     channelName: string,
-    participants: Array<{ id: string; name: string }>
+    participants: Array<{ id: string; name: string }>,
+    orgId?: string
   ) => void;
-  onSessionEnded?: (participants: Array<{ id: string; name: string }>) => void;
+  onSessionEnded?: (participants: Array<{ id: string; name: string }>, orgId?: string) => void;
 }
 
 export type AmbientRoomHandling = AmbientFunctionHandling & AmbientSessionCallbacks;
@@ -119,7 +128,8 @@ export class DiscordAmbientRoom {
     private readonly guildId: string,
     private readonly channelId: string,
     private readonly connection: VoiceConnection,
-    private readonly functionHandling?: AmbientRoomHandling
+    private readonly functionHandling?: AmbientRoomHandling,
+    public readonly orgId: string = 'default'
   ) {
     this.channelName = channelId;
   }
@@ -206,7 +216,7 @@ export class DiscordAmbientRoom {
         },
         onTranscript: (role, text) => {
           log(this.guildId, this.channelId, `transcript[${role}]:`, text);
-          this.functionHandling?.onTranscript?.(role, text);
+          this.functionHandling?.onTranscript?.(role, text, this.currentClaimDisplayName, this.orgId);
         },
         onFunctionCall: (call) => void this.handleFunctionCall(call),
         onError: (msg) => log(this.guildId, this.channelId, 'Gemini error:', msg),
@@ -223,14 +233,14 @@ export class DiscordAmbientRoom {
     const callback = this.functionHandling?.onSessionStarted;
     if (!callback) return;
 
-    callback(this.channelId, this.channelName, await this.collectParticipants());
+    callback(this.channelId, this.channelName, await this.collectParticipants(), this.orgId);
   }
 
   private async emitSessionEnded(): Promise<void> {
     const callback = this.functionHandling?.onSessionEnded;
     if (!callback) return;
 
-    callback(await this.collectParticipants());
+    callback(await this.collectParticipants(), this.orgId);
   }
 
   private async collectParticipants(): Promise<Array<{ id: string; name: string }>> {
@@ -241,7 +251,12 @@ export class DiscordAmbientRoom {
     if (!this.functionHandling || !this.gemini) return;
     log(this.guildId, this.channelId, `function call: ${call.name}`, call.args);
     try {
-      const result = await this.functionHandling.handle(call, { speakerName: this.currentClaimDisplayName, channelId: this.channelId });
+      const result = await this.functionHandling.handle(call, {
+        speakerName: this.currentClaimDisplayName,
+        channelId: this.channelId,
+        guildId: this.guildId,
+        orgId: this.orgId,
+      });
       this.gemini.respondToFunctionCall(call.id, call.name, result);
     } catch (err) {
       log(this.guildId, this.channelId, `function call ${call.name} failed:`, err instanceof Error ? err.message : err);

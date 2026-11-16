@@ -18,6 +18,9 @@ import { MeetingStateService } from '../../services/MeetingStateService.js';
 import { GeminiLiveService } from '../../services/GeminiLiveService.js';
 import { discord48kStereoToGemini16kMono, gemini24kMonoToDiscord48kStereo, pcm16PeakLevel } from './audioResample.js';
 import { IdentityServiceClient } from '../identity/IdentityServiceClient.js';
+import { getOrCreateProducer } from '../../kafka/setupKafka.js';
+import { MeetingEventPublisher } from '../../meeting/MeetingEventPublisher.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const TIMER_TICK_MS = 5_000;
 
@@ -159,6 +162,7 @@ export class DiscordMeetingRoom {
    *  playback is actually finished — see the AudioPlayerStatus.Idle handler
    *  and onAudioDone below. */
   private geminiDoneSendingAudio = false;
+  private meetingPublisher: MeetingEventPublisher | null = null;
 
   constructor(
     private readonly client: Client,
@@ -169,7 +173,8 @@ export class DiscordMeetingRoom {
      *  meeting ended (explicit stop, natural completion, or an error). */
     private readonly onEnded?: () => void,
     private targetTextChannelId?: string,
-    private readonly projectSlug?: string
+    private readonly projectSlug?: string,
+    public orgId?: string
   ) {}
 
   getState() {
@@ -284,6 +289,9 @@ export class DiscordMeetingRoom {
             displayName = resolved.user.name;
             log(this.guildId, `resolved participant ${member.id} -> ${displayName}`);
           }
+          if (!this.orgId && resolved.workspace?.uuid) {
+            this.orgId = resolved.workspace.uuid;
+          }
         } catch {
           // fallback to member.displayName
         }
@@ -293,6 +301,21 @@ export class DiscordMeetingRoom {
       this.participantToDiscord.set(participant.id, member.id);
     }
     log(this.guildId, 'roster:', humanMembers.map((m) => `${m.displayName} (${m.id})`).join(', '));
+
+    const kafkaProducer = await getOrCreateProducer();
+    if (kafkaProducer) {
+      this.meetingPublisher = new MeetingEventPublisher(kafkaProducer, {
+        channelId: this.channelId,
+        channelName: channel?.name || this.channelId,
+        orgId: this.orgId || '',
+      });
+      const meetingId = uuidv4();
+      this.meetingPublisher.onMeetingStarted(
+        meetingId,
+        humanMembers.map((m) => ({ id: m.id, name: m.displayName })),
+        this.orgId
+      );
+    }
 
     this.connection = joinVoiceChannel({
       guildId: this.guildId,
@@ -410,7 +433,10 @@ export class DiscordMeetingRoom {
       },
       // Transcript/standup data are already written into stateService by
       // GeminiLiveService itself — callers just read getState() for them.
-      onTranscript: (role, content) => log(this.guildId, `transcript[${role}]:`, content),
+      onTranscript: (role, content) => {
+        log(this.guildId, `transcript[${role}]:`, content);
+        this.meetingPublisher?.onTranscript(role, content, undefined, this.orgId);
+      },
       onStandupUpdate: () => {},
       onPhaseChange: (phase) => {
         log(this.guildId, 'phase ->', phase);
@@ -491,6 +517,14 @@ export class DiscordMeetingRoom {
     this.connection = null;
 
     try { this.stateService.endMeeting(); } catch (err) { log(this.guildId, 'endMeeting failed:', err); }
+
+    try {
+      const state = this.stateService.getState();
+      const participants = state.participants.map((p) => ({ id: p.id, name: p.name }));
+      this.meetingPublisher?.onMeetingEnded(participants, this.orgId);
+    } catch (err) {
+      log(this.guildId, 'meeting publisher onMeetingEnded failed:', err);
+    }
 
     try {
       await this.postMeetingSummaryToDiscord();

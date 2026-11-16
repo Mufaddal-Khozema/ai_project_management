@@ -12,12 +12,21 @@ export async function startDiscordMeeting(
   channelId: string,
   durationMs?: number,
   textChannelId?: string,
-  projectSlug?: string
+  projectSlug?: string,
+  orgId?: string
 ): Promise<DiscordMeetingRoom> {
   if (activeRooms.has(guildId)) {
     throw new Error('A standup is already running in this server — stop it before starting another.');
   }
-  const room = new DiscordMeetingRoom(client, guildId, channelId, () => activeRooms.delete(guildId), textChannelId, projectSlug);
+  const room = new DiscordMeetingRoom(
+    client,
+    guildId,
+    channelId,
+    () => activeRooms.delete(guildId),
+    textChannelId,
+    projectSlug,
+    orgId
+  );
   await room.start(durationMs); // throws (and never gets registered) if joining/starting fails
   activeRooms.set(guildId, room);
   return room;

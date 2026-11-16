@@ -118,14 +118,14 @@ export async function setupIntegrations(fastify: FastifyInstance): Promise<void>
   // Discord client from BotConnectionManager) is a larger structural
   // change, not attempted here — see setupAmbient.ts's doc comment.
   if (process.env.MONGODB_URI) {
-    const ambientOrgId = process.env.AMBIENT_BOOTSTRAP_ORG_ID || 'default';
-    const discordCreds = await credentialsStore.get(ambientOrgId, 'discord');
+    const ambientOrgId = process.env.AMBIENT_BOOTSTRAP_ORG_ID;
+    const discordCreds = ambientOrgId ? await credentialsStore.get(ambientOrgId, 'discord') : null;
     const botToken = discordCreds?.bot_token || discordCreds?.botToken || discordCreds?.token || process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
     if (botToken) {
       const discordClient = await getDiscordClient(botToken);
       await setupAmbientAssistant(fastify, { discordClient, orgId: ambientOrgId });
     } else {
-      fastify.log.warn(`[integrations] Discord not configured for org "${ambientOrgId}" yet — ambient assistant disabled until credentials are added`);
+      fastify.log.warn(`[integrations] Discord bot token not configured — ambient assistant disabled until credentials are added`);
     }
   }
 

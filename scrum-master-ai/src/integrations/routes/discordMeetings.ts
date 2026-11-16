@@ -44,7 +44,7 @@ export default function registerDiscordMeetingRoutes(
     try {
       const botToken = await getBotToken(req.orgId!);
       const client = await getDiscordClient(botToken);
-      await startDiscordMeeting(client, guildId, channelId, durationMs, textChannelId, projectSlug);
+      await startDiscordMeeting(client, guildId, channelId, durationMs, textChannelId, projectSlug, req.orgId!);
       return { started: true, guildId, channelId };
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : 'Failed to start the meeting' });

@@ -85,7 +85,14 @@ export class AmbientPresenceManager {
     await entersState(connection, VoiceConnectionStatus.Ready, JOIN_TIMEOUT_MS);
     log(config.guildId, `voice connection ready for ambient channel ${config.channelId}`);
 
-    const room = new DiscordAmbientRoom(this.client, config.guildId, config.channelId, connection, this.functionHandling);
+    const room = new DiscordAmbientRoom(
+      this.client,
+      config.guildId,
+      config.channelId,
+      connection,
+      this.functionHandling,
+      config.orgId
+    );
     await room.attach();
     this.rooms.set(config.id, room);
 

@@ -136,10 +136,10 @@ export async function handleAmbientFunctionCall(
       if (!isPmSurfaceStore(store)) {
         return {
           success: false,
-          reason: 'member queries need the Taiga store — configure TAIGA_URL, TAIGA_USER, TAIGA_PASS and TAIGA_PROJECT_SLUG',
+          reason: 'Member queries require a connected project management tool (Jira or Taiga).',
         };
       }
-      const members = await store.listMembers();
+      const members = await store.listMembers(orgId);
       return { success: true, members };
     }
 
@@ -147,10 +147,10 @@ export async function handleAmbientFunctionCall(
       if (!isPmSurfaceStore(store)) {
         return {
           success: false,
-          reason: 'sprint queries need the Taiga store — configure TAIGA_URL, TAIGA_USER, TAIGA_PASS and TAIGA_PROJECT_SLUG',
+          reason: 'Sprint queries require a connected project management tool (Jira or Taiga).',
         };
       }
-      const sprint = await store.getActiveSprint();
+      const sprint = await store.getActiveSprint(orgId);
       return sprint ? { success: true, sprint } : { success: false, reason: 'no active sprint found in this project' };
     }
 

@@ -49,8 +49,14 @@ export function isAuthEnforced(): boolean {
 }
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const orgHeader = request.headers['x-org-id'] as string | undefined;
+
   if (!authServiceUrl) {
-    request.orgId = (request.headers['x-org-id'] as string) || defaultOrgId;
+    if (!orgHeader && process.env.NODE_ENV !== 'test' && !process.env.ALLOW_INSECURE_DEV_DEFAULT_ORG) {
+      reply.code(400);
+      throw new Error('x-org-id header is required when running without central auth service');
+    }
+    request.orgId = orgHeader || defaultOrgId;
     request.userId = 'system';
     request.role = 'owner';
     return;
@@ -60,7 +66,11 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply):
   const serviceKey = request.headers.authorization;
   const configuredServiceKey = process.env.SERVICE_API_KEY;
   if (serviceKey && configuredServiceKey && serviceKey === `Bearer ${configuredServiceKey}`) {
-    request.orgId = (request.headers['x-org-id'] as string) || defaultOrgId;
+    if (!orgHeader) {
+      reply.code(400);
+      throw new Error('x-org-id header is required for internal service calls');
+    }
+    request.orgId = orgHeader;
     request.userId = 'service';
     request.role = 'owner';
     return;
@@ -69,7 +79,11 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply):
   const internalKey = (request.headers['x-internal-key'] as string | undefined) || (request.headers['x-internal-service-key'] as string | undefined);
   const configuredKey = process.env.INTERNAL_SERVICE_KEY || process.env.AUTH_SERVICE_INTERNAL_KEY;
   if (internalKey && configuredKey && internalKey === configuredKey) {
-    request.orgId = (request.headers['x-org-id'] as string) || defaultOrgId;
+    if (!orgHeader) {
+      reply.code(400);
+      throw new Error('x-org-id header is required for internal service calls');
+    }
+    request.orgId = orgHeader;
     request.userId = 'system';
     request.role = 'owner';
     return;
@@ -81,16 +95,27 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply):
     throw new Error('Authentication required');
   }
 
+  let verified;
   try {
-    const verified = await verifyAccessToken(header.slice('Bearer '.length), authServiceUrl);
-    // Older single-tenant sessions used numeric org 0 while their credentials
-    // were stored under the default org key. Real auth-service org IDs are
-    // UUIDs, so this compatibility mapping cannot collide with a valid org.
-    request.orgId = verified.orgId === '0' ? defaultOrgId : verified.orgId;
-    request.userId = verified.userId;
-    request.role = verified.role;
+    verified = await verifyAccessToken(header.slice('Bearer '.length), authServiceUrl);
   } catch {
     reply.code(401);
     throw new Error('Invalid or expired token');
   }
+
+  // Older single-tenant sessions used numeric org 0 while their credentials
+  // were stored under the default org key. Real auth-service org IDs are
+  // UUIDs, so this compatibility mapping cannot collide with a valid org.
+  if (!verified.orgId || verified.orgId === '0') {
+    if (process.env.ALLOW_INSECURE_DEV_DEFAULT_ORG || process.env.NODE_ENV === 'test') {
+      request.orgId = defaultOrgId;
+    } else {
+      reply.code(401);
+      throw new Error('Invalid organization in token');
+    }
+  } else {
+    request.orgId = verified.orgId;
+  }
+  request.userId = verified.userId;
+  request.role = verified.role;
 }

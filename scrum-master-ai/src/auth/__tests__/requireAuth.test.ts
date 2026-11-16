@@ -100,6 +100,66 @@ describe('requireAuth', () => {
       expect(request.orgId).toBe('default-org');
     });
 
+    it('handles service-to-service calls with SERVICE_API_KEY and x-org-id', async () => {
+      process.env.SERVICE_API_KEY = 'secret-svc-key';
+      const { requireAuth } = await import('../requireAuth.js');
+      const request: any = {
+        headers: {
+          authorization: 'Bearer secret-svc-key',
+          'x-org-id': 'tenant-uuid-123',
+        },
+      };
+      await requireAuth(request, fakeReply());
+
+      expect(request.orgId).toBe('tenant-uuid-123');
+      expect(request.userId).toBe('service');
+      expect(request.role).toBe('owner');
+    });
+
+    it('rejects service-to-service calls with missing x-org-id', async () => {
+      process.env.SERVICE_API_KEY = 'secret-svc-key';
+      const { requireAuth } = await import('../requireAuth.js');
+      const reply = fakeReply();
+      const request: any = {
+        headers: {
+          authorization: 'Bearer secret-svc-key',
+        },
+      };
+
+      await expect(requireAuth(request, reply)).rejects.toThrow(/x-org-id header is required/);
+      expect(reply.code).toHaveBeenCalledWith(400);
+    });
+
+    it('handles internal key authentication with x-org-id', async () => {
+      process.env.INTERNAL_SERVICE_KEY = 'internal-secret';
+      const { requireAuth } = await import('../requireAuth.js');
+      const request: any = {
+        headers: {
+          'x-internal-key': 'internal-secret',
+          'x-org-id': 'tenant-internal-456',
+        },
+      };
+      await requireAuth(request, fakeReply());
+
+      expect(request.orgId).toBe('tenant-internal-456');
+      expect(request.userId).toBe('system');
+      expect(request.role).toBe('owner');
+    });
+
+    it('rejects internal key authentication with missing x-org-id', async () => {
+      process.env.INTERNAL_SERVICE_KEY = 'internal-secret';
+      const { requireAuth } = await import('../requireAuth.js');
+      const reply = fakeReply();
+      const request: any = {
+        headers: {
+          'x-internal-key': 'internal-secret',
+        },
+      };
+
+      await expect(requireAuth(request, reply)).rejects.toThrow(/x-org-id header is required/);
+      expect(reply.code).toHaveBeenCalledWith(400);
+    });
+
     it('isAuthEnforced() reports true', async () => {
       const { isAuthEnforced } = await import('../requireAuth.js');
       expect(isAuthEnforced()).toBe(true);

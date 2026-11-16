@@ -50,9 +50,9 @@ export interface TaskStore {
  * gracefully when a plain Mongo/Kafka store is in use.
  */
 export interface TaskStorePmSurface {
-  getProjectLabel(): Promise<string>;
-  getActiveSprint(): Promise<Record<string, unknown> | null>;
-  listMembers(): Promise<Array<Record<string, string | number>>>;
+  getProjectLabel(orgId?: string): Promise<string>;
+  getActiveSprint(orgId?: string): Promise<Record<string, unknown> | null>;
+  listMembers(orgId?: string): Promise<Array<Record<string, string | number>>>;
 }
 
 export function isPmSurfaceStore(store: TaskStore): store is TaskStore & TaskStorePmSurface {
