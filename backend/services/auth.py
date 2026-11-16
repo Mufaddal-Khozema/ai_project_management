@@ -17,7 +17,7 @@ logger = structlog.get_logger(__name__)
 SIGNUP_ALLOWED_STATUSES = frozenset({UserStatus.registered.value, None})
 
 
-async def send_otp(email: str, request: Request) -> dict:
+async def send_otp(email: str, request: Request, purpose: str = "signup") -> dict:
     try:
         otp = lib_auth.generate_secure_otp()
     except Exception:
@@ -25,7 +25,11 @@ async def send_otp(email: str, request: Request) -> dict:
         raise HTTPException(status_code=500, detail="Failed to send OTP")
 
     user = await user_repo.find_by_email(email)
-    if user is not None and user["status"] not in SIGNUP_ALLOWED_STATUSES:
+    if purpose == "signin":
+        if user is None:
+            logger.warning("otp rejected — user not found", email=email)
+            raise HTTPException(status_code=404, detail="No account found for this email")
+    elif user is not None and user["status"] not in SIGNUP_ALLOWED_STATUSES:
         logger.warning("otp rejected — user past signup", email=email, status=user["status"])
         raise HTTPException(status_code=409, detail="User already registered")
 

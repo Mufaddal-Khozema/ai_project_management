@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 @post("/auth/email/send-otp", operation_id="sendOtp")
 async def send_otp_handler(data: SendOTPRequest, request: Request) -> SendOTPResponse:
     try:
-        result = await send_otp(email=data.email, request=request)
+        result = await send_otp(email=data.email, request=request, purpose=data.purpose)
         return SendOTPResponse(**result)
     except HTTPException:
         raise

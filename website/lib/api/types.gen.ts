@@ -176,6 +176,7 @@ export type RefreshResponse = {
  */
 export type SendOtpRequest = {
     email: string;
+    purpose?: 'signup' | 'signin';
 };
 
 /**
