@@ -52,10 +52,9 @@ class DiscordPlatform(CommunicationPlatform):
 
     def configure(self, config: dict[str, Any]) -> None:
         self._config = config
-        self._org_id = config.get("org_id", "default")
         self._bot_token = config.get("bot_token")
         self._create_client()
-        logger.info("Discord platform configured (org=%s)", self._org_id)
+        logger.info("Discord platform configured")
 
     async def start(self) -> None:
         if self._client is None or self._client.is_closed():
@@ -234,7 +233,7 @@ class DiscordPlatform(CommunicationPlatform):
                     "channel_id": channel_id,
                     "channel_name": getattr(message.channel, "name", "unknown"),
                     "project_key": project_key,
-                    "org_id": getattr(self, "_org_id", "") or "default",
+                    "org_id": None,
                     "author_id": str(message.author.id),
                     "author_name": str(getattr(message.author, "display_name", message.author.name)),
                     "author_roles": [r.name for r in getattr(message.author, "roles", [])],
@@ -317,7 +316,7 @@ class DiscordPlatform(CommunicationPlatform):
             author_roles        = author_roles,
             content             = content,
             raw_content         = message.content,
-            metadata            = {"org_id": getattr(self, "_org_id", "default")},
+            metadata            = {"platform": self.platform_id},
         )
 
         if self._message_callback:

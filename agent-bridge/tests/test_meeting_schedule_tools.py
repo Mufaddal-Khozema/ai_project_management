@@ -221,6 +221,34 @@ class TestScheduledMeetingStoreAndTools(unittest.TestCase):
         res_stop = stop_tool.invoke({})
         self.assertIn("Voice Meeting Stopped", res_stop)
 
+    def test_meeting_tools_reject_unlinked_org(self):
+        from agent.tools import build_tools
+
+        mock_pm = MagicMock()
+        mock_memory = MagicMock()
+
+        tools = build_tools(
+            mock_pm,
+            "proj-123",
+            tier="write",
+            memory_store=mock_memory,
+            project_key="proj-key",
+            guild_id="guild-101",
+            org_id=None,  # Unlinked / missing workspace
+        )
+
+        schedule_tool = next(t for t in tools if t.name == "schedule_meeting")
+        list_tool = next(t for t in tools if t.name == "list_scheduled_meetings")
+        cancel_tool = next(t for t in tools if t.name == "cancel_scheduled_meeting")
+        start_tool = next(t for t in tools if t.name == "start_voice_meeting")
+        stop_tool = next(t for t in tools if t.name == "stop_voice_meeting")
+
+        self.assertIn("workspace identity is not linked", schedule_tool.invoke({"title": "Standup"}))
+        self.assertIn("workspace identity is not linked", list_tool.invoke({}))
+        self.assertIn("workspace identity is not linked", cancel_tool.invoke({"schedule_id": "s-1"}))
+        self.assertIn("workspace identity is not linked", start_tool.invoke({}))
+        self.assertIn("workspace identity is not linked", stop_tool.invoke({}))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -56,6 +56,8 @@ You help the team manage their work in {pm_platform} and coordinate voice standu
 {meetings}
 
 ## Guidelines
+- Active Project Management Platform: {pm_platform} (tool_type: '{pm_tool_type}')
+- Strictly use '{pm_tool_type}' tools for all project management tasks, stories, or issues. Never invoke tools belonging to another platform (e.g. do not call Taiga tools when using Jira).
 - Use available tools to perform actions — never fabricate IDs or data.
 - If a request is ambiguous, ask ONE short clarifying question before acting.
 - For bulk or destructive actions (closing many items), confirm with the user first.
@@ -838,7 +840,7 @@ class DualMemoryStore(MemoryStore):
                             "channel_id": message_doc.get("channel_id", ""),
                             "channel_name": ch_name,
                             "project_key": message_doc.get("project_key", ""),
-                            "org_id": message_doc.get("org_id") or "default",
+                            "org_id": message_doc.get("org_id"),
                             "author_name": author,
                             "text": formatted_text,
                             "embedding": vector,
@@ -928,9 +930,11 @@ class DualMemoryStore(MemoryStore):
     # ── Voice Meeting Schedules & Live Operations ────────────────────────────
 
     def create_scheduled_meeting(
-        self, schedule_input: dict[str, Any], org_id: str = "default"
+        self, schedule_input: dict[str, Any], org_id: str | None = None
     ) -> dict[str, Any] | None:
         """Create a scheduled standup/meeting in MongoDB scheduled_meetings."""
+        if not org_id:
+            raise ValueError("Workspace organization ID is required for meeting schedules.")
         now = datetime.now(timezone.utc)
         doc = {
             "orgId": org_id,
@@ -962,9 +966,11 @@ class DualMemoryStore(MemoryStore):
             return None
 
     def list_scheduled_meetings(
-        self, org_id: str = "default", guild_id: str | None = None
+        self, org_id: str | None = None, guild_id: str | None = None
     ) -> list[dict[str, Any]]:
         """List active scheduled meetings for an org and optionally guild."""
+        if not org_id:
+            return []
         query: dict[str, Any] = {"orgId": org_id}
         if guild_id:
             query["guildId"] = str(guild_id)
@@ -990,9 +996,11 @@ class DualMemoryStore(MemoryStore):
             return []
 
     def delete_scheduled_meeting(
-        self, schedule_id: str, org_id: str = "default"
+        self, schedule_id: str, org_id: str | None = None
     ) -> bool:
         """Delete a scheduled meeting by ID and org."""
+        if not org_id:
+            return False
         try:
             try:
                 from bson import ObjectId
@@ -1012,12 +1020,14 @@ class DualMemoryStore(MemoryStore):
         self,
         guild_id: str,
         channel_id: str,
-        org_id: str = "default",
+        org_id: str | None = None,
         duration_ms: int = 1800000,
         project_slug: str | None = None,
         text_channel_id: str | None = None,
     ) -> dict[str, Any]:
         """Trigger an on-demand voice meeting via the voice service API."""
+        if not org_id:
+            return {"started": False, "error": "Workspace organization ID is required to start a voice meeting."}
         voice_url = os.environ.get("SCRUM_MASTER_AI_URL", "http://localhost:3001")
         endpoint = f"{voice_url.rstrip('/')}/integrations/discord/meetings/start"
         body: dict[str, Any] = {
@@ -1063,9 +1073,11 @@ class DualMemoryStore(MemoryStore):
             return {"started": False, "error": str(e)}
 
     def stop_voice_meeting(
-        self, guild_id: str, org_id: str = "default"
+        self, guild_id: str, org_id: str | None = None
     ) -> dict[str, Any]:
         """Stop an active voice meeting via the voice service API."""
+        if not org_id:
+            return {"stopped": False, "error": "Workspace organization ID is required to stop a voice meeting."}
         voice_url = os.environ.get("SCRUM_MASTER_AI_URL", "http://localhost:3001")
         endpoint = f"{voice_url.rstrip('/')}/integrations/discord/meetings/stop"
         payload = json.dumps({"guildId": str(guild_id)}).encode("utf-8")
@@ -1228,7 +1240,8 @@ class AgentBridge:
                 logger.debug("Could not resolve author identity for chat record: %s", e)
 
         if not message_doc.get("org_id"):
-            message_doc["org_id"] = getattr(self.comm, "_org_id", "") or "default"
+            logger.debug("Skipping chat record persistence: message is not linked to any workspace organization")
+            return
 
         if hasattr(self._memory, "save_chat_message"):
             self._memory.save_chat_message(message_doc)
@@ -1307,12 +1320,14 @@ class AgentBridge:
             )
 
         # ── 0b. Dynamically apply PM credentials if provided by workspace ───
+        jira_creds: dict[str, Any] | None = None
+        taiga_creds: dict[str, Any] | None = None
+        pm_prov: str | None = None
         if self._identity_client and id_result and id_result.linked:
             try:
                 jira_creds = self._identity_client.get_jira_credentials(id_result)
                 taiga_creds = self._identity_client.get_taiga_credentials(id_result)
 
-                pm_prov = None
                 if id_result.project and id_result.project.get("provider"):
                     pm_prov = id_result.project["provider"].lower()
                 elif jira_creds:
@@ -1323,6 +1338,20 @@ class AgentBridge:
                 if pm_prov == "jira" and jira_creds:
                     if self._identity_client:
                         self._identity_client.resolve_jira_cloud_id(jira_creds)
+                    if jira_creds.get("auth_expired"):
+                        logger.warning("Jira integration token expired for workspace '%s'", id_result.company_name)
+                        return OutgoingMessage(
+                            channel_id=incoming.channel_id,
+                            content=(
+                                f"⚠️ **Jira Session Expired**\n\n"
+                                f"The Jira integration for **{id_result.company_name}** has expired or was revoked.\n\n"
+                                f"**To fix:**\n"
+                                f"1. Open the CoordinaAI dashboard.\n"
+                                f"2. Navigate to **Settings → Integrations**.\n"
+                                f"3. Click **Disconnect** on Jira, then click **Connect** to re-authorize.\n"
+                            ),
+                            thread_ts=incoming.thread_ts,
+                        )
                     if hasattr(self.pm, "bind_provider"):
                         self.pm.bind_provider("jira", jira_creds)
                     elif hasattr(self.pm, "configure"):
@@ -1450,10 +1479,10 @@ class AgentBridge:
         org_id = (
             (id_result.org_id if id_result else None)
             or (incoming.metadata.get("org_id") if incoming.metadata else None)
-            or "default"
         )
         use_mcp = os.environ.get("USE_MCP_GATEWAY", "true").lower() in ("true", "1", "yes")
         mcp_tools = None
+        resolved_pm_provider = (pm_prov or ("jira" if "jira" in self.pm.display_name.lower() else "taiga")).lower()
         if use_mcp:
             try:
                 from agent.mcp_client import build_mcp_tools
@@ -1467,7 +1496,17 @@ class AgentBridge:
                     "guild_id": incoming.server_id,
                     "channel_id": incoming.channel_id,
                     "project_key": project_key,
+                    "pm_provider": resolved_pm_provider,
                 }
+                if resolved_pm_provider == "jira" and jira_creds:
+                    auth_context["jira_token"] = jira_creds.get("access_token") or jira_creds.get("token")
+                    auth_context["jira_cloud_id"] = jira_creds.get("cloud_id")
+                    auth_context["jira_url"] = jira_creds.get("site_url") or jira_creds.get("url")
+                    auth_context["decrypted_pm_token"] = jira_creds
+                elif resolved_pm_provider == "taiga" and taiga_creds:
+                    auth_context["taiga_token"] = taiga_creds.get("access_token") or taiga_creds.get("token")
+                    auth_context["taiga_url"] = taiga_creds.get("instance_url") or taiga_creds.get("url")
+                    auth_context["decrypted_pm_token"] = taiga_creds
                 mcp_tools = build_mcp_tools(auth_context)
             except Exception as e:
                 logger.warning("Could not initialize MCP tools, falling back to local tools: %s", e)
@@ -1531,6 +1570,7 @@ class AgentBridge:
         system_text = SYSTEM_PROMPT.format(
             comm_platform  = platform_name,
             pm_platform    = self.pm.display_name,
+            pm_tool_type   = resolved_pm_provider,
             project_name   = ctx.project_name if ctx else project_key,
             active_sprint  = (ctx.active_sprint or "None") if ctx else "Unknown",
             sprint_end     = (ctx.sprint_end_date or "—") if ctx else "—",

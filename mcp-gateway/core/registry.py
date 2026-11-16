@@ -54,7 +54,12 @@ class ToolRegistry:
         Search tools across categories. If query is provided, filters by name/description.
         """
         results: dict[str, dict[str, Any]] = {}
-        target_cats = [category.lower()] if category and category.lower() in cls._plugins else cls._plugins.keys()
+        if category and category.lower() == "pm":
+            target_cats = [c for c in ("jira", "taiga", "pm") if c in cls._plugins]
+        elif category and category.lower() in cls._plugins:
+            target_cats = [category.lower()]
+        else:
+            target_cats = list(cls._plugins.keys())
 
         q = query.lower().strip()
         for cat in target_cats:

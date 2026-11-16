@@ -49,7 +49,6 @@ class SlackPlatform(CommunicationPlatform):
         self._signing_secret: str | None = None
         self._app_token: str | None = None
         self._bot_user_id: str | None = None
-        self._org_id: str = "default"
         self._message_callback = None
         self._chat_record_callback = None
         self._processed_msg_ids: deque[str] = deque(maxlen=300)
@@ -60,7 +59,6 @@ class SlackPlatform(CommunicationPlatform):
 
     def configure(self, config: dict[str, Any]) -> None:
         self._config = dict(config)
-        self._org_id = config.get("org_id", "default")
         self._bot_token = (
             config.get("bot_token")
             or config.get("token")
@@ -79,8 +77,7 @@ class SlackPlatform(CommunicationPlatform):
             self._verify_auth()
 
         logger.info(
-            "Slack platform configured (org=%s, bot_user_id=%s, socket_mode=%s)",
-            self._org_id,
+            "Slack platform configured (bot_user_id=%s, socket_mode=%s)",
             self._bot_user_id or "unverified",
             bool(self._app_token),
         )
@@ -421,7 +418,6 @@ class SlackPlatform(CommunicationPlatform):
             content=clean_text,
             raw_content=text,
             metadata={
-                "org_id": self._org_id,
                 "platform": self.platform_id,
                 "thread_ts": event.get("thread_ts") or event.get("ts"),
             },

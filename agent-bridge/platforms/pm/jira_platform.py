@@ -158,7 +158,8 @@ class _JiraHTTP:
         r = requests.request(method, url, headers=headers, timeout=timeout, **kwargs)
 
         if r.status_code == 401:
-            logger.warning("Jira authentication failed or token expired (HTTP 401)")
+            if not path.startswith("/rest/agile/"):
+                logger.warning("Jira authentication failed or token expired (HTTP 401)")
             raise PermissionError("Jira authentication failed: invalid credentials or expired token.")
 
         if r.status_code == 404:
@@ -168,6 +169,47 @@ class _JiraHTTP:
         if r.status_code == 204 or not r.text.strip():
             return None
         return r.json()
+
+    def search_jql(
+        self,
+        jql: str,
+        max_results: int = 50,
+        fields: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Search issues using Jira Cloud v3 POST /search/jql with fallback to legacy /search."""
+        body: dict[str, Any] = {
+            "jql": jql,
+            "maxResults": max_results,
+            "fields": fields or ["*all"],
+        }
+        try:
+            resp = self.request("POST", "/search/jql", json=body)
+            if resp and "issues" in resp:
+                return resp.get("issues", [])
+        except Exception:
+            # Fallback to legacy /search for Jira Server / DC
+            try:
+                resp = self.request("POST", "/search", json={"jql": jql, "maxResults": max_results})
+                if resp and "issues" in resp:
+                    return resp.get("issues", [])
+            except Exception as e:
+                logger.warning("Jira search failed for '%s': %s", jql, e)
+                return []
+        return []
+
+    def count_jql(self, jql: str) -> int:
+        """Count issues matching JQL using POST /search/approximate-count or search_jql."""
+        try:
+            resp = self.request("POST", "/search/approximate-count", json={"jql": jql})
+            if resp and "count" in resp:
+                return int(resp["count"])
+        except Exception:
+            pass
+        try:
+            issues = self.search_jql(jql, max_results=100, fields=["id"])
+            return len(issues)
+        except Exception:
+            return 0
 
     def get_project(self, key_or_id: str) -> dict[str, Any]:
         key = str(key_or_id).upper().strip()
@@ -311,62 +353,26 @@ class JiraPlatform(ProjectManagementPlatform):
         )
 
         # Issue counts by status category
-        open_task_count = 0
-        open_bug_count = 0
-        open_story_count = 0
-        try:
-            task_resp = self._http.request(
-                "POST",
-                "/search",
-                json={
-                    "jql": f'project = "{project_key}" AND issuetype in (Task, "Sub-task") AND statusCategory != Done',
-                    "maxResults": 0,
-                },
-            )
-            open_task_count = task_resp.get("total", 0)
-        except Exception as e:
-            logger.debug("Failed to count open tasks in Jira: %s", e)
-
-        try:
-            bug_resp = self._http.request(
-                "POST",
-                "/search",
-                json={
-                    "jql": f'project = "{project_key}" AND issuetype in (Bug) AND statusCategory != Done',
-                    "maxResults": 0,
-                },
-            )
-            open_bug_count = bug_resp.get("total", 0)
-        except Exception as e:
-            logger.debug("Failed to count open bugs in Jira: %s", e)
-
-        try:
-            story_resp = self._http.request(
-                "POST",
-                "/search",
-                json={
-                    "jql": f'project = "{project_key}" AND issuetype in (Story) AND statusCategory != Done',
-                    "maxResults": 0,
-                },
-            )
-            open_story_count = story_resp.get("total", 0)
-        except Exception as e:
-            logger.debug("Failed to count open stories in Jira: %s", e)
+        open_task_count = self._http.count_jql(
+            f'project = "{project_key}" AND issuetype in (Task, "Sub-task") AND statusCategory != Done'
+        )
+        open_bug_count = self._http.count_jql(
+            f'project = "{project_key}" AND issuetype in (Bug) AND statusCategory != Done'
+        )
+        open_story_count = self._http.count_jql(
+            f'project = "{project_key}" AND issuetype in (Story) AND statusCategory != Done'
+        )
 
         # Recent items
         recent: list[ProjectItem] = []
         try:
-            recent_resp = self._http.request(
-                "POST",
-                "/search",
-                json={
-                    "jql": f'project = "{project_key}" ORDER BY created DESC',
-                    "maxResults": 5,
-                },
+            recent_issues = self._http.search_jql(
+                f'project = "{project_key}" ORDER BY created DESC',
+                max_results=5,
             )
             recent = [
                 _to_item(issue, self._http.base_url, self._http.site_url)
-                for issue in recent_resp.get("issues", [])
+                for issue in recent_issues
             ]
         except Exception as e:
             logger.warning("Failed to fetch recent Jira items: %s", e)
@@ -550,12 +556,7 @@ class JiraPlatform(ProjectManagementPlatform):
             clauses.append(f'(assignee = "{assigned_to}" OR assignee = currentUser())')
 
         jql = " AND ".join(clauses) + " ORDER BY updated DESC"
-        resp = self._http.request(
-            "POST",
-            "/search",
-            json={"jql": jql, "maxResults": limit},
-        )
-        issues = resp.get("issues", [])
+        issues = self._http.search_jql(jql, max_results=limit)
         return [_to_item(issue, self._http.base_url, self._http.site_url) for issue in issues]
 
     def search_items(self, project_id: str, query: str, limit: int = 20) -> list[ProjectItem]:
@@ -563,12 +564,7 @@ class JiraPlatform(ProjectManagementPlatform):
         cleaned_query = query.replace('"', '\\"')
         jql = f'project = "{project_key}" AND (summary ~ "{cleaned_query}" OR description ~ "{cleaned_query}") ORDER BY updated DESC'
         try:
-            resp = self._http.request(
-                "POST",
-                "/search",
-                json={"jql": jql, "maxResults": limit},
-            )
-            issues = resp.get("issues", [])
+            issues = self._http.search_jql(jql, max_results=limit)
             return [_to_item(issue, self._http.base_url, self._http.site_url) for issue in issues]
         except Exception as e:
             logger.warning("Jira search failed for query '%s': %s", query, e)
@@ -643,13 +639,13 @@ class JiraPlatform(ProjectManagementPlatform):
         target_date = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
         jql = f'project = "{project_key}" AND statusCategory != Done AND duedate <= "{target_date}" ORDER BY duedate ASC'
         try:
-            resp = self._http.request(
-                "POST",
-                "/search",
-                json={"jql": jql, "maxResults": 30},
+            issues = self._http.search_jql(
+                jql,
+                max_results=30,
+                fields=["summary", "duedate", "status", "assignee"],
             )
             results = []
-            for issue in resp.get("issues", []):
+            for issue in issues:
                 fields = issue.get("fields", {})
                 results.append({
                     "id": issue.get("key"),

@@ -97,7 +97,14 @@ def build_mcp_tools(auth_context: dict[str, Any], base_url: str = MCP_GATEWAY_UR
                 parameters: {'voice_channel_id': '1489127884319625280', 'topic': 'Daily Standup'}
               - 'meeting_stop_standup': Stop active standup session. parameters: {}
               - 'meeting_check_voice_health': Check voice daemon health. parameters: {}
-          - tool_type='pm':
+          - tool_type='jira':
+              - 'jira_list_issues': List issues in the Jira project. parameters: {'status': 'open'|'all'|'closed', 'issue_type': 'task'|'story'|'bug'}
+              - 'jira_create_issue': Create a new Jira issue. parameters: {'summary': 'Title', 'description': '...', 'issue_type': 'Task'|'Story'|'Bug'}
+              - 'jira_get_issue': Get details for an issue. parameters: {'issue_key': 'KEY-123'}
+              - 'jira_update_issue': Update an issue. parameters: {'issue_key': 'KEY-123', 'summary': '...'}
+              - 'jira_transition_issue': Move/close issue. parameters: {'issue_key': 'KEY-123', 'status': 'Done'}
+              - 'jira_search_issues': Search issues via text. parameters: {'query': '...'}
+          - tool_type='taiga':
               - 'taiga_list_tasks', 'taiga_create_task', 'taiga_update_task', 'taiga_list_user_stories'
           - tool_type='discord':
               - 'discord_post_summary', 'discord_verify_channel_mapping'
