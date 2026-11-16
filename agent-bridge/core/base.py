@@ -250,31 +250,31 @@ class MemoryStore(ABC):
         return []
 
     def create_scheduled_meeting(
-        self, schedule_input: dict[str, Any], org_id: str = "default"
+        self, schedule_input: dict[str, Any], org_id: str | None = None
     ) -> dict[str, Any] | None:
         """Create a scheduled standup/meeting in persistent storage."""
         return None
 
     def list_scheduled_meetings(
-        self, org_id: str = "default", guild_id: str | None = None
+        self, org_id: str | None = None, guild_id: str | None = None
     ) -> list[dict[str, Any]]:
         """List active scheduled meetings for the organization/server."""
         return []
 
     def delete_scheduled_meeting(
-        self, schedule_id: str, org_id: str = "default"
+        self, schedule_id: str, org_id: str | None = None
     ) -> bool:
         """Delete/cancel a scheduled meeting."""
         return False
 
     def start_voice_meeting(
-        self, guild_id: str, channel_id: str, org_id: str = "default", duration_ms: int = 1800000
+        self, guild_id: str, channel_id: str, org_id: str | None = None, duration_ms: int = 1800000
     ) -> dict[str, Any]:
         """Trigger an on-demand voice meeting in a server channel."""
         return {"started": False, "error": "Voice meetings not supported by this store."}
 
     def stop_voice_meeting(
-        self, guild_id: str, org_id: str = "default"
+        self, guild_id: str, org_id: str | None = None
     ) -> dict[str, Any]:
         """Stop an active voice meeting in a server."""
         return {"stopped": False, "error": "Voice meetings not supported by this store."}

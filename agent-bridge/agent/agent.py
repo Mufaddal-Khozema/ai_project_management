@@ -840,7 +840,7 @@ class DualMemoryStore(MemoryStore):
                             "channel_id": message_doc.get("channel_id", ""),
                             "channel_name": ch_name,
                             "project_key": message_doc.get("project_key", ""),
-                            "org_id": message_doc.get("org_id") or "default",
+                            "org_id": message_doc.get("org_id"),
                             "author_name": author,
                             "text": formatted_text,
                             "embedding": vector,
@@ -930,9 +930,11 @@ class DualMemoryStore(MemoryStore):
     # ── Voice Meeting Schedules & Live Operations ────────────────────────────
 
     def create_scheduled_meeting(
-        self, schedule_input: dict[str, Any], org_id: str = "default"
+        self, schedule_input: dict[str, Any], org_id: str | None = None
     ) -> dict[str, Any] | None:
         """Create a scheduled standup/meeting in MongoDB scheduled_meetings."""
+        if not org_id:
+            raise ValueError("Workspace organization ID is required for meeting schedules.")
         now = datetime.now(timezone.utc)
         doc = {
             "orgId": org_id,
@@ -964,9 +966,11 @@ class DualMemoryStore(MemoryStore):
             return None
 
     def list_scheduled_meetings(
-        self, org_id: str = "default", guild_id: str | None = None
+        self, org_id: str | None = None, guild_id: str | None = None
     ) -> list[dict[str, Any]]:
         """List active scheduled meetings for an org and optionally guild."""
+        if not org_id:
+            return []
         query: dict[str, Any] = {"orgId": org_id}
         if guild_id:
             query["guildId"] = str(guild_id)
@@ -992,9 +996,11 @@ class DualMemoryStore(MemoryStore):
             return []
 
     def delete_scheduled_meeting(
-        self, schedule_id: str, org_id: str = "default"
+        self, schedule_id: str, org_id: str | None = None
     ) -> bool:
         """Delete a scheduled meeting by ID and org."""
+        if not org_id:
+            return False
         try:
             try:
                 from bson import ObjectId
@@ -1014,12 +1020,14 @@ class DualMemoryStore(MemoryStore):
         self,
         guild_id: str,
         channel_id: str,
-        org_id: str = "default",
+        org_id: str | None = None,
         duration_ms: int = 1800000,
         project_slug: str | None = None,
         text_channel_id: str | None = None,
     ) -> dict[str, Any]:
         """Trigger an on-demand voice meeting via the voice service API."""
+        if not org_id:
+            return {"started": False, "error": "Workspace organization ID is required to start a voice meeting."}
         voice_url = os.environ.get("SCRUM_MASTER_AI_URL", "http://localhost:3001")
         endpoint = f"{voice_url.rstrip('/')}/integrations/discord/meetings/start"
         body: dict[str, Any] = {
@@ -1065,9 +1073,11 @@ class DualMemoryStore(MemoryStore):
             return {"started": False, "error": str(e)}
 
     def stop_voice_meeting(
-        self, guild_id: str, org_id: str = "default"
+        self, guild_id: str, org_id: str | None = None
     ) -> dict[str, Any]:
         """Stop an active voice meeting via the voice service API."""
+        if not org_id:
+            return {"stopped": False, "error": "Workspace organization ID is required to stop a voice meeting."}
         voice_url = os.environ.get("SCRUM_MASTER_AI_URL", "http://localhost:3001")
         endpoint = f"{voice_url.rstrip('/')}/integrations/discord/meetings/stop"
         payload = json.dumps({"guildId": str(guild_id)}).encode("utf-8")
@@ -1230,7 +1240,8 @@ class AgentBridge:
                 logger.debug("Could not resolve author identity for chat record: %s", e)
 
         if not message_doc.get("org_id"):
-            message_doc["org_id"] = getattr(self.comm, "_org_id", "") or "default"
+            logger.debug("Skipping chat record persistence: message is not linked to any workspace organization")
+            return
 
         if hasattr(self._memory, "save_chat_message"):
             self._memory.save_chat_message(message_doc)
@@ -1468,7 +1479,6 @@ class AgentBridge:
         org_id = (
             (id_result.org_id if id_result else None)
             or (incoming.metadata.get("org_id") if incoming.metadata else None)
-            or "default"
         )
         use_mcp = os.environ.get("USE_MCP_GATEWAY", "true").lower() in ("true", "1", "yes")
         mcp_tools = None

@@ -69,7 +69,7 @@ def build_tools(
     guild_id: str | None = None,
     channel_id: str | None = None,
     channel_name: str | None = None,
-    org_id: str = "default",
+    org_id: str | None = None,
 ) -> list:
     """
     Return the tool list for the given permission tier.
@@ -412,6 +412,8 @@ def build_tools(
             List active scheduled standup meetings and recurring voice sessions configured for this server/organization.
             Use this when asked what meetings or standups are scheduled, or to check schedule times.
             """
+            if not org_id:
+                return "❌ Cannot list scheduled meetings: workspace identity is not linked."
             try:
                 if not hasattr(memory_store, "list_scheduled_meetings"):
                     return "Schedule listing is not supported by the current storage backend."
@@ -617,6 +619,8 @@ def build_tools(
             date: target date in YYYY-MM-DD format (only needed if recurrence is 'once')
             duration_minutes: meeting duration in minutes (default 15)
             """
+            if not org_id:
+                return "❌ Cannot schedule meeting: workspace identity is not linked."
             try:
                 if not hasattr(memory_store, "create_scheduled_meeting"):
                     return "Meeting scheduling is not supported by the current storage backend."
@@ -685,6 +689,8 @@ def build_tools(
             Cancel / delete an existing scheduled meeting by its ID.
             schedule_id: the ID of the schedule (obtain from list_scheduled_meetings)
             """
+            if not org_id:
+                return "❌ Cannot cancel scheduled meeting: workspace identity is not linked."
             try:
                 if not hasattr(memory_store, "delete_scheduled_meeting"):
                     return "Meeting cancellation is not supported by the current storage backend."
@@ -702,6 +708,8 @@ def build_tools(
             channel_name_or_id: name or ID of the voice channel to join (optional)
             duration_minutes: duration in minutes (default 30)
             """
+            if not org_id:
+                return "❌ Cannot start voice meeting: workspace identity is not linked."
             try:
                 if not hasattr(memory_store, "start_voice_meeting"):
                     return "On-demand voice meeting is not supported by the current storage backend."
@@ -727,6 +735,8 @@ def build_tools(
             """
             Stop the active voice meeting in this server immediately. The bot will leave the channel and consolidate the transcript.
             """
+            if not org_id:
+                return "❌ Cannot stop voice meeting: workspace identity is not linked."
             try:
                 if not hasattr(memory_store, "stop_voice_meeting"):
                     return "Stopping voice meetings is not supported by the current storage backend."
