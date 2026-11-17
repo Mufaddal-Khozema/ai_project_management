@@ -169,9 +169,11 @@ body {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
-header, section, footer {
-    position: relative;
-    z-index: 1;
+@layer base {
+    header, section, footer {
+        position: relative;
+        z-index: 1;
+    }
 }
 
 .hero-bg-custom {
