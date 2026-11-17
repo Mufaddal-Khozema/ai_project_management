@@ -47,7 +47,7 @@ export default function UsersPage() {
     const colors: Record<string, string> = {
       online: "bg-[var(--color-success)]",
       away: "bg-[var(--color-warning)]",
-      offline: "bg-muted-foreground",
+      offline: "bg-ink-muted/50",
     };
     return (
       <span className="relative flex h-2 w-2">
@@ -67,10 +67,10 @@ export default function UsersPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-card-foreground">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">
             Team
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-ink-muted">
             {users.length} members across {teams.length} teams
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function UsersPage() {
         <div className="relative flex-1 max-w-sm">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
           />
           <Input
             placeholder="Search by name or role..."
@@ -133,20 +133,20 @@ export default function UsersPage() {
                       {u.initials}
                     </div>
                     <div>
-                      <p className="font-medium text-card-foreground">
+                      <p className="font-medium text-ink">
                         {u.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">{u.role}</p>
+                      <p className="text-xs text-ink-muted">{u.role}</p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{u.team}</Badge>
                 </TableCell>
-                <TableCell className="text-card-foreground">
+                <TableCell className="text-ink">
                   {u.activeProjects}
                 </TableCell>
-                <TableCell className="text-card-foreground">
+                <TableCell className="text-ink">
                   {u.tasksClosedThisWeek}
                 </TableCell>
                 <TableCell>
@@ -162,7 +162,7 @@ export default function UsersPage() {
                         className="text-[var(--color-danger)]"
                       />
                     ) : (
-                      <Minus size={12} className="text-muted-foreground" />
+                      <Minus size={12} className="text-ink-muted" />
                     )}
                     <span
                       className={
@@ -170,7 +170,7 @@ export default function UsersPage() {
                           ? "text-[var(--color-success)]"
                           : u.velocityTrend.startsWith("-")
                           ? "text-[var(--color-danger)]"
-                          : "text-muted-foreground"
+                          : "text-ink-muted"
                       }
                     >
                       {u.velocityTrend}
@@ -179,23 +179,23 @@ export default function UsersPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
+                    <div className="h-1.5 w-12 overflow-hidden rounded-full bg-canvas shadow-press">
                       <div
-                        className="h-full rounded-full bg-primary"
+                        className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#4f7cff]"
                         style={{ width: `${u.trustRate}%` }}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-ink-muted">
                       {u.trustRate}%
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-card-foreground">
+                <TableCell className="text-ink">
                   {u.hoursSaved}h
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
+                    <div className="h-1.5 w-12 overflow-hidden rounded-full bg-canvas shadow-press">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -209,7 +209,7 @@ export default function UsersPage() {
                         }}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-ink-muted">
                       {u.workload}%
                     </span>
                   </div>
@@ -217,7 +217,7 @@ export default function UsersPage() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {statusDot(u.status)}
-                    <span className="text-xs text-muted-foreground capitalize">
+                    <span className="text-xs text-ink-muted capitalize">
                       {u.status}
                     </span>
                   </div>
@@ -232,7 +232,7 @@ export default function UsersPage() {
         {filtered.map((u) => (
           <Card
             key={u.id}
-            className="group transition-colors hover:border-border/50"
+            className="group transition-shadow hover:shadow-press"
           >
             <CardContent className="pt-5">
               <div className="flex items-start justify-between">
@@ -246,10 +246,10 @@ export default function UsersPage() {
                     {u.initials}
                   </div>
                   <div>
-                    <p className="font-medium text-card-foreground">
+                    <p className="font-medium text-ink">
                       {u.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">{u.role}</p>
+                    <p className="text-xs text-ink-muted">{u.role}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -258,33 +258,33 @@ export default function UsersPage() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Trust rate</p>
-                  <p className="mt-1 text-lg font-semibold text-card-foreground">
+                <div className="rounded-xl bg-canvas p-3 shadow-press">
+                  <p className="text-xs text-ink-muted">Trust rate</p>
+                  <p className="mt-1 text-lg font-semibold text-ink">
                     {u.trustRate}%
                   </p>
                 </div>
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Hours saved</p>
-                  <p className="mt-1 text-lg font-semibold text-card-foreground">
+                <div className="rounded-xl bg-canvas p-3 shadow-press">
+                  <p className="text-xs text-ink-muted">Hours saved</p>
+                  <p className="mt-1 text-lg font-semibold text-ink">
                     {u.hoursSaved}h
                   </p>
                 </div>
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Tasks closed</p>
-                  <p className="mt-1 text-lg font-semibold text-card-foreground">
+                <div className="rounded-xl bg-canvas p-3 shadow-press">
+                  <p className="text-xs text-ink-muted">Tasks closed</p>
+                  <p className="mt-1 text-lg font-semibold text-ink">
                     {u.tasksClosedThisWeek}
                   </p>
                 </div>
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Velocity</p>
+                <div className="rounded-xl bg-canvas p-3 shadow-press">
+                  <p className="text-xs text-ink-muted">Velocity</p>
                   <p
                     className={`mt-1 text-lg font-semibold ${
                       u.velocityTrend.startsWith("+")
                         ? "text-[var(--color-success)]"
                         : u.velocityTrend.startsWith("-")
                         ? "text-[var(--color-danger)]"
-                        : "text-card-foreground"
+                        : "text-ink"
                     }`}
                   >
                     {u.velocityTrend}
@@ -294,7 +294,7 @@ export default function UsersPage() {
 
               <div className="mt-4">
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-muted-foreground">Workload</span>
+                  <span className="text-ink-muted">Workload</span>
                   <span
                     className={
                       u.workload > 90
@@ -307,7 +307,7 @@ export default function UsersPage() {
                     {u.workload}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas shadow-press">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{

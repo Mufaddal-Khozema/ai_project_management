@@ -53,11 +53,13 @@ import {
   KeyRound,
   Palette,
 } from "lucide-react";
+import { useTheme } from "@/components/landing/use-theme";
 
 export default function SettingsPage() {
   const { data: user, isLoading } = useCurrentUser();
   const updateProfile = useUpdateProfileMutation();
   const queryClient = useQueryClient();
+  const { preference, setThemePreference } = useTheme();
 
   const { data: integrationsData, isLoading: integrationsLoading, isError: integrationsError } =
     useIntegrations();
@@ -153,10 +155,10 @@ export default function SettingsPage() {
   return (
       <>
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-card-foreground">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-ink-muted">
           Manage workspace, account, and billing preferences
         </p>
       </div>
@@ -185,13 +187,13 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="text-xs font-medium text-ink-muted">
                     Workspace name
                   </label>
                   <Input defaultValue="Acme Engineering" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="text-xs font-medium text-ink-muted">
                     Slug
                   </label>
                   <Input defaultValue="acme-eng" />
@@ -199,7 +201,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
+                <label className="text-xs font-medium text-ink-muted">
                   Description
                 </label>
                 <Input defaultValue="Internal coordination dashboard for Platform, Mobile, and QA teams." />
@@ -207,7 +209,7 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="text-xs font-medium text-ink-muted">
                     Timezone
                   </label>
                   <Select defaultValue="utc">
@@ -234,7 +236,7 @@ export default function SettingsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label className="text-xs font-medium text-ink-muted">
                     Week starts on
                   </label>
                   <Select defaultValue="mon">
@@ -250,19 +252,19 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted p-4">
+              <div className="flex items-center justify-between rounded-lg border border-hairline bg-canvas shadow-press p-4">
                 <div className="flex items-center gap-3">
-                  <Bell size={16} className="text-muted-foreground" />
+                  <Bell size={16} className="text-ink-muted" />
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-ink">
                       Digest emails
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-ink-muted">
                       Weekly summary every Monday
                     </p>
                   </div>
                 </div>
-                <div className="flex h-6 w-11 cursor-pointer items-center rounded-full bg-primary px-0.5 transition-colors">
+                <div className="flex h-6 w-11 cursor-pointer items-center rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#4f7cff] px-0.5 transition-colors">
                   <div className="h-5 w-5 translate-x-5 rounded-full bg-white shadow-sm" />
                 </div>
               </div>
@@ -291,16 +293,16 @@ export default function SettingsPage() {
                   {integrationProviders.map((p) => (
                     <div
                       key={p.id}
-                      className="flex animate-pulse items-center justify-between rounded-lg border border-border bg-muted p-3"
+                      className="flex animate-pulse items-center justify-between rounded-lg border border-hairline bg-canvas shadow-press p-3"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-md bg-card" />
+                        <div className="h-8 w-8 rounded-md bg-hairline" />
                         <div className="space-y-1.5">
-                          <div className="h-3.5 w-24 rounded bg-card" />
-                          <div className="h-3 w-32 rounded bg-card/60" />
+                          <div className="h-3.5 w-24 rounded bg-hairline" />
+                          <div className="h-3 w-32 rounded bg-hairline/60" />
                         </div>
                       </div>
-                      <div className="h-7 w-20 rounded-lg bg-card" />
+                      <div className="h-7 w-20 rounded-lg bg-hairline" />
                     </div>
                   ))}
                 </>
@@ -324,7 +326,7 @@ export default function SettingsPage() {
                     />
                   ))}
                   {(integrationsData?.integrations.length ?? 0) === 0 && (
-                    <p className="pt-1 text-xs text-muted-foreground">
+                    <p className="pt-1 text-xs text-ink-muted">
                       Connect your communication and project tools to start coordinating.
                     </p>
                   )}
@@ -343,10 +345,10 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-card-foreground">
+                  <p className="text-sm font-medium text-ink">
                     Delete workspace
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-ink-muted">
                     Permanently remove all data, projects, and history. This
                     cannot be undone.
                   </p>
@@ -372,9 +374,9 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               {isLoading ? (
                 <div className="space-y-4">
-                  <div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
-                  <div className="h-10 rounded-lg bg-muted animate-pulse" />
-                  <div className="h-10 rounded-lg bg-muted animate-pulse" />
+                  <div className="h-16 w-16 rounded-full bg-canvas shadow-press animate-pulse" />
+                  <div className="h-10 rounded-lg bg-canvas shadow-press animate-pulse" />
+                  <div className="h-10 rounded-lg bg-canvas shadow-press animate-pulse" />
                 </div>
               ) : (
                 <>
@@ -390,14 +392,14 @@ export default function SettingsPage() {
                       <Button variant="outline" size="sm">
                         Change avatar
                       </Button>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-[11px] text-ink-muted">
                         Paste an image URL below
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-xs font-medium text-ink-muted">
                       Avatar URL
                     </label>
                     <Input
@@ -409,7 +411,7 @@ export default function SettingsPage() {
 
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground">
+                      <label className="text-xs font-medium text-ink-muted">
                         Display name
                       </label>
                       <Input
@@ -419,13 +421,13 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground">
+                      <label className="text-xs font-medium text-ink-muted">
                         Email
                       </label>
                       <div className="relative">
                         <Mail
                           size={14}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
                         />
                         <Input value={user?.email ?? ""} className="pl-9" disabled />
                       </div>
@@ -459,14 +461,14 @@ export default function SettingsPage() {
               <CardTitle>Security</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted p-4">
+              <div className="flex items-center justify-between rounded-lg border border-hairline bg-canvas shadow-press p-4">
                 <div className="flex items-center gap-3">
-                  <KeyRound size={16} className="text-muted-foreground" />
+                  <KeyRound size={16} className="text-ink-muted" />
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-ink">
                       Password
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-ink-muted">
                       Last changed 3 months ago
                     </p>
                   </div>
@@ -476,14 +478,14 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted p-4">
+              <div className="flex items-center justify-between rounded-lg border border-hairline bg-canvas shadow-press p-4">
                 <div className="flex items-center gap-3">
-                  <Shield size={16} className="text-muted-foreground" />
+                  <Shield size={16} className="text-ink-muted" />
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-ink">
                       Two-factor auth
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-ink-muted">
                       Enabled via authenticator app
                     </p>
                   </div>
@@ -500,17 +502,28 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Palette size={16} className="text-muted-foreground" />
+                  <Palette size={16} className="text-ink-muted" />
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-ink">
                       Theme
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-ink-muted">
                       System preference
                     </p>
                   </div>
                 </div>
-                <Select defaultValue="system">
+                <Select
+                  value={preference}
+                  onValueChange={(value) => {
+                    if (
+                      value === "light" ||
+                      value === "dark" ||
+                      value === "system"
+                    ) {
+                      setThemePreference(value);
+                    }
+                  }}
+                >
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -524,17 +537,17 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Bell size={16} className="text-muted-foreground" />
+                  <Bell size={16} className="text-ink-muted" />
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">
+                    <p className="text-sm font-medium text-ink">
                       Notifications
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-ink-muted">
                       In-app and push
                     </p>
                   </div>
                 </div>
-                <div className="flex h-6 w-11 cursor-pointer items-center rounded-full bg-primary px-0.5 transition-colors">
+                <div className="flex h-6 w-11 cursor-pointer items-center rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#4f7cff] px-0.5 transition-colors">
                   <div className="h-5 w-5 translate-x-5 rounded-full bg-white shadow-sm" />
                 </div>
               </div>
@@ -595,8 +608,8 @@ export default function SettingsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Type <b className="text-card-foreground">acme-eng</b> to confirm:
+            <p className="text-xs text-ink-muted">
+              Type <b className="text-ink">acme-eng</b> to confirm:
             </p>
             <Input
               value={confirmText}
