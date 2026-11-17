@@ -21,7 +21,13 @@ const PATHS = [
   },
 ];
 
-export function Threads({ className = "" }: { className?: string }) {
+export function Threads({
+  className = "",
+  tone = "color",
+}: {
+  className?: string;
+  tone?: "color" | "mono";
+}) {
   return (
     <svg
       className={className}
@@ -31,7 +37,7 @@ export function Threads({ className = "" }: { className?: string }) {
     >
       <g
         fill="none"
-        strokeWidth={1}
+        strokeWidth={tone === "mono" ? 2 : 1}
         strokeLinecap="round"
         strokeDasharray={1}
         strokeDashoffset={1}
@@ -39,7 +45,9 @@ export function Threads({ className = "" }: { className?: string }) {
         {PATHS.map((path) => (
           <path
             key={path.d}
-            className={`animate-thread-draw thread-line ${path.color}`}
+            className={`animate-thread-draw thread-line ${
+              tone === "mono" ? "text-white" : path.color
+            }`}
             stroke="currentColor"
             pathLength={1}
             d={path.d}

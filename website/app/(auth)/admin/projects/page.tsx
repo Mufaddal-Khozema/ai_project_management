@@ -77,7 +77,7 @@ export default function ProjectsPage() {
         return <Badge variant="destructive">At risk</Badge>;
       case "completed":
         return (
-          <Badge variant="outline" className="text-muted-foreground">
+          <Badge variant="outline" className="text-ink-muted">
             Completed
           </Badge>
         );
@@ -95,17 +95,17 @@ export default function ProjectsPage() {
       return (
         <ArrowDownRight size={12} className="text-[var(--color-danger)]" />
       );
-    return <Minus size={12} className="text-muted-foreground" />;
+    return <Minus size={12} className="text-ink-muted" />;
   };
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-card-foreground">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">
             Projects
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-ink-muted">
             {projects.length} total ·{" "}
             {projects.filter((p) => p.status === "at-risk").length} at risk
           </p>
@@ -117,7 +117,7 @@ export default function ProjectsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
           />
           <Input
             placeholder="Search projects..."
@@ -151,10 +151,10 @@ export default function ProjectsPage() {
               <TableRow key={p.id} className="cursor-pointer">
                 <TableCell>
                   <div>
-                    <p className="font-medium text-card-foreground">
+                    <p className="font-medium text-ink">
                       {p.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-ink-muted">
                       Lead: {p.lead}
                     </p>
                   </div>
@@ -162,7 +162,7 @@ export default function ProjectsPage() {
                 <TableCell>{statusBadge(p.status)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-canvas shadow-press">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -176,16 +176,16 @@ export default function ProjectsPage() {
                         }}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-ink-muted">
                       {p.health}%
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
+                <TableCell className="text-xs text-ink-muted">
                   {p.sprint}
                 </TableCell>
                 <TableCell>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-ink-muted">
                     {p.tasksDone}/{p.tasksTotal}
                   </span>
                 </TableCell>
@@ -207,14 +207,14 @@ export default function ProjectsPage() {
                           ? "text-[var(--color-success)]"
                           : p.velocity.startsWith("↓")
                           ? "text-[var(--color-danger)]"
-                          : "text-muted-foreground"
+                          : "text-ink-muted"
                       }
                     >
                       {p.velocity}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
+                <TableCell className="text-xs text-ink-muted">
                   {p.lastActivity}
                 </TableCell>
               </TableRow>
@@ -227,15 +227,15 @@ export default function ProjectsPage() {
         {filtered.slice(0, 3).map((p) => (
           <Card
             key={p.id}
-            className="group cursor-pointer transition-colors hover:border-border/50"
+            className="group cursor-pointer transition-shadow hover:shadow-press"
           >
             <CardContent className="pt-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-card-foreground">
+                  <p className="text-sm font-medium text-ink">
                     {p.name}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     {p.sprint}
                   </p>
                 </div>
@@ -245,16 +245,20 @@ export default function ProjectsPage() {
               <div className="mt-4 space-y-3">
                 <div>
                   <div className="mb-1 flex justify-between text-xs">
-                    <span className="text-muted-foreground">Tasks</span>
-                    <span className="text-card-foreground">
+                    <span className="text-ink-muted">Tasks</span>
+                    <span className="text-ink">
                       {p.tasksDone}/{p.tasksTotal}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas shadow-press">
                     <div
-                      className="h-full rounded-full bg-primary transition-all"
+                      className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#4f7cff] transition-all"
                       style={{
-                        width: `${(p.tasksDone / p.tasksTotal) * 100}%`,
+                        width: `${
+                          p.tasksTotal
+                            ? (p.tasksDone / p.tasksTotal) * 100
+                            : 0
+                        }%`,
                       }}
                     />
                   </div>
@@ -268,7 +272,7 @@ export default function ProjectsPage() {
                       </Avatar>
                     ))}
                   </AvatarGroup>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-ink-muted">
                     {p.lastActivity}
                   </span>
                 </div>

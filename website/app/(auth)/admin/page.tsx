@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import type { ComponentType, CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -28,21 +31,112 @@ import {
   Clock,
   ShieldCheck,
   FolderOpen,
+  FolderKanban,
+  Users as UsersIcon,
+  BarChart3,
   AlertTriangle,
+  ArrowUpRight,
 } from "lucide-react";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
-import { useCurrentUser, useSubmitOnboardingMutation, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
+import {
+  useCurrentUser,
+  useSubmitOnboardingMutation,
+  useIntegrations,
+} from "@/lib/api/@tanstack/react-query.gen";
 import { integrationProviders, formatExpiry } from "@/lib/integrations";
-import { useState, useMemo } from "react";
+import { Orb } from "@/components/landing/orb";
+import { Threads } from "@/components/landing/threads";
+import { cn } from "@/lib/utils";
 
 const adoptionData = weeks.map((w, i) => ({ week: w, value: adoption[i] }));
 const gaugeData = [{ value: 78 }, { value: 22 }];
+
+const chartTooltip: CSSProperties = {
+  background: "var(--ca-bg)",
+  border: "1px solid var(--ca-line)",
+  borderRadius: 16,
+  fontSize: 12,
+  color: "var(--ca-ink)",
+  boxShadow: "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
+};
+
+const focusCards = [
+  {
+    href: "/admin/projects",
+    icon: FolderKanban,
+    title: "Track projects",
+    detail: "See health, scope changes and what needs attention.",
+  },
+  {
+    href: "/admin/users",
+    icon: UsersIcon,
+    title: "Team capacity",
+    detail: "Workload, velocity and trust across every teammate.",
+  },
+  {
+    href: "/admin/reports",
+    icon: BarChart3,
+    title: "Read reports",
+    detail: "Adoption, delivery and contribution analytics.",
+  },
+];
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  suffix,
+  detail,
+  tone = "accent",
+}: {
+  icon: ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string;
+  suffix?: string;
+  detail: string;
+  tone?: "accent" | "success" | "warning";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "text-[var(--color-success)]"
+      : tone === "warning"
+        ? "text-[var(--color-warning)]"
+        : "text-[#6d5ef0]";
+  const detailClass =
+    tone === "success" ? "text-[var(--color-success)]" : "text-ink-muted";
+
+  return (
+    <Card>
+      <CardContent className="pt-5">
+        <div className="flex items-start justify-between">
+          <span className="text-xs font-semibold text-ink-muted">{label}</span>
+          <div className="grid size-8 place-items-center rounded-xl bg-canvas shadow-press">
+            <Icon size={14} className={toneClass} />
+          </div>
+        </div>
+        <div className="mt-3 font-display text-3xl font-extrabold tracking-tight">
+          {value}
+          {suffix && (
+            <span className="ml-1 font-body text-sm font-normal text-ink-muted">
+              {suffix}
+            </span>
+          )}
+        </div>
+        <div className={cn("mt-1 text-xs font-semibold", detailClass)}>
+          {detail}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const { data: user, isPending: userLoading } = useCurrentUser();
   const { data: integrationsData } = useIntegrations();
   const [onboarding, setOnboarding] = useState(true);
   const onboardingMutation = useSubmitOnboardingMutation();
+
+  const firstName = user?.name?.split(" ")[0] ?? "there";
 
   const integrationsById = useMemo(() => {
     const map: Record<string, { status: string; expires_at: string | null }> = {};
@@ -51,131 +145,150 @@ export default function DashboardPage() {
     }
     return map;
   }, [integrationsData]);
+
   return (
     <>
-      <div className="flex items-end justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Home</span>
-            <span>&rsaquo;</span>
-            <span>Coordination</span>
-            <span>&rsaquo;</span>
-            <span className="text-card-foreground">Dashboard</span>
+      {/* Hero */}
+      <section
+        className="relative overflow-hidden rounded-[36px] p-6 text-white shadow-raise sm:p-9"
+        style={{
+          background:
+            "linear-gradient(120deg,#4b2fd0 0%,#b0389f 48%,#ee5a45 82%,#f59a2d 100%)",
+        }}
+      >
+        <Threads
+          tone="mono"
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-50"
+        />
+        <div className="relative grid items-center gap-6 lg:grid-cols-[1fr_auto]">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-white/70">
+              <span>Home</span>
+              <span>&rsaquo;</span>
+              <span>Coordination</span>
+              <span>&rsaquo;</span>
+              <span className="text-white">Dashboard</span>
+            </div>
+            <h1 className="mt-3 max-w-[18ch] font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+              Good morning, {firstName}.{" "}
+              <span className="text-white/80">
+                Team&apos;s on pace this week.
+              </span>
+            </h1>
+            <p className="mt-3 max-w-xl text-sm text-white/80">
+              Adoption is climbing and two integrations need attention. Priya
+              is carrying 4 active workstreams. The MS Teams token expires in 3
+              days.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {integrationProviders.map((provider) => {
+                const integration = integrationsById[provider.id];
+                const connected = integration?.status === "connected";
+                const expired =
+                  integration?.status === "expired" ||
+                  integration?.status === "error";
+                return (
+                  <span
+                    key={provider.id}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[13px] font-semibold text-white"
+                  >
+                    <span
+                      className={cn(
+                        "size-2 rounded-full",
+                        connected
+                          ? "bg-[#9bffd3]"
+                          : expired
+                            ? "bg-[#ffe08a]"
+                            : "bg-white/50",
+                      )}
+                    />
+                    {provider.name}
+                    {expired ? " expired" : ""}
+                  </span>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm">
+                May 12 – Jun 10, 2026
+              </Button>
+              <Button
+                size="sm"
+                className="bg-none bg-white text-[#27305a] hover:bg-white"
+              >
+                Generate report
+              </Button>
+            </div>
           </div>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-card-foreground">
-            Acme Engineering
-          </h1>
+
+          <Orb size="xl" className="hidden justify-self-center sm:grid" />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            May 12 – Jun 10, 2026
-          </Button>
-          <Button size="sm">Generate report</Button>
-        </div>
+      </section>
+
+      {/* Focus cards */}
+      <div className="grid gap-5 md:grid-cols-3">
+        {focusCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="group grid gap-2.5 rounded-[28px] bg-canvas p-6 shadow-raise transition-shadow hover:shadow-press"
+            >
+              <span className="grid size-12 place-items-center rounded-2xl bg-canvas text-[#8b5cf6] shadow-press">
+                <Icon size={22} />
+              </span>
+              <h3 className="font-display text-lg font-extrabold tracking-tight">
+                {card.title}
+              </h3>
+              <p className="text-sm text-ink-muted">{card.detail}</p>
+              <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#6d5ef0]">
+                Open <ArrowUpRight size={12} />
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
-      <div className="flex items-start gap-4 rounded-xl border border-border bg-card p-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-success-bg)]">
-          <ShieldCheck size={18} className="text-[var(--color-success)]" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-card-foreground">
-            Team&apos;s on pace this week — adoption is climbing and two
-            integrations need attention.
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Priya is carrying 4 active workstreams. MS Teams token expires in 3
-            days.
-          </p>
-        </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard
+          icon={Clock}
+          label="Hours saved"
+          value="146"
+          suffix="/mo"
+          detail="↑ 18% vs last month"
+          tone="success"
+        />
+        <StatCard
+          icon={ShieldCheck}
+          label="Trust rate"
+          value="82%"
+          detail="confirmed without edits"
+          tone="success"
+        />
+        <StatCard
+          icon={Activity}
+          label="Bot-led sprints closed"
+          value="27"
+          suffix="/31"
+          detail="↑ 87% on-time close rate"
+          tone="success"
+        />
+        <StatCard
+          icon={FolderOpen}
+          label="Active projects"
+          value="11"
+          suffix="/13"
+          detail="2 not yet connected"
+          tone="warning"
+        />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">
-                Hours saved
-              </span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
-                <Clock size={14} className="text-accent-foreground" />
-              </div>
-            </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight text-card-foreground">
-              146
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                /mo
-              </span>
-            </div>
-            <div className="mt-1 flex items-center gap-1 text-xs text-[var(--color-success)]">
-              <span>↑</span> 18% vs last month
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">Trust rate</span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-success-bg)]">
-                <ShieldCheck size={14} className="text-[var(--color-success)]" />
-              </div>
-            </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight text-card-foreground">
-              82%
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              confirmed without edits
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">
-                Bot-led sprints closed
-              </span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
-                <Activity size={14} className="text-accent-foreground" />
-              </div>
-            </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight text-card-foreground">
-              27
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                /31
-              </span>
-            </div>
-            <div className="mt-1 flex items-center gap-1 text-xs text-[var(--color-success)]">
-              <span>↑</span> 87% on-time close rate
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">
-                Active projects
-              </span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-warning-bg)]">
-                <FolderOpen size={14} className="text-[var(--color-warning)]" />
-              </div>
-            </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight text-card-foreground">
-              11
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                /13
-              </span>
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              2 not yet connected
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4">
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.6fr_1fr]">
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Adoption rate over time</CardTitle>
@@ -195,54 +308,49 @@ export default function DashboardPage() {
                     >
                       <stop
                         offset="0%"
-                        stopColor="#6366f1"
-                        stopOpacity={0.25}
+                        stopColor="#8b5cf6"
+                        stopOpacity={0.35}
                       />
                       <stop
                         offset="100%"
-                        stopColor="#6366f1"
+                        stopColor="#8b5cf6"
                         stopOpacity={0}
                       />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
-                    stroke="rgba(255,255,255,0.04)"
+                    stroke="var(--ca-line)"
+                    strokeOpacity={0.45}
                     vertical={false}
                   />
                   <XAxis
                     dataKey="week"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#636366", fontSize: 11 }}
+                    tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                   />
                   <YAxis
                     domain={[0, 100]}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#636366", fontSize: 11 }}
+                    tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                     tickFormatter={(v) => `${v}%`}
                   />
                   <Tooltip
-                    contentStyle={{
-                      background: "#1a1a1f",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      color: "#f5f5f7",
-                    }}
+                    contentStyle={chartTooltip}
                     formatter={(v) => [`${v}% adoption`, ""]}
                   />
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="#6366f1"
+                    stroke="#8b5cf6"
                     strokeWidth={2}
                     fill="url(#adoptionGrad)"
                     dot={false}
                     activeDot={{
                       r: 5,
-                      fill: "#6366f1",
-                      stroke: "#09090b",
+                      fill: "#8b5cf6",
+                      stroke: "var(--ca-bg)",
                       strokeWidth: 2,
                     }}
                   />
@@ -271,19 +379,19 @@ export default function DashboardPage() {
                     dataKey="value"
                     stroke="none"
                   >
-                    <Cell fill="#6366f1" />
-                    <Cell fill="#1a1a1f" />
+                    <Cell fill="#8b5cf6" />
+                    <Cell fill="var(--ca-line)" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-semibold text-card-foreground">
+                <span className="font-display text-3xl font-extrabold">
                   78
                 </span>
-                <span className="text-xs text-muted-foreground">strong</span>
+                <span className="text-xs text-ink-muted">strong</span>
               </div>
             </div>
-            <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-xs text-center text-xs leading-relaxed text-ink-muted">
               Composite of cycle time, rework rate, and on-time delivery across
               all active projects.
             </p>
@@ -291,7 +399,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Capacity + integrations */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Organization capacity</CardTitle>
@@ -301,13 +410,13 @@ export default function DashboardPage() {
             {capacity.map((c) => (
               <div key={c.team}>
                 <div className="mb-1.5 flex justify-between text-xs">
-                  <span className="text-card-foreground">{c.team}</span>
-                  <span className="text-muted-foreground">{c.percent}%</span>
+                  <span className="font-medium text-ink">{c.team}</span>
+                  <span className="text-ink-muted">{c.percent}%</span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-2.5 w-full overflow-hidden rounded-full shadow-press">
                   <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${c.percent}%`, background: c.color }}
+                    className="h-full rounded-full bg-gradient-to-r from-[#ff5fa2] via-[#8b5cf6] to-[#4f7cff]"
+                    style={{ width: `${c.percent}%` }}
                   />
                 </div>
               </div>
@@ -319,7 +428,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Integration health</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y divide-border">
+          <CardContent className="divide-y divide-hairline">
             {integrationProviders.map((provider) => {
               const integration = integrationsById[provider.id];
               const expiresText = integration
@@ -351,29 +460,34 @@ export default function DashboardPage() {
                   ? "text-[var(--color-success)]"
                   : tone === "warn"
                     ? "text-[var(--color-warning)]"
-                    : "text-muted-foreground";
+                    : "text-ink-muted";
               const dotClass =
                 tone === "ok"
                   ? "bg-[var(--color-success)]"
                   : tone === "warn"
                     ? "bg-[var(--color-warning)]"
-                    : "bg-muted-foreground/50";
+                    : "bg-ink-muted/50";
 
               return (
                 <div
                   key={provider.id}
                   className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                 >
-                  <div className="flex items-center gap-3 text-sm text-card-foreground">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3 text-sm font-medium text-ink">
+                    <div className="grid size-7 place-items-center rounded-lg bg-canvas text-xs text-ink-muted shadow-press">
                       {provider.name[0]}
                     </div>
                     {provider.name}
                   </div>
-                  <div className={`flex items-center gap-2 text-xs ${toneClass}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full bg-canvas px-3 py-1 text-xs font-semibold shadow-press",
+                      toneClass,
+                    )}
+                  >
+                    <span className={cn("size-2 rounded-full", dotClass)} />
                     {detail}
-                  </div>
+                  </span>
                 </div>
               );
             })}
@@ -381,84 +495,93 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Live feed</CardTitle>
-          <div className="flex items-center gap-2 text-xs text-[var(--color-success)]">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-success)]" />
-            Live
-          </div>
-        </CardHeader>
-        <CardContent className="divide-y divide-border">
-          {feed.map((item) => (
-            <div
-              key={item.id}
-              className="flex gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-medium text-muted-foreground">
-                {item.isBot ? "🤖" : item.initials}
-              </div>
-              <div>
-                <p className="text-sm text-card-foreground">
-                  <span className="font-medium">{item.actor}</span> {item.text}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {item.time}
-                </p>
-              </div>
+      {/* Feed + projects needing attention */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Live feed</CardTitle>
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-success)]">
+              <span className="size-2 animate-pulse rounded-full bg-[var(--color-success)]" />
+              Live
             </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Projects needing attention</CardTitle>
-          <Badge variant="destructive">2 at risk</Badge>
-        </CardHeader>
-        <CardContent className="divide-y divide-border">
-          {projects
-            .filter((p) => p.status === "at-risk")
-            .map((p) => (
+          </CardHeader>
+          <CardContent className="divide-y divide-hairline">
+            {feed.map((item) => (
               <div
-                key={p.id}
-                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                key={item.id}
+                className="flex gap-3 py-3 first:pt-0 last:pb-0"
               >
+                {item.isBot ? (
+                  <Orb size="sm" className="size-8" />
+                ) : (
+                  <div className="grid size-8 shrink-0 place-items-center rounded-full bg-canvas text-[10px] font-semibold text-ink-muted shadow-soft">
+                    {item.initials}
+                  </div>
+                )}
                 <div>
-                  <p className="text-sm font-medium text-card-foreground">
-                    {p.name}
+                  <p className="text-sm text-ink">
+                    <span className="font-semibold">{item.actor}</span>{" "}
+                    {item.text}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Lead by {p.lead} · {p.tasksDone}/{p.tasksTotal} tasks
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <AvatarGroup>
-                    {p.team.map((t) => (
-                      <Avatar key={t} size="sm">
-                        <AvatarFallback className="text-[10px]">{t}</AvatarFallback>
-                      </Avatar>
-                    ))}
-                  </AvatarGroup>
-                  <Badge
-                    variant="outline"
-                    className="flex items-center gap-1 text-[var(--color-warning)]"
-                  >
-                    <AlertTriangle size={10} />
-                    {p.scopeChange}
-                  </Badge>
+                  <p className="mt-0.5 text-xs text-ink-muted">{item.time}</p>
                 </div>
               </div>
             ))}
-        </CardContent>
-      </Card>
-    <OnboardingDialog
-      open={!userLoading && onboarding && !user?.onboarding_completed}
-      onComplete={(data) => {
-        onboardingMutation.mutate({ body: data });
-        setOnboarding(false);
-      }}
-    />
-  </>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Projects needing attention</CardTitle>
+            <Badge variant="destructive">2 at risk</Badge>
+          </CardHeader>
+          <CardContent className="divide-y divide-hairline">
+            {projects
+              .filter((p) => p.status === "at-risk")
+              .map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">
+                      {p.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      Lead by {p.lead} · {p.tasksDone}/{p.tasksTotal} tasks
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <AvatarGroup>
+                      {p.team.map((t) => (
+                        <Avatar key={t} size="sm">
+                          <AvatarFallback className="text-[10px]">
+                            {t}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                    </AvatarGroup>
+                    <Badge
+                      variant="outline"
+                      className="flex items-center gap-1 text-[var(--color-warning)]"
+                    >
+                      <AlertTriangle size={10} />
+                      {p.scopeChange}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <OnboardingDialog
+        open={!userLoading && onboarding && !user?.onboarding_completed}
+        onComplete={(data) => {
+          onboardingMutation.mutate({ body: data });
+          setOnboarding(false);
+        }}
+      />
+    </>
   );
 }
