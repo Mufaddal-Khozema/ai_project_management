@@ -41,7 +41,7 @@ import { useState, useMemo } from "react";
 const adoptionData = weeks.map((w, i) => ({ week: w, value: adoption[i] }));
 
 const COLORS = [
-  "#6366f1",
+  "#8b5cf6",
   "#34d399",
   "#fbbf24",
   "#f87171",
@@ -78,10 +78,10 @@ export default function ReportsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-card-foreground">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">
             Reports
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-ink-muted">
             Precision analytics across projects and team members
           </p>
         </div>
@@ -118,15 +118,15 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="relative overflow-hidden">
-          <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-primary/5 to-transparent" />
+          <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[#8b5cf6]/10 to-transparent" />
           <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Activity size={13} className="text-primary" />
+            <div className="flex items-center gap-2 text-xs text-ink-muted">
+              <Activity size={13} className="text-[#6d5ef0]" />
               Avg. team velocity
             </div>
-            <div className="mt-2 text-2xl font-semibold text-card-foreground">
+            <div className="mt-2 text-2xl font-semibold text-ink">
               {avgVelocity.toFixed(1)}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
+              <span className="ml-1 text-sm font-normal text-ink-muted">
                 pts/wk
               </span>
             </div>
@@ -139,17 +139,17 @@ export default function ReportsPage() {
         <Card className="relative overflow-hidden">
           <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[var(--color-success)]/5 to-transparent" />
           <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-ink-muted">
               <UsersIcon size={13} className="text-[var(--color-success)]" />
               Total contributions
             </div>
-            <div className="mt-2 text-2xl font-semibold text-card-foreground">
+            <div className="mt-2 text-2xl font-semibold text-ink">
               {totalCommits}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
+              <span className="ml-1 text-sm font-normal text-ink-muted">
                 commits
               </span>
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
+            <div className="mt-1 text-xs text-ink-muted">
               {totalReviews} code reviews
             </div>
           </CardContent>
@@ -158,16 +158,16 @@ export default function ReportsPage() {
         <Card className="relative overflow-hidden">
           <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[var(--color-warning)]/5 to-transparent" />
           <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-ink-muted">
               <FolderKanban
                 size={13}
                 className="text-[var(--color-warning)]"
               />
               Active scope
             </div>
-            <div className="mt-2 text-2xl font-semibold text-card-foreground">
+            <div className="mt-2 text-2xl font-semibold text-ink">
               {projects.filter((p) => p.status !== "completed").length}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
+              <span className="ml-1 text-sm font-normal text-ink-muted">
                 projects
               </span>
             </div>
@@ -223,33 +223,35 @@ export default function ReportsPage() {
                         )}
                       </defs>
                       <CartesianGrid
-                        stroke="rgba(255,255,255,0.04)"
+                        stroke="var(--ca-line)"
                         vertical={false}
                       />
                       <XAxis
                         dataKey="week"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#111114",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 10,
+                          background: "var(--ca-bg)",
+                          border: "1px solid var(--ca-line)",
+                          borderRadius: 16,
                           fontSize: 12,
-                          color: "#f5f5f7",
+                          color: "var(--ca-ink)",
+                          boxShadow:
+                            "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                         }}
                       />
                       <Legend
                         iconType="circle"
                         iconSize={6}
-                        wrapperStyle={{ fontSize: 11, color: "#636366" }}
+                        wrapperStyle={{ fontSize: 11, color: "var(--ca-mute)" }}
                       />
                       <Area
                         type="monotone"
@@ -308,54 +310,56 @@ export default function ReportsPage() {
                         >
                           <stop
                             offset="0%"
-                            stopColor="#6366f1"
+                            stopColor="#8b5cf6"
                             stopOpacity={0.35}
                           />
                           <stop
                             offset="100%"
-                            stopColor="#6366f1"
+                            stopColor="#8b5cf6"
                             stopOpacity={0}
                           />
                         </linearGradient>
                       </defs>
                       <CartesianGrid
-                        stroke="rgba(255,255,255,0.04)"
+                        stroke="var(--ca-line)"
                         vertical={false}
                       />
                       <XAxis
                         dataKey="week"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <YAxis
                         domain={[0, 100]}
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                         tickFormatter={(v) => `${v}%`}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#111114",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 10,
+                          background: "var(--ca-bg)",
+                          border: "1px solid var(--ca-line)",
+                          borderRadius: 16,
                           fontSize: 12,
-                          color: "#f5f5f7",
+                          color: "var(--ca-ink)",
+                          boxShadow:
+                            "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                         }}
                         formatter={(v) => [`${v}%`, "Adoption"]}
                       />
                       <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="#6366f1"
+                        stroke="#8b5cf6"
                         strokeWidth={2}
                         fill="url(#adoptionGrad2)"
                         dot={false}
                         activeDot={{
                           r: 4,
-                          fill: "#6366f1",
-                          stroke: "#09090b",
+                          fill: "#8b5cf6",
+                          stroke: "var(--ca-bg)",
                           strokeWidth: 2,
                         }}
                       />
@@ -417,10 +421,10 @@ export default function ReportsPage() {
                       },
                     ]}
                   >
-                    <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                    <PolarGrid stroke="var(--ca-line)" />
                     <PolarAngleAxis
                       dataKey="subject"
-                      tick={{ fill: "#8e8e93", fontSize: 11 }}
+                      tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                     />
                     <PolarRadiusAxis
                       angle={30}
@@ -431,8 +435,8 @@ export default function ReportsPage() {
                     <Radar
                       name="Platform"
                       dataKey="A"
-                      stroke="#6366f1"
-                      fill="#6366f1"
+                      stroke="#8b5cf6"
+                      fill="#8b5cf6"
                       fillOpacity={0.15}
                       strokeWidth={2}
                     />
@@ -447,15 +451,17 @@ export default function ReportsPage() {
                     <Legend
                       iconType="circle"
                       iconSize={6}
-                      wrapperStyle={{ fontSize: 11, color: "#636366" }}
+                      wrapperStyle={{ fontSize: 11, color: "var(--ca-mute)" }}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#111114",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 10,
+                        background: "var(--ca-bg)",
+                        border: "1px solid var(--ca-line)",
+                        borderRadius: 16,
                         fontSize: 12,
-                        color: "#f5f5f7",
+                        color: "var(--ca-ink)",
+                        boxShadow:
+                          "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                       }}
                     />
                   </RadarChart>
@@ -480,14 +486,14 @@ export default function ReportsPage() {
                       margin={{ left: 20 }}
                     >
                       <CartesianGrid
-                        stroke="rgba(255,255,255,0.04)"
+                        stroke="var(--ca-line)"
                         horizontal={false}
                       />
                       <XAxis
                         type="number"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                         tickFormatter={(v) => `${v}%`}
                       />
                       <YAxis
@@ -495,22 +501,24 @@ export default function ReportsPage() {
                         type="category"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#8e8e93", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                         width={140}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#111114",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 10,
+                          background: "var(--ca-bg)",
+                          border: "1px solid var(--ca-line)",
+                          borderRadius: 16,
                           fontSize: 12,
-                          color: "#f5f5f7",
+                          color: "var(--ca-ink)",
+                          boxShadow:
+                            "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                         }}
                         formatter={(v) => [v, "Scope change"]}
                       />
                       <Bar
                         dataKey="health"
-                        fill="#6366f1"
+                        fill="#8b5cf6"
                         radius={[0, 4, 4, 0]}
                         barSize={16}
                         name="Health %"
@@ -530,14 +538,14 @@ export default function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={projects}>
                       <CartesianGrid
-                        stroke="rgba(255,255,255,0.04)"
+                        stroke="var(--ca-line)"
                         vertical={false}
                       />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 10 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 10 }}
                         interval={0}
                         angle={-15}
                         textAnchor="end"
@@ -546,21 +554,23 @@ export default function ReportsPage() {
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#111114",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 10,
+                          background: "var(--ca-bg)",
+                          border: "1px solid var(--ca-line)",
+                          borderRadius: 16,
                           fontSize: 12,
-                          color: "#f5f5f7",
+                          color: "var(--ca-ink)",
+                          boxShadow:
+                            "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                         }}
                       />
                       <Bar
                         dataKey="tasksTotal"
                         stackId="a"
-                        fill="rgba(255,255,255,0.06)"
+                        fill="var(--ca-line)"
                         radius={[4, 4, 0, 0]}
                         barSize={24}
                         name="Total"
@@ -568,7 +578,7 @@ export default function ReportsPage() {
                       <Bar
                         dataKey="tasksDone"
                         stackId="a"
-                        fill="#6366f1"
+                        fill="#8b5cf6"
                         radius={[4, 4, 0, 0]}
                         barSize={24}
                         name="Done"
@@ -584,7 +594,7 @@ export default function ReportsPage() {
             <CardHeader>
               <CardTitle>Project health matrix</CardTitle>
             </CardHeader>
-            <CardContent className="divide-y divide-border">
+            <CardContent className="divide-y divide-hairline">
               {projects.map((p) => (
                 <div
                   key={p.id}
@@ -592,7 +602,7 @@ export default function ReportsPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3">
-                      <p className="truncate text-sm font-medium text-card-foreground">
+                      <p className="truncate text-sm font-medium text-ink">
                         {p.name}
                       </p>
                       {p.status === "at-risk" ? (
@@ -603,17 +613,17 @@ export default function ReportsPage() {
                         <Badge variant="outline">On track</Badge>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-ink-muted">
                       Lead: {p.lead} · Sprint {p.sprint}
                     </p>
                   </div>
                   <div className="ml-4 flex items-center gap-6">
                     <div className="hidden sm:block">
-                      <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                      <div className="mb-1 flex justify-between text-[10px] text-ink-muted">
                         <span>Health</span>
                         <span>{p.health}%</span>
                       </div>
-                      <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
+                      <div className="h-1 w-24 overflow-hidden rounded-full bg-canvas shadow-press">
                         <div
                           className="h-full rounded-full"
                           style={{
@@ -629,10 +639,10 @@ export default function ReportsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-card-foreground">
+                      <p className="text-sm font-medium text-ink">
                         {p.tasksDone}/{p.tasksTotal}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[10px] text-ink-muted">
                         tasks
                       </p>
                     </div>
@@ -660,38 +670,40 @@ export default function ReportsPage() {
                       margin={{ top: 10 }}
                     >
                       <CartesianGrid
-                        stroke="rgba(255,255,255,0.04)"
+                        stroke="var(--ca-line)"
                         vertical={false}
                       />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#111114",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 10,
+                          background: "var(--ca-bg)",
+                          border: "1px solid var(--ca-line)",
+                          borderRadius: 16,
                           fontSize: 12,
-                          color: "#f5f5f7",
+                          color: "var(--ca-ink)",
+                          boxShadow:
+                            "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                         }}
                       />
                       <Legend
                         iconType="circle"
                         iconSize={6}
-                        wrapperStyle={{ fontSize: 11, color: "#636366" }}
+                        wrapperStyle={{ fontSize: 11, color: "var(--ca-mute)" }}
                       />
                       <Bar
                         dataKey="commits"
                         stackId="a"
-                        fill="#6366f1"
+                        fill="#8b5cf6"
                         radius={[0, 0, 0, 0]}
                         barSize={20}
                       />
@@ -735,7 +747,7 @@ export default function ReportsPage() {
                       margin={{ left: 10 }}
                     >
                       <CartesianGrid
-                        stroke="rgba(255,255,255,0.04)"
+                        stroke="var(--ca-line)"
                         horizontal={false}
                       />
                       <XAxis
@@ -743,35 +755,37 @@ export default function ReportsPage() {
                         domain={[0, 100]}
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#636366", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                       />
                       <YAxis
                         dataKey="initials"
                         type="category"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "#8e8e93", fontSize: 11 }}
+                        tick={{ fill: "var(--ca-mute)", fontSize: 11 }}
                         width={30}
                       />
                       <Tooltip
                         contentStyle={{
-                          background: "#111114",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 10,
+                          background: "var(--ca-bg)",
+                          border: "1px solid var(--ca-line)",
+                          borderRadius: 16,
                           fontSize: 12,
-                          color: "#f5f5f7",
+                          color: "var(--ca-ink)",
+                          boxShadow:
+                            "4px 4px 9px var(--ca-lo), -4px -4px 9px var(--ca-hi)",
                         }}
                       />
                       <Bar
                         dataKey="trustRate"
-                        fill="#6366f1"
+                        fill="#8b5cf6"
                         radius={[0, 4, 4, 0]}
                         barSize={12}
                         name="Trust %"
                       />
                       <Bar
                         dataKey="workload"
-                        fill="rgba(255,255,255,0.08)"
+                        fill="var(--ca-line)"
                         radius={[0, 4, 4, 0]}
                         barSize={12}
                         name="Load %"
@@ -787,7 +801,7 @@ export default function ReportsPage() {
             <CardHeader>
               <CardTitle>User precision matrix</CardTitle>
             </CardHeader>
-            <CardContent className="divide-y divide-border">
+            <CardContent className="divide-y divide-hairline">
               {users.map((u) => {
                 return (
                   <div
@@ -804,36 +818,36 @@ export default function ReportsPage() {
                         {u.initials}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-card-foreground">
+                        <p className="text-sm font-medium text-ink">
                           {u.name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-ink-muted">
                           {u.role} · {u.team}
                         </p>
                       </div>
                     </div>
                     <div className="hidden gap-6 sm:flex">
                       <div className="text-center">
-                        <p className="text-sm font-medium text-card-foreground">
+                        <p className="text-sm font-medium text-ink">
                           {u.tasksClosedThisWeek}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[10px] text-ink-muted">
                           tasks/wk
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-card-foreground">
+                        <p className="text-sm font-medium text-ink">
                           {u.hoursSaved}h
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[10px] text-ink-muted">
                           saved
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-card-foreground">
+                        <p className="text-sm font-medium text-ink">
                           {u.trustRate}%
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[10px] text-ink-muted">
                           trust
                         </p>
                       </div>
@@ -847,7 +861,7 @@ export default function ReportsPage() {
                         >
                           {u.velocityTrend}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[10px] text-ink-muted">
                           velocity
                         </p>
                       </div>

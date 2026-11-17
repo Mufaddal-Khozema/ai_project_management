@@ -69,7 +69,7 @@ async function authFetch(
     const newToken = await getRefreshToken();
     if (!newToken) {
       localStorage.removeItem(StorageKeys.TOKEN);
-      window.location.href = "/signup";
+      window.location.href = "/signin";
       return new Promise<Response>(() => {});
     }
 

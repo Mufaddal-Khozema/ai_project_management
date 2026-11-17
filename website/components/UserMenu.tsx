@@ -33,7 +33,7 @@ export function UserMenu() {
 
   const handleLogout = () => {
     localStorage.removeItem(StorageKeys.TOKEN);
-    router.replace("/signup");
+    router.replace("/signin");
   };
 
   const handleSettings = () => {

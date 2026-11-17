@@ -1,8 +1,11 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr
 
 
 class SendOTPRequest(BaseModel):
     email: EmailStr
+    purpose: Literal["signup", "signin"] = "signup"
 
 
 class SendOTPResponse(BaseModel):

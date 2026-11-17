@@ -9,7 +9,7 @@ import {
 } from "@stripe/react-stripe-js";
 
 const btnCls =
-  "w-full h-[38px] bg-indigo-600 border-none rounded-xl text-white font-['Inter_Tight',-apple-system,BlinkMacSystemFont,sans-serif] text-[15px] font-semibold tracking-[-0.01em] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-indigo-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none";
+  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 text-sm font-semibold text-white shadow-soft transition-all active:shadow-press disabled:cursor-not-allowed disabled:opacity-50";
 
 export function PaymentForm({
   onSuccess,
@@ -88,8 +88,8 @@ export function PaymentForm({
       </div>
 
       {error && (
-        <div className="text-xs text-red-500 mb-3 flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <div className="mb-3 flex items-center gap-1 text-xs text-red-500">
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -109,15 +109,15 @@ export function PaymentForm({
             setAgreed(e.target.checked);
             if (e.target.checked) setAgreementError(false);
           }}
-          className="appearance-none mt-[1px] h-5 w-5 min-w-5 relative cursor-pointer rounded-[6px] border border-white/5 bg-[#1a1a1f] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] checked:border-indigo-500 checked:bg-indigo-500 after:absolute after:left-[6px] after:top-[2px] after:h-[10px] after:w-[5px] after:rotate-45 after:border-b-2 after:border-r-2 after:border-white after:opacity-0 checked:after:opacity-100"
+          className="relative mt-0.5 size-5 shrink-0 cursor-pointer appearance-none rounded-md border border-hairline bg-canvas shadow-press transition-all after:absolute after:top-0.5 after:left-1.5 after:h-2.5 after:w-1.5 after:rotate-45 after:border-r-2 after:border-b-2 after:border-white after:opacity-0 checked:border-indigo-600 checked:bg-indigo-600 checked:after:opacity-100"
         />
-        <span className="text-[13px] leading-[1.6] text-[#8e8e93]">
+        <span className="text-sm leading-relaxed text-ink-muted">
           I agree to the{" "}
-          <Link href="/terms" className="text-indigo-500 no-underline font-medium transition-opacity duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:opacity-80">
+          <Link href="/terms" className="font-medium text-indigo-500 no-underline transition-opacity hover:opacity-80">
             Terms of Service
           </Link>
           {" "}and{" "}
-          <Link href="/privacy" className="text-indigo-500 no-underline font-medium transition-opacity duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:opacity-80">
+          <Link href="/privacy" className="font-medium text-indigo-500 no-underline transition-opacity hover:opacity-80">
             Privacy Policy
           </Link>
           .
@@ -131,10 +131,10 @@ export function PaymentForm({
       >
         <span>{loading ? "Processing…" : "Start free trial"}</span>
         {loading && (
-          <span className="size-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         )}
         {!loading && (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14" />
             <path d="m12 5 7 7-7 7" />
           </svg>

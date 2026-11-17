@@ -2055,6 +2055,14 @@
           "email": {
             "type": "string",
             "format": "email"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "signup",
+              "signin"
+            ],
+            "default": "signup"
           }
         },
         "type": "object",
