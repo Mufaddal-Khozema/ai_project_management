@@ -15,6 +15,7 @@ async def find_by_workspace_channel(
         Project.select()
         .where(
             Project.workspace_id == workspace_id,
+            Project.deleted_at.is_null(),
             Project.comm_provider == comm_provider,
             Project.channel_id == channel_id,
         )
@@ -29,6 +30,7 @@ async def find_by_uuid(workspace_id: int, uuid: str) -> dict[str, Any] | None:
         .where(
             Project.workspace_id == workspace_id,
             Project.uuid == uuid,
+            Project.deleted_at.is_null(),
         )
         .run()
     )
@@ -51,6 +53,7 @@ async def find_by_channel(
         & (Project.comm_provider == comm_provider)
         & (Project.channel_id == channel_id)
         & (Project.active == True)  # noqa: E712 - Piccolo needs the comparison
+        & Project.deleted_at.is_null()
     )
     if guild_id:
         where &= (Project.guild_id == guild_id) | Project.guild_id.is_null()
@@ -66,6 +69,7 @@ async def find_by_comm_channel(
         (Project.comm_provider == comm_provider)
         & (Project.channel_id == channel_id)
         & (Project.active == True)  # noqa: E712
+        & Project.deleted_at.is_null()
     )
     if guild_id:
         where &= (Project.guild_id == guild_id) | Project.guild_id.is_null()
@@ -75,7 +79,7 @@ async def find_by_comm_channel(
 async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
     return await (
         Project.select()
-        .where(Project.workspace_id == workspace_id)
+        .where(Project.workspace_id == workspace_id, Project.deleted_at.is_null())
         .order_by(Project.updated_on, descending=True)
         .run()
     )
@@ -151,7 +155,7 @@ async def delete_by_uuid(workspace_id: int, uuid: str) -> bool:
 async def delete_by_workspace(workspace_id: int) -> bool:
     rows = await (
         Project.delete()
-        .where(Project.workspace_id == workspace_id)
+        .where(Project.workspace_id == workspace_id, Project.deleted_at.is_null())
         .run()
     )
     return bool(rows)

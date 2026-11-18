@@ -29,7 +29,7 @@
   --ca-line: #2a3266;
 }
 
-@media (prefers-color-scheme: dark) {
+/** @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --background: #1b2040;
     --foreground: #f4f4f5;
@@ -42,7 +42,7 @@
     --ca-mute: #9aa5d6;
     --ca-line: #2a3266;
   }
-}
+} **/
 
 @theme inline {
   --color-background: var(--background);
@@ -274,7 +274,7 @@ body {
   color-scheme: light;
 }
 
-:root[data-theme="dark"] .admin-app {
+/** :root[data-theme="dark"] .admin-app {
   --color-primary: #8b7bff;
   --color-brand: #8b7bff;
   --color-success: #4fd8a0;
@@ -285,9 +285,9 @@ body {
   --color-danger-bg: rgba(255, 122, 160, 0.14);
   --color-destructive: #ff7aa0;
   color-scheme: dark;
-}
+} **/
 
-@media (prefers-color-scheme: dark) {
+/** @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .admin-app {
     --color-primary: #8b7bff;
     --color-brand: #8b7bff;
@@ -300,7 +300,7 @@ body {
     --color-destructive: #ff7aa0;
     color-scheme: dark;
   }
-}
+} **/
 
 .admin-app h1,
 .admin-app h2,

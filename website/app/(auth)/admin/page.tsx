@@ -177,7 +177,7 @@ export default function DashboardPage() {
             </h1>
             <p className="mt-3 max-w-xl text-sm text-white/80">
               Adoption is climbing and two integrations need attention. Priya
-              is carrying 4 active workstreams. The MS Teams token expires in 3
+              is carrying 4 active workstreams. The Jira token expires in 3
               days.
             </p>
 

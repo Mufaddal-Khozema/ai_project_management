@@ -3,6 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions, useQuery, useMutation } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
+import { deleteWorkspace } from '../sdk.gen';
+import type { DeleteWorkspaceData, DeleteWorkspaceResponse } from '../types.gen';
 import { cancelSubscription, connectTaiga, disconnectIntegration, getCurrentSubscription, getCurrentUser, getInvoices, healthCheck, initiateIntegrationAuth, listChannelMembers, listChannels, listIntegrations, listMembers, listPlans, listProjectMembers, listProjects, listWorkspaceUsers, oauthCallback, type Options, paymentsWebhook, refreshIntegration, refreshToken, sendOtp, setupIntent, socialCallback, socialLogin, submitOnboarding, updateCurrentUser, verifyOtp } from '../sdk.gen';
 import type { CancelSubscriptionData, CancelSubscriptionResponse2, ConnectTaigaData, ConnectTaigaError, ConnectTaigaResponse, DisconnectIntegrationData, DisconnectIntegrationError, DisconnectIntegrationResponse, GetCurrentSubscriptionData, GetCurrentSubscriptionResponse, GetCurrentUserData, GetCurrentUserResponse, GetInvoicesData, GetInvoicesResponse, HealthCheckData, HealthCheckResponse, InitiateIntegrationAuthData, InitiateIntegrationAuthError, InitiateIntegrationAuthResponse, ListChannelMembersData, ListChannelMembersError, ListChannelMembersResponse, ListChannelsData, ListChannelsError, ListChannelsResponse, ListIntegrationsData, ListIntegrationsResponse, ListMembersData, ListMembersError, ListMembersResponse, ListPlansData, ListPlansResponse, ListProjectMembersData, ListProjectMembersError, ListProjectMembersResponse, ListProjectsData, ListProjectsError, ListProjectsResponse, ListWorkspaceUsersData, ListWorkspaceUsersResponse, OauthCallbackData, OauthCallbackError, PaymentsWebhookData, PaymentsWebhookResponse, RefreshIntegrationData, RefreshIntegrationError, RefreshIntegrationResponse, RefreshTokenData, RefreshTokenResponse, SendOtpData, SendOtpError, SendOtpResponse2, SetupIntentData, SetupIntentError, SetupIntentResponse2, SocialCallbackData, SocialCallbackError, SocialLoginData, SocialLoginError, SubmitOnboardingData, SubmitOnboardingError, SubmitOnboardingResponse, UpdateCurrentUserData, UpdateCurrentUserError, UpdateCurrentUserResponse, VerifyOtpData, VerifyOtpError, VerifyOtpResponse } from '../types.gen';
 
@@ -38,6 +40,13 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
     }
     return [params];
 };
+
+export const deleteWorkspaceMutation = (options?: Partial<Options<DeleteWorkspaceData>>): UseMutationOptions<DeleteWorkspaceResponse, DefaultError, Options<DeleteWorkspaceData>> => ({
+    mutationFn: async (fnOptions) => {
+        const { data } = await deleteWorkspace({ ...options, ...fnOptions, throwOnError: true });
+        return data;
+    },
+});
 
 export const healthCheckQueryKey = (options?: Options<HealthCheckData>) => createQueryKey('healthCheck', options);
 
@@ -710,6 +719,12 @@ export const useVerifyOtpMutation = (options?: Partial<Options<VerifyOtpData>>) 
             return data;
         },
         ...options
+    });
+
+export const useDeleteWorkspaceMutation = (options?: Partial<Options<DeleteWorkspaceData>>) =>
+    useMutation<DeleteWorkspaceResponse, DefaultError, Options<DeleteWorkspaceData>>({
+        ...deleteWorkspaceMutation(options),
+        ...options,
     });
 
 /**

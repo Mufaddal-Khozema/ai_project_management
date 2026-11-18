@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -9,6 +9,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  ChevronsUpDown,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { UserMenu } from "@/components/UserMenu";
@@ -17,6 +18,15 @@ import { Threads } from "@/components/landing/threads";
 import { ThemeIcon } from "@/components/landing/icons";
 import { useTheme } from "@/components/landing/use-theme";
 import { StorageKeys } from "@/constants";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const nav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -39,6 +49,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const shellRef = useRef<HTMLDivElement>(null);
   const { toggleTheme, preference, setThemePreference } = useTheme();
 
@@ -139,10 +150,29 @@ export default function DashboardLayout({
               CoordinaAI
             </strong>
             <span className="flex-1" />
-            <span className="inline-flex items-center gap-2 rounded-full bg-canvas px-3.5 py-1.5 text-[13px] font-semibold text-ink shadow-press">
-              <span className="size-2 rounded-full bg-[#1f9d6b]" />
-              Acme Eng · Pro trial
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Switch workspace"
+                className="inline-flex items-center gap-2 rounded-full bg-canvas px-3.5 py-1.5 text-[13px] font-semibold text-ink shadow-press outline-none transition-shadow hover:shadow-soft focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="size-2 rounded-full bg-[#1f9d6b]" />
+                <span>Acme Eng · Pro trial</span>
+                <ChevronsUpDown size={15} aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+                  <DropdownMenuItem className="font-semibold" aria-current="true">
+                    <span className="size-2 rounded-full bg-[#1f9d6b]" />
+                    Acme Eng
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/admin/settings")}>
+                  Manage workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
               type="button"
               aria-label="Switch light or dark theme"

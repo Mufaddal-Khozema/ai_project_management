@@ -11,14 +11,14 @@ def utc_now() -> datetime:
 async def find_by_workspace_provider(workspace_id: int, provider: str) -> dict[str, Any] | None:
     rows = await (
         Integration.select()
-        .where(Integration.workspace_id == workspace_id, Integration.provider == provider)
+        .where(Integration.workspace_id == workspace_id, Integration.provider == provider, Integration.deleted_at.is_null())
         .run()
     )
     return rows[0] if rows else None
 
 
 async def list_by_workspace(workspace_id: int) -> list[Integration]:
-    return await Integration.objects().where(Integration.workspace_id == workspace_id).run()
+    return await Integration.objects().where(Integration.workspace_id == workspace_id, Integration.deleted_at.is_null()).run()
 
 
 async def create(
@@ -69,7 +69,7 @@ async def update_token(
                 Integration.updated_on: utc_now(),
             }
         )
-        .where(Integration.id == integration_id)
+        .where(Integration.id == integration_id, Integration.deleted_at.is_null())
         .returning(*Integration.all_columns())
         .run()
     )
@@ -84,7 +84,7 @@ async def update_status(integration_id: int, status: str) -> dict[str, Any]:
                 Integration.updated_on: utc_now(),
             }
         )
-        .where(Integration.id == integration_id)
+        .where(Integration.id == integration_id, Integration.deleted_at.is_null())
         .returning(*Integration.all_columns())
         .run()
     )
@@ -106,6 +106,7 @@ async def list_refreshable(refresh_before: datetime) -> list[dict[str, Any]]:
         .where(
             Integration.expires_at <= refresh_before,
             Integration.status != "error",
+            Integration.deleted_at.is_null(),
         )
         .run()
     )

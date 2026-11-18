@@ -278,6 +278,28 @@ async def cancel_subscription(email: str) -> dict:
     }
 
 
+async def cancel_subscription_immediately(email: str) -> None:
+    """Cancel billing immediately for destructive account/workspace actions."""
+    user = await user_repo.find_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    sub = await payment_repo.find_by_user_id(user["id"])
+    if not sub or sub.get("status") == "canceled":
+        return
+    try:
+        await asyncio.to_thread(
+            stripe.Subscription.cancel,
+            sub["stripe_subscription_id"],
+        )
+    except stripe.StripeError as e:
+        logger.error("stripe immediate cancellation failed", error=str(e))
+        raise HTTPException(status_code=502, detail="Could not cancel subscription")
+    await payment_repo.update(
+        sub["stripe_subscription_id"],
+        {"status": "canceled", "cancel_at_period_end": True},
+    )
+
+
 async def list_invoices(email: str) -> list[dict]:
     user = await user_repo.find_by_email(email)
     if not user:
