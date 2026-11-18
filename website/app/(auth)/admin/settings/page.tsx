@@ -21,6 +21,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCurrentUser,
@@ -29,7 +30,9 @@ import {
   useTaigaConnectMutation,
   useInitiateIntegrationAuthMutation,
   useDisconnectIntegrationMutation,
+  useDeleteWorkspaceMutation,
 } from "@/lib/api/@tanstack/react-query.gen";
+import { StorageKeys } from "@/constants";
 import type { IntegrationResponse } from "@/lib/api/types.gen";
 import { listIntegrationsQueryKey } from "@/lib/api/@tanstack/react-query.gen";
 import { IntegrationCard } from "@/components/IntegrationCard";
@@ -56,6 +59,7 @@ import {
 import { useTheme } from "@/components/landing/use-theme";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: user, isLoading } = useCurrentUser();
   const updateProfile = useUpdateProfileMutation();
   const queryClient = useQueryClient();
@@ -66,6 +70,7 @@ export default function SettingsPage() {
   const initiateAuth = useInitiateIntegrationAuthMutation();
   const disconnectMutation = useDisconnectIntegrationMutation();
   const taigaConnect = useTaigaConnectMutation();
+  const deleteWorkspace = useDeleteWorkspaceMutation();
 
   const integrationsById = useMemo(() => {
     const map: Record<string, IntegrationResponse> = {};
@@ -74,6 +79,14 @@ export default function SettingsPage() {
     }
     return map;
   }, [integrationsData]);
+
+  const displayedIntegrations = useMemo(
+    () =>
+      (integrationsData?.integrations ?? []).filter(
+        (i) => i.provider in integrationProviderById,
+      ),
+    [integrationsData],
+  );
 
   const [connectingProvider, setConnectingProvider] = useState<IntegrationProviderId | null>(null);
   const [disconnectProvider, setDisconnectProvider] = useState<IntegrationProviderId | null>(null);
@@ -137,6 +150,7 @@ export default function SettingsPage() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const handleSaveProfile = async () => {
@@ -150,6 +164,18 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {}
+  };
+
+  const handleDeleteWorkspace = async () => {
+    try {
+      setDeleteError(null);
+      await deleteWorkspace.mutateAsync({ body: { confirmation: "DELETE" } });
+      localStorage.removeItem(StorageKeys.TOKEN);
+      router.replace("/signin");
+    } catch (error) {
+      const detail = error as { detail?: string };
+      setDeleteError(detail?.detail ?? "Workspace deletion failed. Please try again.");
+    }
   };
 
   return (
@@ -325,7 +351,7 @@ export default function SettingsPage() {
                       }
                     />
                   ))}
-                  {(integrationsData?.integrations.length ?? 0) === 0 && (
+                  {displayedIntegrations.length === 0 && (
                     <p className="pt-1 text-xs text-ink-muted">
                       Connect your communication and project tools to start coordinating.
                     </p>
@@ -609,12 +635,12 @@ export default function SettingsPage() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-ink-muted">
-              Type <b className="text-ink">acme-eng</b> to confirm:
+              Type <b className="text-ink">DELETE</b> to confirm:
             </p>
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="acme-eng"
+              placeholder="DELETE"
             />
           </div>
           <DialogFooter>
@@ -624,15 +650,15 @@ export default function SettingsPage() {
             <Button
               variant="destructive"
               size="sm"
-              disabled={confirmText !== "acme-eng"}
-              onClick={() => {
-                setDeleteOpen(false);
-                setConfirmText("");
-              }}
+              disabled={confirmText !== "DELETE" || deleteWorkspace.isPending}
+              onClick={handleDeleteWorkspace}
             >
-              Permanently delete
+              {deleteWorkspace.isPending ? "Deleting…" : "Delete workspace"}
             </Button>
           </DialogFooter>
+          {deleteError ? (
+            <p className="text-xs text-destructive" role="alert">{deleteError}</p>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

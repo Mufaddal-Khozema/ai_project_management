@@ -57,6 +57,9 @@ export default function AuthScreen({ mode }: { mode: AuthScreenMode }) {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const getPostAuthPath = async () => {
+    if (isSignin) {
+      return "/admin";
+    }
     try {
       const { data } = await getCurrentUser();
       return data?.has_subscription ? "/admin?onboarding=1" : "/plans";
@@ -324,7 +327,8 @@ export default function AuthScreen({ mode }: { mode: AuthScreenMode }) {
                     type="button"
                     className={socialBtnCls}
                     onClick={() => {
-                      window.location.href = `${API_URL}/api/auth/google/login`;
+                      const redirect = isSignin ? "/signin" : "/signup";
+                      window.location.href = `${API_URL}/api/auth/google/login?redirect=${encodeURIComponent(redirect)}`;
                     }}
                     disabled={oauthLoading}
                   >
@@ -345,7 +349,8 @@ export default function AuthScreen({ mode }: { mode: AuthScreenMode }) {
                     type="button"
                     className={socialBtnCls}
                     onClick={() => {
-                      window.location.href = `${API_URL}/api/auth/github/login`;
+                      const redirect = isSignin ? "/signin" : "/signup";
+                      window.location.href = `${API_URL}/api/auth/github/login?redirect=${encodeURIComponent(redirect)}`;
                     }}
                     disabled={oauthLoading}
                   >

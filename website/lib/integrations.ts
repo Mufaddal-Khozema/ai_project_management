@@ -25,13 +25,6 @@ export const integrationProviders: IntegrationProvider[] = [
     refreshable: false,
   },
   {
-    id: "teams",
-    name: "Teams",
-    category: "comm",
-    logo: "https://images.icon-icons.com/2397/PNG/512/microsoft_office_teams_logo_icon_145726.png",
-    refreshable: true,
-  },
-  {
     id: "discord",
     name: "Discord",
     category: "comm",
@@ -46,17 +39,10 @@ export const integrationProviders: IntegrationProvider[] = [
     refreshable: true,
   },
   {
-    id: "clickup",
-    name: "ClickUp",
-    category: "pm",
-    logo: "https://images.seeklogo.com/logo-png/38/1/clickup-symbol-logo-png_seeklogo-389754.png",
-    refreshable: true,
-  },
-  {
     id: "taiga",
     name: "Taiga",
     category: "pm",
-    logo: "https://docs.taiga.io/images/logo-taiga.png",
+    logo: "/taiga.svg",
     refreshable: true,
   },
 ];

@@ -11,7 +11,7 @@ def utc_now() -> datetime:
 async def find_by_workspace_user(workspace_id: int, user_id: int) -> dict[str, Any] | None:
     rows = await (
         WorkspaceMember.select()
-        .where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id)
+        .where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id, WorkspaceMember.deleted_at.is_null())
         .run()
     )
     return rows[0] if rows else None
@@ -46,7 +46,7 @@ async def add(
 async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
     return await (
         WorkspaceMember.select()
-        .where(WorkspaceMember.workspace_id == workspace_id)
+        .where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.deleted_at.is_null())
         .run()
     )
 

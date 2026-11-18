@@ -2,6 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
+import type { DeleteWorkspaceData, DeleteWorkspaceResponses } from './types.gen';
 import type { CancelSubscriptionData, CancelSubscriptionResponses, ConnectTaigaData, ConnectTaigaErrors, ConnectTaigaResponses, DisconnectIntegrationData, DisconnectIntegrationErrors, DisconnectIntegrationResponses, GetCurrentSubscriptionData, GetCurrentSubscriptionResponses, GetCurrentUserData, GetCurrentUserResponses, GetInvoicesData, GetInvoicesResponses, HealthCheckData, HealthCheckResponses, InitiateIntegrationAuthData, InitiateIntegrationAuthErrors, InitiateIntegrationAuthResponses, ListChannelMembersData, ListChannelMembersErrors, ListChannelMembersResponses, ListChannelsData, ListChannelsErrors, ListChannelsResponses, ListIntegrationsData, ListIntegrationsResponses, ListMembersData, ListMembersErrors, ListMembersResponses, ListPlansData, ListPlansResponses, ListProjectMembersData, ListProjectMembersErrors, ListProjectMembersResponses, ListProjectsData, ListProjectsErrors, ListProjectsResponses, ListWorkspaceUsersData, ListWorkspaceUsersResponses, OauthCallbackData, OauthCallbackErrors, OauthCallbackResponses, PaymentsWebhookData, PaymentsWebhookResponses, RefreshIntegrationData, RefreshIntegrationErrors, RefreshIntegrationResponses, RefreshTokenData, RefreshTokenResponses, SendOtpData, SendOtpErrors, SendOtpResponses, SetupIntentData, SetupIntentErrors, SetupIntentResponses, SocialCallbackData, SocialCallbackErrors, SocialCallbackResponses, SocialLoginData, SocialLoginErrors, SocialLoginResponses, SubmitOnboardingData, SubmitOnboardingErrors, SubmitOnboardingResponses, UpdateCurrentUserData, UpdateCurrentUserErrors, UpdateCurrentUserResponses, VerifyOtpData, VerifyOtpErrors, VerifyOtpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
@@ -17,6 +18,19 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * DeleteWorkspace
+ */
+export const deleteWorkspace = <ThrowOnError extends boolean = false>(options: Options<DeleteWorkspaceData, ThrowOnError>): RequestResult<DeleteWorkspaceResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteWorkspaceResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/workspace',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * HealthCheck

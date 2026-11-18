@@ -73,7 +73,9 @@ class Workspace(Table, tablename="workspace", db=DB):
     comm_platform = Varchar(length=50, null=True, default=None)
     pm_platform = Varchar(length=50, null=True, default=None)
     onboarding_completed_at = Timestamp(null=True, default=None)
+    # Retained for migration compatibility; new code uses deleted_at.
     is_deleted = Boolean(null=False, default=False)
+    deleted_at = Timestamp(null=True, default=None)
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())
 
@@ -94,6 +96,7 @@ class Project(Table, tablename="projects", db=DB):
     guild_id = Varchar(length=255, null=True, default=None)
     channel_id = Varchar(length=255, null=False)
     active = Boolean(null=False, default=True)
+    deleted_at = Timestamp(null=True, default=None)
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())
 
@@ -113,6 +116,7 @@ class WorkspaceMember(Table, tablename="workspace_members", db=DB):
     )
     role = Varchar(length=50, null=False, default="member")
     status = Varchar(length=50, null=False, default="pending")
+    deleted_at = Timestamp(null=True, default=None)
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())
 
@@ -132,6 +136,7 @@ class Integration(Table, tablename="integrations", db=DB):
     status = Varchar(length=20, null=False, default=IntegrationStatus.connected, choices=IntegrationStatus)
     expires_at = Timestamp(null=True, default=None)
     last_synced_at = Timestamp(null=True, default=None)
+    deleted_at = Timestamp(null=True, default=None)
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())
 
@@ -224,7 +229,8 @@ ON email_log (user_id, email_type, entity_id);
 
 CREATE_PROJECTS_WORKSPACE_COMM_CHANNEL_UNIQUE_DDL = """
 CREATE UNIQUE INDEX IF NOT EXISTS projects_workspace_comm_channel_idx
-ON projects (workspace_id, comm_provider, channel_id);
+ON projects (comm_provider, channel_id)
+WHERE active = TRUE;
 """
 
 CREATE_USER_ACCOUNT_STATUS_DDL = """

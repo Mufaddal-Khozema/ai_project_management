@@ -129,7 +129,7 @@ export default function LandingPage() {
             <ThemeIcon />
           </button>
           <Link
-            href="/signup"
+            href="/signin"
             className="hidden rounded-xl bg-canvas px-5 py-3 text-sm font-semibold text-ink shadow-soft md:inline-flex"
           >
             Sign in

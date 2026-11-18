@@ -59,7 +59,18 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         project_service.validate_provider_pair(pm_provider, comm_provider)
 
     existing = await workspace_repo.find_by_user_id(user["id"])
+    deleted_workspace = None
     if not existing:
+        deleted_workspace = await workspace_repo.find_by_user_id(
+            user["id"], include_deleted=True
+        )
+    if deleted_workspace:
+        row = await workspace_repo.restore(deleted_workspace["id"], provided)
+        await workspace_member_repo.add(
+            row["id"], user["id"], role="owner", status="active"
+        )
+        created = False
+    elif not existing:
         row = await workspace_repo.create(user["id"], provided)
         logger.info(
             "workspace created from onboarding",
@@ -76,12 +87,10 @@ async def submit_onboarding(email: str, data: OnboardingRequest) -> tuple[dict, 
         )
         created = False
 
-    await workspace_member_repo.add(
-        row["id"],
-        user["id"],
-        role="owner",
-        status="active",
-    )
+    if not deleted_workspace:
+        await workspace_member_repo.add(
+            row["id"], user["id"], role="owner", status="active"
+        )
 
     if project_id and channel_id:
         await project_service.save_mapping(

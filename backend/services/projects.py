@@ -131,6 +131,25 @@ async def save_mapping(
     """Validate a channel → project pair against the connected providers and store it."""
     validate_provider_pair(pm_provider, comm_provider)
 
+    # A communication channel is a globally addressable resource.  It must not
+    # be claimed by two workspaces, even though mappings are otherwise managed
+    # per workspace.
+    existing_channel = await project_repo.find_by_comm_channel(
+        comm_provider, channel_id
+    )
+    if existing_channel and existing_channel.workspace_id != workspace_id:
+        logger.warning(
+            "project channel already mapped in another workspace",
+            workspace_id=workspace_id,
+            existing_workspace_id=existing_channel.workspace_id,
+            comm_provider=comm_provider,
+            channel_id=channel_id,
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="This channel is already being used in another workspace.",
+        )
+
     project_name, project_slug = await _resolve_project(
         workspace_id, pm_provider, project_id
     )

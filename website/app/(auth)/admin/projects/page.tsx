@@ -23,9 +23,11 @@ import {
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listProjectsOptions, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
+import { CreateProjectSheet } from "@/components/CreateProjectSheet";
 
 export default function ProjectsPage() {
   const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { data: integrationsData } = useIntegrations();
 
   const activePmProvider = useMemo(() => {
@@ -110,7 +112,9 @@ export default function ProjectsPage() {
             {projects.filter((p) => p.status === "at-risk").length} at risk
           </p>
         </div>
-        <Button size="sm">New project</Button>
+        <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+          New project
+        </Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -281,6 +285,11 @@ export default function ProjectsPage() {
           </Card>
         ))}
       </div>
+
+      <CreateProjectSheet
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+      />
     </div>
   );
 }

@@ -535,6 +535,18 @@ export type GetCurrentSubscriptionResponses = {
 
 export type GetCurrentSubscriptionResponse = GetCurrentSubscriptionResponses[keyof GetCurrentSubscriptionResponses];
 
+export type DeleteWorkspaceRequest = { confirmation: string };
+
+export type DeleteWorkspaceData = {
+    body: DeleteWorkspaceRequest;
+    path?: never;
+    query?: never;
+    url: '/api/workspace';
+};
+
+export type DeleteWorkspaceResponses = { 200: { message: string } };
+export type DeleteWorkspaceResponse = DeleteWorkspaceResponses[keyof DeleteWorkspaceResponses];
+
 export type CancelSubscriptionData = {
     body?: never;
     path?: never;
