@@ -27,7 +27,11 @@ export default function UsersPage() {
   const [teamFilter, setTeamFilter] = useState("all");
   const { data, isLoading } = useListWorkspaceUsersQuery();
 
-  const users = useMemo(() => (data?.members ?? []).map((m: any) => ({ 
+  const users = useMemo(() => (data?.members ?? []).map((m: any, idx: number) => ({ 
+    id: m.id ?? m.user_id ?? m.email ?? idx,
+    initials: m.name
+      ? m.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+      : (m.email?.[0]?.toUpperCase() ?? "?"),
     ...m, 
     velocityTrend: m.velocityTrend || "±0%", 
     trustRate: m.trustRate ?? 0, 

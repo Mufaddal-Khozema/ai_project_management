@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
+import time
 from typing import Any
 from urllib.parse import urlencode
 
@@ -470,6 +472,24 @@ async def get_discord_self(access_token: str) -> dict[str, Any]:
         return resp.json()
 
 
+_DISCORD_GUILDS_CACHE: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+
+
+async def _fetch_with_discord_rate_limit(client: httpx.AsyncClient, url: str) -> httpx.Response:
+    resp = await client.get(url)
+    if resp.status_code == 429:
+        try:
+            retry_after = float(resp.json().get("retry_after", 1.0))
+        except Exception:
+            try:
+                retry_after = float(resp.headers.get("Retry-After", 1.0))
+            except Exception:
+                retry_after = 1.0
+        await asyncio.sleep(min(retry_after, 5.0))
+        resp = await client.get(url)
+    return resp
+
+
 async def list_discord_guilds(
     access_token: str, bot_token: str | None = None
 ) -> list[dict[str, Any]]:
@@ -478,24 +498,33 @@ async def list_discord_guilds(
     When a bot token is supplied, only servers where the bot has been installed
     are returned (the user's guilds intersected with the bot's guilds).
     """
+    cache_key = f"{access_token}:{bot_token}"
+    now = time.monotonic()
+    if cache_key in _DISCORD_GUILDS_CACHE:
+        cached_time, cached_val = _DISCORD_GUILDS_CACHE[cache_key]
+        if now - cached_time < 30.0:
+            return cached_val
+
     async with httpx.AsyncClient(
         headers={"Authorization": f"Bearer {access_token}"}
     ) as http:
-        resp = await http.get("https://discord.com/api/users/@me/guilds")
+        resp = await _fetch_with_discord_rate_limit(http, "https://discord.com/api/users/@me/guilds")
         resp.raise_for_status()
         user_guilds = resp.json()
 
     if not bot_token:
-        return [
+        result = [
             {"id": str(g.get("id")), "name": g.get("name") or ""}
             for g in user_guilds
             if g.get("id")
         ]
+        _DISCORD_GUILDS_CACHE[cache_key] = (now, result)
+        return result
 
     async with httpx.AsyncClient(
         headers={"Authorization": f"Bot {bot_token}"}
     ) as http:
-        bot_resp = await http.get("https://discord.com/api/users/@me/guilds")
+        bot_resp = await _fetch_with_discord_rate_limit(http, "https://discord.com/api/users/@me/guilds")
         if bot_resp.status_code != 200:
             bot_guild_ids: set[str] = set()
         else:
@@ -505,11 +534,13 @@ async def list_discord_guilds(
                 if g.get("id")
             }
 
-    return [
+    result = [
         {"id": str(g.get("id")), "name": g.get("name") or ""}
         for g in user_guilds
         if g.get("id") and str(g.get("id")) in bot_guild_ids
     ]
+    _DISCORD_GUILDS_CACHE[cache_key] = (now, result)
+    return result
 
 
 async def list_discord_channels(
@@ -528,8 +559,8 @@ async def list_discord_channels(
     async with httpx.AsyncClient(headers=channel_headers) as http:
         for guild in guilds:
             guild_id = guild["id"]
-            resp = await http.get(
-                f"https://discord.com/api/guilds/{guild_id}/channels"
+            resp = await _fetch_with_discord_rate_limit(
+                http, f"https://discord.com/api/guilds/{guild_id}/channels"
             )
             if resp.status_code != 200:
                 continue

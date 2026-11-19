@@ -77,7 +77,7 @@ async def list_by_workspace(workspace_id: int) -> list[dict[str, Any]]:
     return await (
         Project.select()
         .where(Project.workspace_id == workspace_id)
-        .order_by(Project.updated_on, descending=True)
+        .order_by(Project.updated_on, ascending=False)
         .run()
     )
 
