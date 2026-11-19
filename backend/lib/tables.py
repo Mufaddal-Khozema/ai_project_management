@@ -93,6 +93,8 @@ class Project(Table, tablename="projects", db=DB):
     comm_provider = Varchar(length=50, null=False, default="discord")
     guild_id = Varchar(length=255, null=True, default=None)
     channel_id = Varchar(length=255, null=False)
+    voice_channel_id = Varchar(length=255, null=True, default=None)
+    ambient_enabled = Boolean(null=False, default=False)
     active = Boolean(null=False, default=True)
     created_on = Timestamp(null=False, default=TimestampNow())
     updated_on = Timestamp(null=False, default=TimestampNow())

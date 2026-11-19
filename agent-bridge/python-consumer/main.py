@@ -137,12 +137,25 @@ def build_bridge(memory_store=None):
 
     project_key_map = _parse_channel_to_project_map()
 
+    identity_client = None
+    try:
+        from core.identity_client import IdentityClient
+        backend_url = os.environ.get("BACKEND_URL") or os.environ.get("IDENTITY_SERVICE_URL", "http://127.0.0.1:8000")
+        service_key = os.environ.get("SERVICE_API_KEY", "")
+        fernet_key = os.environ.get("INTEGRATION_TOKEN_ENCRYPTION_KEY", "")
+        if backend_url and service_key:
+            identity_client = IdentityClient(backend_url, service_key, fernet_key)
+            logger.info("Dynamic Identity Client attached to MeetingMemoryInjector (URL: %s)", backend_url)
+    except Exception as e:
+        logger.warning("Could not initialize IdentityClient for memory injector: %s", e)
+
     from memory.meeting_memory import MeetingMemoryInjector
     injector = MeetingMemoryInjector(
         memory_store=memory_store,
         channel_map=channel_map,
         inject_live_transcript=inject_live,
         project_key_map=project_key_map,
+        identity_client=identity_client,
     )
     consumer.on("meeting.started",    injector.on_meeting_started)
     consumer.on("meeting.transcript", injector.on_transcript)

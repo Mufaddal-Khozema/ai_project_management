@@ -11,6 +11,8 @@ class UpsertProjectRequest(BaseModel):
     comm_provider: Literal["discord", "slack"] = "discord"
     channel_id: str = Field(min_length=1, max_length=255)
     active: bool = True
+    voice_channel_id: str | None = None
+    ambient_enabled: bool = False
 
 
 class DeleteProjectResponse(BaseModel):
@@ -26,6 +28,8 @@ class ProjectResponse(BaseModel):
     comm_provider: str
     guild_id: str | None = None
     channel_id: str
+    voice_channel_id: str | None = None
+    ambient_enabled: bool = False
     active: bool
     created_on: datetime
     updated_on: datetime

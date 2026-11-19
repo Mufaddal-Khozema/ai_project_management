@@ -112,7 +112,7 @@ class IdentityClient:
     ) -> IdentityResult:
         """Resolve any chat provider (Discord, Slack) user ID against the root backend."""
         clean_provider = provider.lower().strip()
-        cache_key = (clean_provider, str(external_id))
+        cache_key = (clean_provider, str(external_id), str(channel_id or ""))
         cached = self._cache.get(cache_key)
         if cached and (time.monotonic() - cached[1]) < self.cache_ttl_seconds:
             return cached[0]

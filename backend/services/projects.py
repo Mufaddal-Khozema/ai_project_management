@@ -17,6 +17,7 @@ from repositories import (
     workspace_repo,
 )
 from schemas.project import UpsertProjectRequest
+from services.scrum_master import sync_ambient_channel
 
 logger = structlog.get_logger(__name__)
 
@@ -31,7 +32,7 @@ def validate_provider_pair(pm_provider: str, comm_provider: str) -> None:
         raise HTTPException(status_code=400, detail=f"Unsupported channel provider: {comm_provider}")
 
 
-async def _workspace_id_for_user(email: str) -> int:
+async def _workspace_for_user(email: str) -> dict[str, Any]:
     user = await user_repo.find_by_email(email)
     if not user:
         logger.warning("user not found for project mapping", email=email)
@@ -39,6 +40,11 @@ async def _workspace_id_for_user(email: str) -> int:
     workspace = await workspace_repo.find_by_user_id(user["id"])
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    return workspace
+
+
+async def _workspace_id_for_user(email: str) -> int:
+    workspace = await _workspace_for_user(email)
     return workspace["id"]
 
 
@@ -127,6 +133,9 @@ async def save_mapping(
     comm_provider: str,
     channel_id: str,
     active: bool = True,
+    voice_channel_id: str | None = None,
+    ambient_enabled: bool = False,
+    org_id: str | None = None,
 ) -> dict[str, Any]:
     """Validate a channel → project pair against the connected providers and store it."""
     validate_provider_pair(pm_provider, comm_provider)
@@ -135,6 +144,10 @@ async def save_mapping(
         workspace_id, pm_provider, project_id
     )
     guild_id = await _resolve_guild(workspace_id, comm_provider, channel_id)
+
+    # Voice is currently exclusive to Discord (Slack voice is disabled until Zoom integration)
+    effective_voice_channel_id = voice_channel_id if comm_provider == "discord" else None
+    effective_ambient_enabled = ambient_enabled if (comm_provider == "discord" and effective_voice_channel_id) else False
 
     row = await project_repo.upsert(
         workspace_id=workspace_id,
@@ -146,6 +159,8 @@ async def save_mapping(
         channel_id=channel_id,
         guild_id=guild_id,
         active=active,
+        voice_channel_id=effective_voice_channel_id,
+        ambient_enabled=effective_ambient_enabled,
     )
     logger.info(
         "project channel mapping saved",
@@ -153,14 +168,27 @@ async def save_mapping(
         project_id=project_id,
         channel_id=channel_id,
         guild_id=guild_id,
+        voice_channel_id=effective_voice_channel_id,
+        ambient_enabled=effective_ambient_enabled,
     )
+
+    if org_id and comm_provider == "discord":
+        await sync_ambient_channel(
+            org_id=org_id,
+            guild_id=guild_id,
+            channel_id=effective_voice_channel_id,
+            enabled=effective_ambient_enabled,
+        )
+
     return row
 
 
 async def upsert_mapping(
     email: str, data: UpsertProjectRequest
 ) -> dict[str, Any]:
-    workspace_id = await _workspace_id_for_user(email)
+    workspace = await _workspace_for_user(email)
+    workspace_id = workspace["id"]
+    org_id = str(workspace.get("uuid") or workspace_id)
     return await save_mapping(
         workspace_id=workspace_id,
         pm_provider=data.pm_provider,
@@ -168,6 +196,9 @@ async def upsert_mapping(
         comm_provider=data.comm_provider,
         channel_id=data.channel_id,
         active=data.active,
+        voice_channel_id=data.voice_channel_id,
+        ambient_enabled=data.ambient_enabled,
+        org_id=org_id,
     )
 
 
@@ -177,8 +208,18 @@ async def list_mappings(email: str) -> list[dict[str, Any]]:
 
 
 async def delete_mapping(email: str, uuid: str) -> None:
-    workspace_id = await _workspace_id_for_user(email)
+    workspace = await _workspace_for_user(email)
+    workspace_id = workspace["id"]
+    existing = await project_repo.find_by_uuid(workspace_id, uuid)
     deleted = await project_repo.delete_by_uuid(workspace_id, uuid)
     if not deleted:
         raise HTTPException(status_code=404, detail="Mapping not found")
+    if existing and existing.get("voice_channel_id") and existing.get("ambient_enabled"):
+        org_id = str(workspace.get("uuid") or workspace_id)
+        await sync_ambient_channel(
+            org_id=org_id,
+            guild_id=existing.get("guild_id"),
+            channel_id=existing.get("voice_channel_id"),
+            enabled=False,
+        )
     logger.info("project channel mapping deleted", workspace_id=workspace_id, uuid=uuid)

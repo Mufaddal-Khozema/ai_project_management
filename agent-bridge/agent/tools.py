@@ -16,11 +16,35 @@ from core.base import ProjectManagementPlatform, MemoryStore
 logger = logging.getLogger("agent_bridge.tools")
 
 
-def _resolve_voice_channel(raw_channel: str, default_channel_id: str, default_channel_name: str) -> tuple[str, str]:
+def _resolve_voice_channel(
+    raw_channel: str,
+    default_channel_id: str,
+    default_channel_name: str,
+    identity_client: Any | None = None,
+) -> tuple[str, str]:
     """
     Resolve a channel input (which could be a voice channel snowflake, text channel snowflake,
     Discord mention <#id>, or channel name) to the appropriate voice channel ID and display name.
     """
+    target = (raw_channel or "").strip()
+    if target.startswith("<#") and target.endswith(">"):
+        target = target[2:-1].strip()
+
+    # Dynamic resolution via IdentityClient against root backend
+    if identity_client and default_channel_id:
+        try:
+            res = identity_client.resolve_identity(
+                provider="discord",
+                external_id="system",
+                channel_id=default_channel_id,
+            )
+            if res.linked and res.project and res.project.get("voice_channel_id"):
+                v_id = str(res.project["voice_channel_id"])
+                if not target or target == default_channel_id or target == v_id or target.lower() == (default_channel_name or "").lower():
+                    return v_id, "voice-channel"
+        except Exception as e:
+            logger.debug("IdentityClient voice channel resolution failed: %s", e)
+
     voice_map_raw = os.environ.get("VOICE_TO_TEXT_CHANNEL_MAP", "")
     text_to_voice: dict[str, str] = {}
     voice_ids: set[str] = set()
@@ -32,10 +56,6 @@ def _resolve_voice_channel(raw_channel: str, default_channel_id: str, default_ch
             if v and t:
                 text_to_voice[t] = v
                 voice_ids.add(v)
-
-    target = (raw_channel or "").strip()
-    if target.startswith("<#") and target.endswith(">"):
-        target = target[2:-1].strip()
 
     # If target is already a known voice channel ID
     if target in voice_ids:

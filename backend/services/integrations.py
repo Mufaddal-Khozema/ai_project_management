@@ -434,15 +434,16 @@ async def list_project_members(email: str, provider: str, project_id: str) -> di
     return {"provider": provider, "account_name": row.get("account_name"), "members": members}
 
 
-async def list_channels(email: str, provider: str) -> dict[str, Any]:
+async def list_channels(email: str, provider: str, channel_type: str = "text") -> dict[str, Any]:
     if provider not in _SCOPE_PROVIDERS["channels"]:
         raise HTTPException(status_code=400, detail=f"Channels not supported for provider: {provider}")
     row, payload = await _scope_credentials(email, provider)
     access_token = payload.get("access_token") or ""
     if provider == "discord":
+        discord_types = (2, 13) if channel_type == "voice" else (0,)
         channels = await _provider_call(
             provider,
-            oauth.list_discord_channels(access_token, settings.discord_bot_token),
+            oauth.list_discord_channels(access_token, settings.discord_bot_token, channel_types=discord_types),
         )
         scopes = [
             {
@@ -453,18 +454,21 @@ async def list_channels(email: str, provider: str) -> dict[str, Any]:
             for channel in channels
         ]
     elif provider == "slack":
-        channels = await _provider_call(
-            provider,
-            oauth.list_slack_channels(access_token),
-        )
-        scopes = [
-            {
-                "id": channel["id"],
-                "name": channel["name"],
-                "parent_id": channel.get("guild_id"),
-            }
-            for channel in channels
-        ]
+        if channel_type == "voice":
+            scopes = []
+        else:
+            channels = await _provider_call(
+                provider,
+                oauth.list_slack_channels(access_token),
+            )
+            scopes = [
+                {
+                    "id": channel["id"],
+                    "name": channel["name"],
+                    "parent_id": channel.get("guild_id"),
+                }
+                for channel in channels
+            ]
     else:
         raise HTTPException(status_code=400, detail=f"Channels not supported for provider: {provider}")
     return {"provider": provider, "account_name": row.get("account_name"), "scopes": scopes}

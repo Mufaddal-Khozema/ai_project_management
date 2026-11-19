@@ -513,9 +513,11 @@ async def list_discord_guilds(
 
 
 async def list_discord_channels(
-    access_token: str, bot_token: str | None
+    access_token: str,
+    bot_token: str | None,
+    channel_types: tuple[int, ...] = (0,),
 ) -> list[dict[str, Any]]:
-    """Return text chat rooms across the guilds (preferring bot guilds)."""
+    """Return chat rooms across the guilds matching channel_types (defaults to text rooms)."""
     guilds = await list_discord_guilds(access_token, bot_token)
     channel_headers = (
         {"Authorization": f"Bot {bot_token}"}
@@ -532,7 +534,7 @@ async def list_discord_channels(
             if resp.status_code != 200:
                 continue
             for channel in resp.json():
-                if channel.get("type") != 0:
+                if channel.get("type") not in channel_types:
                     continue
                 channel_id = channel.get("id")
                 if channel_id is None:

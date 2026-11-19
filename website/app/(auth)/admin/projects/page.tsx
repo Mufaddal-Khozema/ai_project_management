@@ -19,14 +19,43 @@ import {
   ArrowDownRight,
   Minus,
   Filter,
+  Plus,
+  Volume2,
+  Bot,
+  MessageSquare,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listProjectsOptions, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
+import { client } from "@/lib/api";
+import { ProjectMappingDialog } from "@/components/ProjectMappingDialog";
 
 export default function ProjectsPage() {
   const [search, setSearch] = useState("");
+  const [isMappingDialogOpen, setIsMappingDialogOpen] = useState(false);
   const { data: integrationsData } = useIntegrations();
+
+  const { data: mappingsData, refetch: refetchMappings } = useQuery({
+    queryKey: ["project-mappings"],
+    queryFn: async () => {
+      const res = await client.get<Array<any>>({
+        url: "/api/projects",
+      });
+      return res.data ?? [];
+    },
+  });
+
+  const mappingsByProjectId = useMemo(() => {
+    const map = new Map<string, any>();
+    if (Array.isArray(mappingsData)) {
+      for (const m of mappingsData) {
+        if (m.project_id) {
+          map.set(String(m.project_id), m);
+        }
+      }
+    }
+    return map;
+  }, [mappingsData]);
 
   const activePmProvider = useMemo(() => {
     const connected = integrationsData?.integrations?.filter(
@@ -110,7 +139,13 @@ export default function ProjectsPage() {
             {projects.filter((p) => p.status === "at-risk").length} at risk
           </p>
         </div>
-        <Button size="sm">New project</Button>
+        <Button
+          size="sm"
+          onClick={() => setIsMappingDialogOpen(true)}
+          className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white"
+        >
+          <Plus size={14} /> Configure project
+        </Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -143,6 +178,7 @@ export default function ProjectsPage() {
               <TableHead>Progress</TableHead>
               <TableHead>Team</TableHead>
               <TableHead>Velocity</TableHead>
+              <TableHead>Channels & Voice</TableHead>
               <TableHead>Last activity</TableHead>
             </TableRow>
           </TableHeader>
@@ -214,6 +250,42 @@ export default function ProjectsPage() {
                     </span>
                   </div>
                 </TableCell>
+                <TableCell>
+                  {(() => {
+                    const m = mappingsByProjectId.get(String(p.id));
+                    if (!m) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setIsMappingDialogOpen(true)}
+                          className="text-xs text-indigo-500 hover:underline"
+                        >
+                          + Link channel
+                        </button>
+                      );
+                    }
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-xs text-ink">
+                          <MessageSquare size={12} className="text-zinc-400" />
+                          <span className="font-mono text-[11px]">#{m.channel_id}</span>
+                          <span className="text-[10px] uppercase text-zinc-500">({m.comm_provider})</span>
+                        </div>
+                        {m.voice_channel_id && (
+                          <div className="flex items-center gap-1 text-[11px] text-indigo-400">
+                            <Volume2 size={12} />
+                            <span>Voice linked</span>
+                            {m.ambient_enabled && (
+                              <Badge variant="outline" className="ml-1 border-indigo-500/30 text-[9px] text-indigo-300 py-0 px-1">
+                                Ambient AI
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </TableCell>
                 <TableCell className="text-xs text-ink-muted">
                   {p.lastActivity}
                 </TableCell>
@@ -281,6 +353,12 @@ export default function ProjectsPage() {
           </Card>
         ))}
       </div>
+
+      <ProjectMappingDialog
+        open={isMappingDialogOpen}
+        onOpenChange={setIsMappingDialogOpen}
+        onSuccess={refetchMappings}
+      />
     </div>
   );
 }

@@ -34,6 +34,8 @@ class IdentityProject(BaseModel):
     comm_provider: str = "discord"
     guild_id: str | None = None
     channel_id: str
+    voice_channel_id: str | None = None
+    ambient_enabled: bool = False
 
 
 class IdentityEntitlements(BaseModel):

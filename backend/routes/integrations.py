@@ -119,10 +119,11 @@ async def list_project_members(provider: str, project_id: str, request: Request)
 
 
 @get("/integrations/{provider:str}/channels", sync_to_thread=False, operation_id="listChannels")
-async def list_channels(provider: str, request: Request) -> IntegrationScopesResponse:
+async def list_channels(provider: str, request: Request, type: str = "text") -> IntegrationScopesResponse:
     _validate_provider(provider)
     email = request.user.sub
-    result = await integration_service.list_channels(email, provider)
+    c_type = request.query_params.get("type") or request.query_params.get("channel_type") or type or "text"
+    result = await integration_service.list_channels(email, provider, channel_type=c_type)
     return IntegrationScopesResponse(**result)
 
 

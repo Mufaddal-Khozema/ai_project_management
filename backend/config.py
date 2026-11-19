@@ -71,6 +71,10 @@ class Settings:
     redis_url: str = field(default_factory=get_env("REDIS_URL", "redis://localhost:6379/0"))
     identity_cache_ttl_seconds: int = field(default_factory=get_env("IDENTITY_CACHE_TTL_SECONDS", 60))
 
+    scrum_master_url: str = field(default_factory=get_env("SCRUM_MASTER_URL", "http://localhost:3001"))
+    internal_service_key: str = field(default_factory=get_env("INTERNAL_SERVICE_KEY", ""))
+    voice_feature_enabled: bool = field(default_factory=get_env("VOICE_FEATURE_ENABLED", True))
+
 
 @cache
 def get_settings() -> Settings:

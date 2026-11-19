@@ -28,6 +28,8 @@ def _row(**overrides):
         "comm_provider": "discord",
         "guild_id": "200",
         "channel_id": "300",
+        "voice_channel_id": None,
+        "ambient_enabled": False,
         "active": True,
         "created_on": datetime(2024, 1, 1),
         "updated_on": datetime(2024, 1, 1),
@@ -75,6 +77,34 @@ def test_upsert_project_returns_mapping(client, monkeypatch):
     )
     assert r.status_code == 200, r.text
     assert r.json()["project_id"] == "10"
+
+
+def test_upsert_project_with_voice_channel(client, monkeypatch):
+    async def fake_upsert(email, data):
+        return _row(
+            project_id=data.project_id,
+            channel_id=data.channel_id,
+            voice_channel_id=data.voice_channel_id,
+            ambient_enabled=data.ambient_enabled,
+        )
+
+    monkeypatch.setattr(project_service, "upsert_mapping", fake_upsert)
+    r = client.put(
+        "/api/projects",
+        headers=_auth_headers(),
+        json={
+            "pm_provider": "taiga",
+            "project_id": "10",
+            "comm_provider": "discord",
+            "channel_id": "300",
+            "voice_channel_id": "400",
+            "ambient_enabled": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["voice_channel_id"] == "400"
+    assert body["ambient_enabled"] is True
 
 
 def test_upsert_project_validates_body(client):

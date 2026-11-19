@@ -45,11 +45,12 @@ async def find_by_channel(
 
     When ``guild_id`` is supplied, mappings that record a different guild are
     excluded. Mappings with no guild recorded still match.
+    Matches either text channel_id or voice_channel_id.
     """
     where = (
         (Project.workspace_id == workspace_id)
         & (Project.comm_provider == comm_provider)
-        & (Project.channel_id == channel_id)
+        & ((Project.channel_id == channel_id) | (Project.voice_channel_id == channel_id))
         & (Project.active == True)  # noqa: E712 - Piccolo needs the comparison
     )
     if guild_id:
@@ -64,7 +65,7 @@ async def find_by_comm_channel(
     """Return the active mapping for a channel across workspaces."""
     where = (
         (Project.comm_provider == comm_provider)
-        & (Project.channel_id == channel_id)
+        & ((Project.channel_id == channel_id) | (Project.voice_channel_id == channel_id))
         & (Project.active == True)  # noqa: E712
     )
     if guild_id:
@@ -91,6 +92,8 @@ async def upsert(
     channel_id: str,
     guild_id: str | None,
     active: bool = True,
+    voice_channel_id: str | None = None,
+    ambient_enabled: bool = False,
 ) -> dict[str, Any]:
     existing = await find_by_workspace_channel(
         workspace_id, comm_provider, channel_id
@@ -104,6 +107,8 @@ async def upsert(
                     Project.project_name: project_name,
                     Project.project_slug: project_slug,
                     Project.guild_id: guild_id,
+                    Project.voice_channel_id: voice_channel_id,
+                    Project.ambient_enabled: ambient_enabled,
                     Project.active: active,
                     Project.updated_on: utc_now(),
                 }
@@ -125,6 +130,8 @@ async def upsert(
                 comm_provider=comm_provider,
                 channel_id=channel_id,
                 guild_id=guild_id,
+                voice_channel_id=voice_channel_id,
+                ambient_enabled=ambient_enabled,
                 active=active,
                 created_on=utc_now(),
                 updated_on=utc_now(),
