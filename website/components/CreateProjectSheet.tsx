@@ -652,7 +652,7 @@ export function CreateProjectSheet({
 
             <Button
               type="button"
-              className="w-full bg-gradient-to-r from-[#7352f0] to-[#3f6df0] text-white hover:opacity-95 shadow-raise"
+              className="w-full"
               disabled={!selectedProjectId || !selectedChannelId || upsertMutation.isPending}
               onClick={handleSave}
             >

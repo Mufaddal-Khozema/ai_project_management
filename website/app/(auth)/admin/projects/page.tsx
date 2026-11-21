@@ -24,6 +24,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listProjectsOptions, useIntegrations } from "@/lib/api/@tanstack/react-query.gen";
 import { CreateProjectSheet } from "@/components/CreateProjectSheet";
+import { cn } from "@/lib/utils";
 
 export default function ProjectsPage() {
   const [search, setSearch] = useState("");
@@ -112,7 +113,7 @@ export default function ProjectsPage() {
             {projects.filter((p) => p.status === "at-risk").length} at risk
           </p>
         </div>
-        <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => setIsCreateOpen(true)}>
           New project
         </Button>
       </div>

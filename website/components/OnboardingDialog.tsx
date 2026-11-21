@@ -906,7 +906,7 @@ export function OnboardingDialog({
 
         <div className="flex gap-2 pt-4">
           <Button
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500"
+            className="flex-1"
             onClick={next}
             disabled={
               Boolean(connectingProvider) ||
